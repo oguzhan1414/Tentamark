@@ -24,6 +24,7 @@ type ContentRow = {
   status: string;
   created_at: string;
   imageUrl?: string | null;
+  imageIsVideo?: boolean;
   metadata?: {
     hook?: string;
     visualPrompt?: string;
@@ -32,12 +33,14 @@ type ContentRow = {
   content_platforms: PlatformRow[];
 };
 
-function firstImageUrl(contentMedia: unknown): string | null {
+function firstMedia(contentMedia: unknown): { url: string; isVideo: boolean } | null {
   const rows = Array.isArray(contentMedia) ? contentMedia : contentMedia ? [contentMedia] : [];
   for (const row of rows as { media?: unknown }[]) {
     const media = Array.isArray(row.media) ? row.media[0] : row.media;
-    const url = (media as { file_url?: string } | undefined)?.file_url;
-    if (url) return url;
+    const typed = media as { file_url?: string; file_type?: string } | undefined;
+    if (typed?.file_url) {
+      return { url: typed.file_url, isVideo: (typed.file_type ?? "").startsWith("video/") };
+    }
   }
   return null;
 }
@@ -87,7 +90,7 @@ export default function PostsPage() {
       const { data, error } = await supabase
         .from("content")
         .select(
-          "id, title, core_idea, category, status, created_at, content_media(media(file_url)), content_platforms(id, platform, caption, hashtags, status, scheduled_at)"
+          "id, title, core_idea, category, status, created_at, content_media(media(file_url, file_type)), content_platforms(id, platform, caption, hashtags, status, scheduled_at)"
         )
         .eq("brand_id", brand.id)
         .order("created_at", { ascending: false })
@@ -103,13 +106,15 @@ export default function PostsPage() {
       setRows(
         ((data ?? []) as Array<Record<string, unknown>>).map((r) => {
           const { hook, visualPrompt } = parseCoreIdea(r.core_idea as string | null);
+          const media = firstMedia(r.content_media);
           return {
             id: String(r.id),
             title: String(r.title || "(Başlıksız)"),
             body: (r.core_idea as string) ?? null,
             status: String(r.status),
             created_at: String(r.created_at),
-            imageUrl: firstImageUrl(r.content_media),
+            imageUrl: media?.url ?? null,
+            imageIsVideo: media?.isVideo ?? false,
             metadata: {
               hook: hook ?? undefined,
               visualPrompt: visualPrompt ?? undefined,
@@ -410,13 +415,21 @@ export default function PostsPage() {
                     className="relative aspect-[16/10] w-full cursor-pointer overflow-hidden rounded-xl border border-slate-100 bg-slate-50 group-hover:border-slate-200 transition"
                   >
                     {row.imageUrl ? (
-                      <Image
-                        src={row.imageUrl}
-                        alt={row.title}
-                        fill
-                        sizes="(max-width: 768px) 100vw, 33vw"
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
+                      row.imageIsVideo ? (
+                        <video
+                          src={row.imageUrl}
+                          controls
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <Image
+                          src={row.imageUrl}
+                          alt={row.title}
+                          fill
+                          sizes="(max-width: 768px) 100vw, 33vw"
+                          className="object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      )
                     ) : (
                       <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center bg-gradient-to-br from-indigo-50/50 via-slate-50 to-purple-50/50">
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-indigo-500 shadow-xs mb-2">
@@ -543,7 +556,11 @@ export default function PostsPage() {
                         <div className="flex items-center gap-3">
                           {row.imageUrl ? (
                             <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-slate-100 shadow-xs">
-                              <Image src={row.imageUrl} alt="" fill className="object-cover" />
+                              {row.imageIsVideo ? (
+                                <video src={row.imageUrl} muted playsInline className="h-full w-full object-cover" />
+                              ) : (
+                                <Image src={row.imageUrl} alt="" fill className="object-cover" />
+                              )}
                             </div>
                           ) : (
                             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400">
@@ -674,12 +691,20 @@ export default function PostsPage() {
             <div className="mt-4">
               {selectedPost.imageUrl ? (
                 <div className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl border border-slate-100 shadow-sm">
-                  <Image
-                    src={selectedPost.imageUrl}
-                    alt={selectedPost.title}
-                    fill
-                    className="object-cover"
-                  />
+                  {selectedPost.imageIsVideo ? (
+                    <video
+                      src={selectedPost.imageUrl}
+                      controls
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <Image
+                      src={selectedPost.imageUrl}
+                      alt={selectedPost.title}
+                      fill
+                      className="object-cover"
+                    />
+                  )}
                   <a
                     href={selectedPost.imageUrl}
                     target="_blank"

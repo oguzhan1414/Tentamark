@@ -1,3 +1,6 @@
+# Claude Code local files (skills, plans, etc.) - not part of the product
+.claude/
+
 # OS junk
 .DS_Store
 Thumbs.db

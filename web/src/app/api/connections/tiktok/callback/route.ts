@@ -37,8 +37,9 @@ export async function GET(request: Request) {
   const brand = await getCurrentBrand();
   if (!brand) return NextResponse.redirect(new URL("/giris", origin));
 
-  const clientKey = process.env.TIKTOK_CLIENT_KEY;
-  const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
+  // TEMP: matches start/route.ts — Sandbox credentials until audit is approved.
+  const clientKey = process.env.TIKTOK_CLIENT_SANDBOX_KEY;
+  const clientSecret = process.env.TIKTOK_CLIENT_SANDBOX_SECRET;
   if (!clientKey || !clientSecret) return fail(origin, "config");
 
   const redirectUri = `${origin}/api/connections/tiktok/callback`;

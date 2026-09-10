@@ -35,8 +35,9 @@ export const tiktokProvider: SocialProvider = {
 
   async refreshToken({ account }) {
     if (!account.refresh_token_encrypted) return null;
-    const clientKey = process.env.TIKTOK_CLIENT_KEY;
-    const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
+    // TEMP: Sandbox credentials until audit is approved (see start/route.ts).
+    const clientKey = process.env.TIKTOK_CLIENT_SANDBOX_KEY;
+    const clientSecret = process.env.TIKTOK_CLIENT_SANDBOX_SECRET;
     if (!clientKey || !clientSecret) return null;
 
     const refreshTokenPlain = decryptToken(account.refresh_token_encrypted, account.brand_id);

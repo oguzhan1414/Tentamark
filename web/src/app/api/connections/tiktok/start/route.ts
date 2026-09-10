@@ -22,10 +22,14 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/giris", origin));
   }
 
-  const clientKey = process.env.TIKTOK_CLIENT_KEY;
+  // TEMP: TikTok's audit hasn't been submitted yet, so this app can only
+  // authorize its own registered "target users" — that only works against
+  // the Sandbox environment's own credentials, not Production's. Switch
+  // back to TIKTOK_CLIENT_KEY once the app is approved and live.
+  const clientKey = process.env.TIKTOK_CLIENT_SANDBOX_KEY;
   if (!clientKey) {
     return NextResponse.json(
-      { error: "TIKTOK_CLIENT_KEY is not configured." },
+      { error: "TIKTOK_CLIENT_SANDBOX_KEY is not configured." },
       { status: 500 }
     );
   }

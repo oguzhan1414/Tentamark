@@ -18,8 +18,10 @@ function connectErrorMessage(code: string) {
     ? "Threads"
     : code.startsWith("instagram_")
       ? "Instagram"
-      : "Facebook";
-  const reason = code.replace(/^(threads|instagram)_/, "");
+      : code.startsWith("tiktok_")
+        ? "TikTok"
+        : "Facebook";
+  const reason = code.replace(/^(threads|instagram|tiktok)_/, "");
 
   switch (reason) {
     case "denied":
@@ -104,10 +106,10 @@ export default async function ConnectionsPage({
     {
       id: "tiktok",
       name: "TikTok",
-      desc: "Dikey video ve kısa kliplerinizi doğrudan TikTok hesabınıza aktarın.",
+      desc: "Dikey video ve kısa kliplerinizi doğrudan TikTok hesabınıza aktarın. TikTok onayı tamamlanana kadar paylaşımlar yalnızca hesabınızda (gizli) görünür.",
       icon: "tiktok" as PlatformName,
-      href: "#",
-      available: false,
+      href: "/api/connections/tiktok/start",
+      available: true,
     },
   ];
 

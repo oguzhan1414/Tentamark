@@ -176,7 +176,7 @@ create table if not exists public.content_platforms (
   id uuid default gen_random_uuid() primary key,
   content_id uuid references public.content on delete cascade not null,
   social_account_id uuid references public.social_accounts on delete set null,
-  platform text not null, -- 'instagram', 'facebook', 'linkedin', 'twitter'
+  platform text not null, -- 'instagram', 'facebook', 'linkedin', 'twitter', 'tiktok'
   -- Snapshot of the connected account at publish time — social_account_id is
   -- ON DELETE SET NULL, so without these a disconnected account would erase
   -- "which account did this actually go to" from historical posts. Not

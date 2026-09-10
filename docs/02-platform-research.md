@@ -67,6 +67,8 @@ Kaynaklar:
 
 **TikTok = MVP'den sonra, fakat mimaride baştan connector olarak tasarlanmalı.**
 
+> **Not (2026-09-10):** Bu kararı erteleten asıl blokaj (kalıcı domain/HTTPS gerekliliği, bkz. `13-build-checklist.md` madde 5) kalktı — `tentamark.com` artık Vercel'de canlı. TikTok connector'ı bu tarihte kuruldu (`tiktokProvider.ts` + `/api/connections/tiktok/*`). "Unaudited app → içerik private kalır" riski hâlâ geçerli ve gerçek: TikTok'un "target user" sandbox modu tam OAuth+paylaşım akışını audit'ten önce gerçek hesaplarla uçtan uca test etmeye izin veriyor, ama içerik audit tamamlanana kadar `SELF_ONLY` (gizli) kalıyor. Audit başvurusu (gizlilik politikası + demo video) kullanıcının kendisinin tamamlaması gereken ayrı bir adım.
+
 ## 2.4 YouTube
 
 ### Durum: Teknik olarak güçlü

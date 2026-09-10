@@ -9,7 +9,7 @@
   actually needs them, per the doc's explicit YAGNI note.
 */
 
-export type SocialPlatform = "instagram" | "facebook" | "linkedin" | "threads";
+export type SocialPlatform = "instagram" | "facebook" | "linkedin" | "threads" | "tiktok";
 
 export type SocialAccountRecord = {
   id: string;
@@ -17,6 +17,7 @@ export type SocialAccountRecord = {
   platform: SocialPlatform;
   external_account_id: string;
   access_token_encrypted: string;
+  refresh_token_encrypted: string | null;
   token_expires_at: string | null;
 };
 
@@ -50,10 +51,13 @@ export interface SocialProvider {
 
   verifyConnection(args: { account: SocialAccountRecord; freshToken: string }): Promise<ConnectionHealth>;
 
+  /** refreshToken is returned when the platform rotates it on every refresh
+   *  call (TikTok) — callers must persist it if present. Platforms without a
+   *  separate refresh token (Threads, Instagram) simply omit it. */
   refreshToken(args: {
     account: SocialAccountRecord;
     freshToken: string;
-  }): Promise<{ token: string; expiresAt: Date | null } | null>;
+  }): Promise<{ token: string; expiresAt: Date | null; refreshToken?: string } | null>;
 
   getAnalytics(args: { account: SocialAccountRecord; freshToken: string; remoteId: string }): Promise<unknown>;
 

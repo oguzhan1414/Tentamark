@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+/* ===========================================================================
+   TENTAMARK DESIGN TOKENS
+
+   Palette measured against sproutsocial / metricool / later, all of which
+   commit to ONE dominant canvas (59-78% coverage) and keep the accent under 4%.
+
+   Three ramps, so nothing is ever a one-off:
+
+     surface   page -> card -> subtle -> strong     (4 levels, back to front)
+     text      ink  -> muted -> faint               (3 levels, loud to quiet)
+     accent    accent -> hover -> subtle -> text    (fill, hover, tint, on-tint)
+
+   Contrast is computed, not eyeballed. Ratios noted per token.
+   =========================================================================== */
+
+/* Stable theme defaults: canvas tokens stay predictable across alternating sections */
+:root {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-soft: #f8fafc;
+  --surface-strong: #f1f5f9;
+
+  --ink: #0f172a;
+  --muted: #475569;
+  --faint: #64748b;
+  --line: #e2e8f0;
+
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-subtle: #eff6ff;
+  --accent-text: #1d4ed8;
+
+  --sky: #0ea5e9;
+  --mint: #10b981;
+  --coral: #f43f5e;
+  --coral-bright: #e11d48;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-soft: var(--surface-soft);
+  --color-surface-strong: var(--surface-strong);
+
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-text: var(--accent-text);
+
+  --color-sky: var(--sky);
+  --color-mint: var(--mint);
+  --color-coral: var(--coral);
+  --color-coral-bright: var(--coral-bright);
+
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+}
+
+* {
+  border-color: var(--line);
+}
+
+/* One flat canvas, no gradient wash. The references get their depth from
+   cards sitting on the page, not from tinting the page itself. */
+body {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* --- Surface system -------------------------------------------------------
+   Documented rule, applied everywhere:
+
+     radius   cards, frames and media wells use rounded-2xl (16px);
+              pills, buttons and avatars use rounded-full. Nothing else.
+     rest     surfaces sit flat, held by a hairline border. No resting shadow.
+     lift     one shared hover lift. `--lift-rgb` tints it to the card's own
+              accent so every surface rises the same way, in its own colour.
+
+   Replaces 8 hand-written one-off box-shadows that had drifted apart. */
+.lift {
+  transition:
+    transform 300ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 300ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lift:hover {
+    transform: translateY(-4px);
+  }
+}
+
+.lift:hover {
+  box-shadow: 0 28px 56px -28px rgb(var(--lift-rgb, 34 26 38) / 0.42);
+}

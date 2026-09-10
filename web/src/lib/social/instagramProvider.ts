@@ -1,0 +1,104 @@
+import type { ConnectionHealth, MediaValidation, PublishResult, SocialProvider } from "./types";
+
+/*
+  "Instagram API with Instagram Login" — a distinct product from the Page-
+  based flow in metaProvider.ts. Verified against Meta's current docs, not
+  assumed: no linked Facebook Page required, its own app credentials
+  (INSTAGRAM_APP_ID/SECRET, separate from META_APP_ID/SECRET), its own OAuth
+  host (instagram.com, not facebook.com), and — critically — its own content
+  API host (graph.instagram.com, not graph.facebook.com). A token from this
+  login flow does not work against graph.facebook.com endpoints.
+
+  Adopted instead of the Page-based flow specifically because it drops the
+  "connect a Facebook Page first" requirement that 02-platform-research.md
+  already flagged as onboarding friction — confirmed as real friction when
+  testing (`no-pages` error) with an Instagram account that had no Page.
+*/
+
+const GRAPH = "https://graph.instagram.com";
+
+async function verifyConnection(freshToken: string): Promise<ConnectionHealth> {
+  const res = await fetch(`${GRAPH}/v21.0/me?fields=id&access_token=${encodeURIComponent(freshToken)}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    return { healthy: false, reason: body?.error?.message ?? `HTTP ${res.status}` };
+  }
+  return { healthy: true };
+}
+
+export const instagramProvider: SocialProvider = {
+  platform: "instagram",
+
+  capabilities: {
+    publishing: true, // real API support confirmed; blocked in practice only by
+    // our own missing media hosting (12-backend-logic.md §12.8, still open)
+    analytics: true,
+    deletion: false,
+    video: true,
+    image: true,
+    carousel: true,
+  },
+
+  async verifyConnection({ freshToken }) {
+    return verifyConnection(freshToken);
+  },
+
+  async refreshToken({ freshToken }) {
+    // Like Threads, an Instagram Login token genuinely expires — 60 days,
+    // refreshable while at least 24h old and not yet expired.
+    const res = await fetch(
+      `${GRAPH}/refresh_access_token?grant_type=ig_refresh_token&access_token=${encodeURIComponent(freshToken)}`
+    );
+    const json = await res.json();
+    if (!res.ok || !json.access_token) return null;
+    const expiresAt = json.expires_in ? new Date(Date.now() + json.expires_in * 1000) : null;
+    return { token: json.access_token as string, expiresAt };
+  },
+
+  async publish({ account, freshToken, caption, mediaUrl }): Promise<PublishResult> {
+    if (!mediaUrl) {
+      throw new Error(
+        "Instagram bir medya URL'i olmadan paylaşım yapamaz — metin yeterli değil. content_media/Storage hattı henüz yok (12-backend-logic.md §12.8)."
+      );
+    }
+
+    const createRes = await fetch(`${GRAPH}/v21.0/${account.external_account_id}/media`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ image_url: mediaUrl, caption, access_token: freshToken }),
+    });
+    const createJson = await createRes.json();
+    if (!createRes.ok || !createJson.id) {
+      throw new Error(createJson?.error?.message ?? `Instagram container oluşturulamadı (HTTP ${createRes.status})`);
+    }
+
+    const publishRes = await fetch(`${GRAPH}/v21.0/${account.external_account_id}/media_publish`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ creation_id: createJson.id, access_token: freshToken }),
+    });
+    const publishJson = await publishRes.json();
+    if (!publishRes.ok || !publishJson.id) {
+      throw new Error(publishJson?.error?.message ?? `Instagram publish başarısız (HTTP ${publishRes.status})`);
+    }
+    return { remoteId: publishJson.id as string };
+  },
+
+  async getAnalytics({ freshToken, remoteId }) {
+    const res = await fetch(
+      `${GRAPH}/v21.0/${remoteId}/insights?metric=impressions,reach,engagement&access_token=${encodeURIComponent(freshToken)}`
+    );
+    const json = await res.json();
+    if (!res.ok) {
+      throw new Error(json?.error?.message ?? `Instagram insights alınamadı (HTTP ${res.status})`);
+    }
+    return json;
+  },
+
+  async validateMedia({ mimeType, sizeBytes }): Promise<MediaValidation> {
+    const allowed = ["image/jpeg", "image/png"];
+    if (!allowed.includes(mimeType)) return { valid: false, reason: `Desteklenmeyen dosya türü: ${mimeType}` };
+    if (sizeBytes > 8 * 1024 * 1024) return { valid: false, reason: "Görsel 8MB sınırını aşıyor" };
+    return { valid: true };
+  },
+};

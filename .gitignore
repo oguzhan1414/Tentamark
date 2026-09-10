@@ -6,3 +6,15 @@ desktop.ini
 # Editor
 .vscode/
 .idea/
+
+# Dependencies (anywhere in the tree, e.g. vendored skill scripts)
+node_modules/
+
+# Env files (anywhere in the tree)
+.env
+.env.*
+!.env.example
+
+# Build/cache artifacts (anywhere in the tree)
+.next/
+*.tsbuildinfo

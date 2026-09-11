@@ -1,190 +1,260 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
+import { useGSAP } from "@gsap/react";
+import { gsap, ScrollTrigger } from "@/lib/gsap";
 
 type Step = {
-  n: string;
   key: string;
   label: string;
   title: string;
-  desc: string;
   image: string;
   badge: string;
-  badgeColor: string;
+  cardBg: string;
 };
 
 const STEPS: Step[] = [
   {
-    n: "01",
     key: "brand-dna",
     label: "Brand DNA",
     title: "Markanızı tanır, dijital kimliğini çıkarır.",
-    desc: "Sektörünüz, konuşma tonunuz (Samimi, Profesyonel), renk paletiniz ve yasaklı konular. Beş dakikada yapılandırılmış bir Brand DNA oluşturur.",
-    image: "/images/step-brand-dna.jpg",
-    badge: "Kimlik Stüdyosu",
-    badgeColor: "text-accent bg-accent/10 border-accent/20",
+    image: "/images/step-1-brand-dna.png",
+    badge: "Marka DNA'sı",
+    cardBg: "bg-bg-violet",
   },
   {
-    n: "02",
     key: "content-ai",
     label: "TentaCast",
     title: "Tek bir fikri tüm platformlara uyarlar.",
-    desc: "Kopyala-yapıştır yok. Aynı brief'i Instagram'da enerjik caption'a, Facebook'ta topluluk postuna, LinkedIn'de profesyonel makaleye dönüştürür.",
-    image: "/images/ui-composer.jpg",
+    image: "/images/step-2-tentacast.png",
     badge: "Çoklu Yayın",
-    badgeColor: "text-sky bg-sky/10 border-sky/20",
+    cardBg: "bg-bg-sky",
   },
   {
-    n: "03",
     key: "approval",
     label: "1-Tıkla Onay",
     title: "Son söz her zaman sizdedir.",
-    desc: "AI tüm taslakları hazırlar; siz telefonunuzdan veya bilgisayarınızdan tek dokunuşla inceler ve onaylarsınız. Onayınız olmadan hiçbir şey yayınlanmaz.",
-    image: "/images/ui-approval.jpg",
+    image: "/images/step-3-approval.jpeg",
     badge: "İnsan Onaylı",
-    badgeColor: "text-mint bg-mint/10 border-mint/20",
+    cardBg: "bg-bg-mint",
   },
   {
-    n: "04",
     key: "publish",
     label: "Otomatik Yayın",
     title: "Doğru saatte, doğru kanalda yayında.",
-    desc: "Onayladığınız içerikler en yüksek etkileşim saatinde Instagram, Facebook ve LinkedIn hesaplarınıza otomatik olarak servis edilir.",
-    image: "/images/step-publish.jpg",
+    image: "/images/step-4-publish.jpeg",
     badge: "Akıllı Zamanlama",
-    badgeColor: "text-mint bg-mint/10 border-mint/20",
+    cardBg: "bg-bg-coral",
   },
   {
-    n: "05",
     key: "learning",
     label: "Öğrenme Döngüsü",
     title: "Rakamlar bir sonraki haftanın planını yazar.",
-    desc: "Hangi içerik neden tuttu? Tenta performansı ölçer (+%37 etkileşim), ders çıkarır ve gelecek haftanın içerik takvimini otomatik olarak günceller.",
-    image: "/images/ui-analytics-dark.jpg",
+    image: "/images/step-5-learning.jpeg",
     badge: "Sürekli Gelişim",
-    badgeColor: "text-coral-bright bg-coral/10 border-coral/20",
+    cardBg: "bg-bg-amber",
   },
 ];
 
+// Each card exits in its own direction — one repeated flight path read as
+// mechanical, four different corners reads as a hand actually tossing cards
+// aside. Order alternates corners so no two in a row match.
+const EXIT_DIRECTIONS: { x: number; y: number; rotate: number }[] = [
+  { x: 1, y: -1, rotate: 1 }, // top-right
+  { x: -1, y: 1, rotate: -1 }, // bottom-left
+  { x: -1, y: -1, rotate: -1 }, // top-left
+  { x: 1, y: 1, rotate: 1 }, // bottom-right
+  { x: 1, y: -1, rotate: 1 },
+];
+
+// Depth 0 = front card. Depth > 0 = stacked behind (further back = higher
+// number). Depth < 0 = already flung away. Values tween toward their target
+// with power2 easing (matching what ajans360.com's own ScrollTrigger config
+// actually uses — scrub:1 + power2 curves, not a raw linear snap) instead of
+// gsap.set's instant jump, so it reads as eased motion, not a per-frame snap.
+function applyDepth(el: HTMLElement, depth: number, index: number) {
+  if (depth < 0) {
+    const passed = Math.min(1, -depth);
+    const dir = EXIT_DIRECTIONS[index % EXIT_DIRECTIONS.length];
+    gsap.to(el, {
+      x: passed * 760 * dir.x,
+      y: passed * 320 * dir.y,
+      rotate: passed * 26 * dir.rotate,
+      scale: 1 - passed * 0.15,
+      opacity: 1 - passed,
+      zIndex: STEPS.length + 1,
+      duration: 0.5,
+      ease: "power2.out",
+      overwrite: "auto",
+    });
+    return;
+  }
+  const d = Math.min(depth, 3);
+  const sign = index % 2 === 0 ? 1 : -1;
+  gsap.to(el, {
+    x: d * 16,
+    y: d * 18,
+    rotate: sign * d * 1.8,
+    scale: 1 - d * 0.05,
+    opacity: 1 - d * 0.18,
+    zIndex: STEPS.length - Math.round(d),
+    duration: 0.5,
+    ease: "power2.out",
+    overwrite: "auto",
+  });
+}
+
 export default function LoopSection() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const pinRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const scrollTriggerRef = useRef<ScrollTrigger | null>(null);
   const [active, setActive] = useState(0);
   const currentStep = STEPS[active];
 
+  function renderStack(rawProgress: number) {
+    const scaled = rawProgress * (STEPS.length - 1);
+    cardRefs.current.forEach((el, i) => {
+      if (el) applyDepth(el, i - scaled, i);
+    });
+  }
+
+  // Scroll drives the step. All 5 cards sit stacked on top of each other;
+  // scrolling flings the front one off-screen and promotes the rest forward
+  // in depth — a deck of cards being worked through, not a tab menu.
+  useGSAP(
+    () => {
+      const mm = gsap.matchMedia();
+
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        renderStack(0);
+
+        const st = ScrollTrigger.create({
+          trigger: pinRef.current,
+          start: "top top+=80",
+          end: () => `+=${STEPS.length * window.innerHeight * 0.8}`,
+          pin: true,
+          scrub: 1,
+          invalidateOnRefresh: true,
+          onUpdate: (self) => {
+            const idx = Math.min(STEPS.length - 1, Math.floor(self.progress * STEPS.length));
+            setActive(idx);
+            renderStack(self.progress);
+          },
+        });
+
+        scrollTriggerRef.current = st;
+
+        return () => {
+          scrollTriggerRef.current = null;
+        };
+      });
+
+      mm.add("(prefers-reduced-motion: reduce)", () => {
+        renderStack(0);
+        videoRef.current?.pause();
+      });
+    },
+    { scope: sectionRef }
+  );
+
   return (
     <section
+      ref={sectionRef}
       id="dongu"
-      className="relative z-20 -mt-8 sm:-mt-12 rounded-t-[2.25rem] sm:rounded-t-[3rem] lg:rounded-t-[3.5rem] bg-[#0a0a0b] text-white shadow-[0_-16px_40px_rgba(0,0,0,0.18),0_-3px_10px_rgba(0,0,0,0.08)] border-t border-white/[0.08] px-6 pt-16 pb-24 sm:pt-24 sm:pb-32"
+      className="relative z-20 -mt-8 sm:-mt-12 overflow-hidden rounded-t-[2.25rem] sm:rounded-t-[3rem] lg:rounded-t-[3.5rem] bg-bg-violet text-ink shadow-[0_-10px_30px_rgba(28,20,48,0.05)] border-t border-line px-6 pt-16 pb-24 sm:pt-24 sm:pb-32"
     >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-32 rounded-t-[inherit] bg-gradient-to-b from-white/[0.03] to-transparent" aria-hidden="true" />
-      <div className="mx-auto max-w-6xl">
-        <div className="max-w-2xl">
-          <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 font-mono text-xs uppercase tracking-[0.2em] text-accent">
-            <span>Sonsuz Döngü</span>
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-32 rounded-t-[inherit] bg-gradient-to-b from-white/40 to-transparent" aria-hidden="true" />
+      <div className="relative mx-auto max-w-6xl">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent-subtle px-3 py-1 font-mono text-xs uppercase tracking-[0.2em] text-accent-text">
+            <span>Nasıl Çalışır</span>
           </div>
-          <h2 className="mt-4 font-display text-3xl font-bold tracking-tight text-white sm:text-4xl">
-            Bir kere kurulmuyor, <span className="text-sky-400">her yayında daha akıllı hale geliyor.</span>
+          <h2 className="mt-4 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+            Bir kere kurulmuyor, <span className="spectrum-text">her yayında daha akıllı hale geliyor.</span>
           </h2>
-          <p className="mt-3 font-body text-base text-white/70 leading-relaxed">
+          <p className="mt-3 font-body text-base text-muted leading-relaxed">
             Çoğu araç içerik üretip bırakır. Tentamark&apos;ta döngü hiç kapanmaz: Her yayından öğrenilen sonuç, bir sonraki haftanın stratejisine geri beslenir.
           </p>
         </div>
+      </div>
 
-        {/* Step Selector Pills */}
-        <div className="mt-10 flex flex-wrap gap-2.5">
-          {STEPS.map((step, i) => {
-            const isActive = active === i;
-            return (
-              <button
-                key={step.key}
-                type="button"
-                onClick={() => setActive(i)}
-                className={`group flex items-center gap-2.5 rounded-full border px-4 py-2.5 font-body text-sm font-medium transition duration-200 ${
-                  isActive
-                    ? "border-white bg-white text-[#0a0a0b] shadow-md"
-                    : "border-white/15 bg-white/5 text-white/80 hover:bg-white/10 hover:border-white/30 hover:text-white"
-                }`}
-              >
-                <span
-                  className={`flex h-5 w-5 items-center justify-center rounded-full font-mono text-[10px] font-bold ${
-                    isActive
-                      ? "bg-[#0a0a0b] text-white"
-                      : "bg-white/10 text-white/60 group-hover:bg-accent/20 group-hover:text-accent"
-                  }`}
+      {/* Pinned while scrolling. The calc(50% - 50vw) margin trick breaks
+          this out to the true viewport edge regardless of the section's own
+          px-6 or any ancestor padding — a guessed -mx-6 left a visible gap
+          on the right because it only cancels this element's own parent
+          padding, not whatever else sits between it and the viewport edge.
+          min-h-[78vh] keeps it viewport-relative and short — decoupled from
+          the intro text's height above — so the video box stays close to
+          its own 16:9 aspect and object-cover doesn't have to crop in hard
+          to fill it. */}
+      <div
+        ref={pinRef}
+        className="relative mt-10 flex min-h-[78vh] w-screen flex-col items-center justify-center"
+        style={{ marginLeft: "calc(50% - 50vw)", marginRight: "calc(50% - 50vw)" }}
+      >
+        {/* Video/scrim bleed past pinRef's own bottom edge into the
+            section's pb-24/sm:pb-32 — that space has no content in it (only
+            the top has the intro text to protect), so nothing stops the
+            color from reaching the section's true bottom edge instead of
+            stopping short and leaving a plain band. No overflow-hidden on
+            pinRef itself — that would clip this bleed right back off; the
+            section's own overflow-hidden (for its rounded corners) is the
+            only clip boundary that should apply here. */}
+        <video
+          ref={videoRef}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          className="pointer-events-none absolute inset-x-0 top-0 -bottom-24 object-cover sm:-bottom-32"
+          aria-hidden="true"
+        >
+          <source src="/video/background.mp4" type="video/mp4" />
+        </video>
+        <div className="pointer-events-none absolute inset-x-0 top-0 -bottom-24 bg-bg-violet/40 sm:-bottom-32" aria-hidden="true" />
+
+        <div className="relative mx-auto w-full max-w-3xl px-4 pb-16 sm:px-6">
+          <div className="relative aspect-[4/3] w-full">
+            {STEPS.map((step, i) => (
+              <div
+                  key={step.key}
+                  ref={(el) => {
+                    cardRefs.current[i] = el;
+                  }}
+                  className={`absolute inset-0 flex flex-col overflow-hidden rounded-[1.75rem] border border-line shadow-xl ${step.cardBg}`}
+                  style={{ transformOrigin: "50% 100%" }}
                 >
-                  {step.n}
-                </span>
-                <span>{step.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Main Step Display Container */}
-        <div className="mt-8 grid items-center gap-8 rounded-2xl border border-white/10 bg-[#141416]/80 p-6 sm:p-10 lg:grid-cols-[1fr_1.3fr] shadow-2xl">
-          {/* Left: Step Info */}
-          <div>
-            <span className={`inline-flex items-center rounded-full border px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] ${currentStep.badgeColor}`}>
-              {currentStep.badge}
-            </span>
-
-            <h3 className="mt-4 font-display text-2xl sm:text-3xl font-bold leading-snug text-white">
-              {currentStep.title}
-            </h3>
-
-            <p className="mt-3 font-body text-base leading-relaxed text-white/70">
-              {currentStep.desc}
-            </p>
-
-            <div className="mt-8 flex items-center gap-3 font-mono text-xs text-white/50">
-              <span className="flex h-2 w-2 rounded-full bg-mint animate-pulse" />
-              <span>Adım {active + 1} / {STEPS.length}: {currentStep.label}</span>
-            </div>
-
-            {/* Quick Step Switch Buttons */}
-            <div className="mt-6 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setActive((prev) => (prev > 0 ? prev - 1 : STEPS.length - 1))}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white transition hover:bg-white/10 hover:border-white/30"
-                aria-label="Önceki Adım"
-              >
-                ←
-              </button>
-              <button
-                type="button"
-                onClick={() => setActive((prev) => (prev < STEPS.length - 1 ? prev + 1 : 0))}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white transition hover:bg-white/10 hover:border-white/30"
-                aria-label="Sonraki Adım"
-              >
-                →
-              </button>
-              <span className="ml-2 font-mono text-xs uppercase tracking-[0.1em] text-white/50">
-                Döngüyü İnceleyin
-              </span>
+                  <div className="relative min-h-0 flex-1 p-4 sm:p-6">
+                    <div className="relative h-full w-full overflow-hidden rounded-2xl">
+                      <Image
+                        src={step.image}
+                        alt={step.title}
+                        fill
+                        sizes="(min-width: 1024px) 40vw, 90vw"
+                        className="object-contain object-center"
+                      />
+                    </div>
+                  </div>
+                  <div className="px-6 pb-6 pt-1 sm:px-8 sm:pb-7">
+                    <p className="font-display text-xl font-bold text-ink sm:text-2xl">{step.label}</p>
+                    <p className="mt-1 font-mono text-xs uppercase tracking-[0.12em] text-muted">{step.badge}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Right: Crisp, Unclipped Mockup Image */}
-          <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl border border-white/10 bg-[#0c1013] p-2 sm:p-3 shadow-lg">
-            <div className="relative h-full w-full overflow-hidden rounded-xl bg-[#050505]">
-              <Image
-                key={currentStep.key}
-                src={currentStep.image}
-                alt={currentStep.title}
-                fill
-                sizes="(min-width: 1024px) 50vw, 100vw"
-                className="object-contain object-center transition-opacity duration-500"
-              />
-            </div>
-          </div>
-        </div>
+          <p className="relative z-30 mt-4 max-w-lg text-center font-display text-lg font-semibold text-ink sm:text-xl">
+            {currentStep.title}
+          </p>
 
-        {/* Bottom Loop Indicator */}
-        <div className="mt-8 flex items-center justify-center gap-2.5 font-mono text-xs uppercase tracking-[0.15em] text-white/50">
-          <span className="text-accent">↺</span>
-          <span>Öğrenme, bir sonraki haftanın stratejisini besler</span>
-        </div>
+          <span className="relative z-30 mt-5 inline-flex items-center gap-1.5 rounded-full bg-surface/80 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.15em] text-muted backdrop-blur-sm">
+            <span aria-hidden="true">↓</span> kaydırdıkça ilerler
+          </span>
       </div>
     </section>
   );

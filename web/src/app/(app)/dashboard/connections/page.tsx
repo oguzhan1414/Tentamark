@@ -13,6 +13,19 @@ async function disconnectAccount(formData: FormData) {
   revalidatePath("/dashboard/connections");
 }
 
+function accountStatusLabel(status: string): { text: string; className: string } {
+  switch (status) {
+    case "active":
+      return { text: "Aktif", className: "font-semibold text-emerald-600" };
+    case "needs_reauth":
+      return { text: "Yeniden bağlantı gerekiyor", className: "font-semibold text-amber-600" };
+    case "disconnected":
+      return { text: "Bağlantı kesildi", className: "font-semibold text-red-600" };
+    default:
+      return { text: status, className: "font-semibold text-slate-500" };
+  }
+}
+
 function connectErrorMessage(code: string) {
   const provider = code.startsWith("threads_")
     ? "Threads"
@@ -176,7 +189,10 @@ export default async function ConnectionsPage({
                       {acc.display_name ?? acc.username}
                     </h4>
                     <p className="text-[11px] text-slate-400">
-                      {platformLabel(acc.platform as PlatformName)} · Durum: <span className="font-semibold text-emerald-600">Aktif</span>
+                      {platformLabel(acc.platform as PlatformName)} · Durum:{" "}
+                      <span className={accountStatusLabel(acc.status).className}>
+                        {accountStatusLabel(acc.status).text}
+                      </span>
                       {acc.last_health_check_at && (
                         <span> · Son Senkron: {new Date(acc.last_health_check_at).toLocaleDateString("tr-TR")}</span>
                       )}
@@ -208,7 +224,7 @@ export default async function ConnectionsPage({
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {availableIntegrations.map((item) => {
-            const isConnected = activeAccounts.some((a) => a.platform === item.icon);
+            const isConnected = activeAccounts.some((a) => a.platform === item.icon && a.status === "active");
             return (
               <div
                 key={item.id}

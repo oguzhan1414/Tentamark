@@ -35,7 +35,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="tr"
       className={`${displayFont.variable} ${bodyFont.variable} ${monoFont.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#0a0a0b] text-white font-body">
+      <body className="min-h-full flex flex-col bg-bg text-ink font-body">
         {children}
       </body>
     </html>

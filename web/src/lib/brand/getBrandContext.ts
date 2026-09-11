@@ -8,6 +8,7 @@ export type BrandContext = {
   brandTraits: string[];
   targetAudience: string[];
   forbiddenWords: string[];
+  colorPalette: string[];
   competitors: string[];
   rawNotes: string | null;
   strategy?: Record<string, unknown> | null;
@@ -24,7 +25,7 @@ export async function getBrandContext(
     supabase.from("brands").select("name, website").eq("id", brandId).maybeSingle(),
     supabase
       .from("brand_dna")
-      .select("industry, tone_of_voice, brand_traits, forbidden_words, target_audience, competitors, raw_notes")
+      .select("industry, tone_of_voice, brand_traits, forbidden_words, color_palette, target_audience, competitors, raw_notes")
       .eq("brand_id", brandId)
       .maybeSingle(),
     supabase
@@ -43,6 +44,7 @@ export async function getBrandContext(
   const brandTraits = Array.isArray(dnaRow?.brand_traits) ? dnaRow.brand_traits.map(String) : [];
   const targetAudience = Array.isArray(dnaRow?.target_audience) ? dnaRow.target_audience.map(String) : [];
   const forbiddenWords = Array.isArray(dnaRow?.forbidden_words) ? dnaRow.forbidden_words.map(String) : [];
+  const colorPalette = Array.isArray(dnaRow?.color_palette) ? dnaRow.color_palette.map(String) : [];
   const competitors = Array.isArray(dnaRow?.competitors) ? dnaRow.competitors.map(String) : [];
   const rawNotes = dnaRow?.raw_notes || null;
   const strategy = (strategyRow?.payload as Record<string, unknown>) ?? null;
@@ -56,6 +58,7 @@ export async function getBrandContext(
     brandTraits.length ? `Marka Nitelikleri: ${brandTraits.join(", ")}` : "",
     targetAudience.length ? `Hedef Kitle: ${targetAudience.join(", ")}` : "",
     forbiddenWords.length ? `YASAKLI KELİMELER / KAÇINILACAKLAR: ${forbiddenWords.join(", ")}` : "",
+    colorPalette.length ? `Marka Renk Paleti: ${colorPalette.join(", ")}` : "",
     competitors.length ? `Rakipler: ${competitors.join(", ")}` : "",
     rawNotes ? `Özel Notlar: ${rawNotes}` : "",
   ].filter(Boolean);
@@ -71,6 +74,13 @@ export async function getBrandContext(
     if (cadence) {
       lines.push(`Haftalık Ritim: ${JSON.stringify(cadence)}`);
     }
+    const guardrails = strategy.tone_guardrails as { dos?: string[]; donts?: string[] } | undefined;
+    if (guardrails?.dos?.length) {
+      lines.push(`Marka Sesi — Yapılacaklar: ${guardrails.dos.join(", ")}`);
+    }
+    if (guardrails?.donts?.length) {
+      lines.push(`Marka Sesi — KAÇINILACAKLAR: ${guardrails.donts.join(", ")}`);
+    }
   }
 
   return {
@@ -81,6 +91,7 @@ export async function getBrandContext(
     brandTraits,
     targetAudience,
     forbiddenWords,
+    colorPalette,
     competitors,
     rawNotes,
     strategy,

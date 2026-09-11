@@ -171,6 +171,7 @@ export default function ComposePage() {
           visualConcept: concept,
           title: hook || idea.slice(0, 50),
           brandName: brand.name,
+          brandId: brand.id,
         }),
       });
 

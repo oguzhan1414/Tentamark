@@ -798,6 +798,13 @@ export default function PostsPage() {
               ))}
             </div>
 
+            {/* Delete Disclaimer — no platform's delete is wired up yet */}
+            {overallStatus(selectedPost) === "published" && (
+              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-[11px] text-slate-500 leading-relaxed">
+                Yayınlanan içerik bu panelden silinemez. Silmek isterseniz ilgili sosyal medya hesabından silmeniz gerekir.
+              </div>
+            )}
+
             {/* Bottom Actions Drawer */}
             <div className="mt-auto flex items-center gap-3 pt-6 border-t border-slate-100">
               {overallStatus(selectedPost) === "review" && (

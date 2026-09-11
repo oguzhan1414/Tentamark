@@ -14,6 +14,8 @@ type Campaign = {
   start_date: string | null;
   end_date: string | null;
   status: Status;
+  totalContent: number;
+  publishedContent: number;
 };
 
 const STATUS_CONFIG: Record<Status, { label: string; className: string }> = {
@@ -41,11 +43,18 @@ export default function CampaignsPage() {
   useEffect(() => {
     let ignore = false;
     (async () => {
-      const { data, error } = await supabase
-        .from("campaigns")
-        .select("id, name, objective, start_date, end_date, status")
-        .eq("brand_id", brand.id)
-        .order("created_at", { ascending: false });
+      const [{ data, error }, { data: contentRows, error: contentError }] = await Promise.all([
+        supabase
+          .from("campaigns")
+          .select("id, name, objective, start_date, end_date, status")
+          .eq("brand_id", brand.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("content")
+          .select("campaign_id, status")
+          .eq("brand_id", brand.id)
+          .not("campaign_id", "is", null),
+      ]);
 
       if (ignore) return;
       if (error) {
@@ -53,7 +62,26 @@ export default function CampaignsPage() {
         setCampaigns([]);
         return;
       }
-      setCampaigns((data ?? []) as Campaign[]);
+      if (contentError) {
+        console.error("Kampanya içerik sayıları alınamadı:", contentError.message);
+      }
+
+      const counts = new Map<string, { total: number; published: number }>();
+      for (const row of contentRows ?? []) {
+        if (!row.campaign_id) continue;
+        const entry = counts.get(row.campaign_id) ?? { total: 0, published: 0 };
+        entry.total += 1;
+        if (row.status === "PUBLISHED" || row.status === "PARTIALLY_PUBLISHED") entry.published += 1;
+        counts.set(row.campaign_id, entry);
+      }
+
+      setCampaigns(
+        (data ?? []).map((c) => ({
+          ...c,
+          totalContent: counts.get(c.id)?.total ?? 0,
+          publishedContent: counts.get(c.id)?.published ?? 0,
+        })) as Campaign[]
+      );
     })();
     return () => {
       ignore = true;
@@ -248,15 +276,26 @@ export default function CampaignsPage() {
                     </div>
                   )}
 
-                  {/* Visual Progress Bar */}
+                  {/* Visual Progress Bar — real content counts, not a placeholder */}
                   <div className="pt-2">
-                    <div className="flex justify-between text-[11px] text-slate-500 mb-1">
-                      <span>İçerik Tamamlanma</span>
-                      <span className="font-bold text-slate-800">8 / 10 Gönderi</span>
-                    </div>
-                    <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
-                      <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-600 w-[80%]"></div>
-                    </div>
+                    {c.totalContent > 0 ? (
+                      <>
+                        <div className="flex justify-between text-[11px] text-slate-500 mb-1">
+                          <span>İçerik Tamamlanma</span>
+                          <span className="font-bold text-slate-800">
+                            {c.publishedContent} / {c.totalContent} Gönderi
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-600"
+                            style={{ width: `${Math.round((c.publishedContent / c.totalContent) * 100)}%` }}
+                          ></div>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-[11px] text-slate-400">Bu kampanyaya bağlı içerik henüz yok.</p>
+                    )}
                   </div>
                 </div>
 

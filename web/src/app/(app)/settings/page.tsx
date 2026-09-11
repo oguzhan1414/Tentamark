@@ -1,57 +1,89 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useBrand } from "@/components/dashboard/BrandProvider";
+import { createClient } from "@/lib/supabase/client";
 
 type SettingsTab = "genel" | "plan" | "ekip" | "bildirimler";
 
+const ROLE_LABEL: Record<string, string> = {
+  owner: "Sahip (Owner)",
+  admin: "Yönetici (Admin)",
+  member: "Üye",
+};
+
 export default function SettingsPage() {
   const brand = useBrand();
+  const supabase = useMemo(() => createClient(), []);
 
   const [activeTab, setActiveTab] = useState<SettingsTab>("genel");
   const [savedNotice, setSavedNotice] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  // General settings state
-  const [userName, setUserName] = useState("Oğuzhan");
-  const [email, setEmail] = useState("oguzhan@example.com");
+  // General settings state — loaded from the real session/profile, not hardcoded
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userName, setUserName] = useState("");
+  const [email, setEmail] = useState("");
   const [timezone, setTimezone] = useState(brand.timezone || "Europe/Istanbul");
-  const [language, setLanguage] = useState("tr");
 
-  // Notifications
+  // Notifications — preferences UI only; nothing sends real emails yet (no
+  // cron/email infra exists), so these intentionally aren't persisted or
+  // claimed as "saved" anywhere.
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [weeklyDigest, setWeeklyDigest] = useState(true);
   const [publishAlerts, setPublishAlerts] = useState(true);
 
-  // Invite modal
-  const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState("editor");
+  const [teamMember, setTeamMember] = useState<{ name: string; email: string; role: string } | null>(null);
 
-  const [teamMembers, setTeamMembers] = useState([
-    { id: "1", name: "Oğuzhan", email: "oguzhan@example.com", role: "Sahip (Owner)", status: "Aktif" },
-  ]);
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user || ignore) return;
 
-  function handleSave(e: React.FormEvent) {
+      setUserId(user.id);
+      setEmail(user.email ?? "");
+
+      const [{ data: profile }, { data: membership }] = await Promise.all([
+        supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
+        supabase.from("organization_members").select("role").eq("user_id", user.id).limit(1).maybeSingle(),
+      ]);
+      if (ignore) return;
+
+      const name = profile?.full_name || user.email?.split("@")[0] || "Kullanıcı";
+      setUserName(profile?.full_name ?? "");
+      setTeamMember({
+        name,
+        email: user.email ?? "",
+        role: ROLE_LABEL[membership?.role ?? ""] ?? "Üye",
+      });
+    })();
+    return () => {
+      ignore = true;
+    };
+  }, [supabase]);
+
+  async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (!userId) return;
+    setSaving(true);
+    setSaveError(null);
+
+    const [{ error: profileError }, { error: brandError }] = await Promise.all([
+      supabase.from("profiles").update({ full_name: userName.trim() || null }).eq("id", userId),
+      supabase.from("brands").update({ timezone }).eq("id", brand.id),
+    ]);
+
+    setSaving(false);
+    if (profileError || brandError) {
+      setSaveError("Kaydedilemedi, lütfen tekrar deneyin.");
+      return;
+    }
     setSavedNotice(true);
     setTimeout(() => setSavedNotice(false), 3000);
-  }
-
-  function handleInvite(e: React.FormEvent) {
-    e.preventDefault();
-    if (!inviteEmail.trim()) return;
-    setTeamMembers((prev) => [
-      ...prev,
-      {
-        id: String(Date.now()),
-        name: inviteEmail.split("@")[0],
-        email: inviteEmail.trim(),
-        role: inviteRole === "admin" ? "Yönetici (Admin)" : "İçerik Editörü (Editor)",
-        status: "Davet Gönderildi",
-      },
-    ]);
-    setInviteEmail("");
-    setShowInviteModal(false);
   }
 
   return (
@@ -119,8 +151,9 @@ export default function SettingsPage() {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none"
+                disabled
+                title="E-posta adresini değiştirmek için giriş yaptığınız e-posta ile destek@tentamark.com adresine yazın"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-500 cursor-not-allowed"
               />
             </div>
 
@@ -144,12 +177,12 @@ export default function SettingsPage() {
                 Panel Dili
               </label>
               <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none"
+                value="tr"
+                disabled
+                title="Çoklu dil desteği yakında"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-500 cursor-not-allowed"
               >
-                <option value="tr">Türkçe</option>
-                <option value="en">English</option>
+                <option value="tr">Türkçe (Yakında: diğer diller)</option>
               </select>
             </div>
           </div>
@@ -157,15 +190,19 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between border-t border-slate-100 pt-5">
             <button
               type="submit"
-              className="rounded-xl bg-slate-900 px-6 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition"
+              disabled={saving || !userId}
+              className="rounded-xl bg-slate-900 px-6 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition disabled:opacity-50"
             >
-              Tercihleri Kaydet
+              {saving ? "Kaydediliyor..." : "Tercihleri Kaydet"}
             </button>
 
             {savedNotice && (
               <span className="text-xs font-semibold text-emerald-600 flex items-center gap-1.5">
                 <span>✓</span> Ayarlar başarıyla kaydedildi!
               </span>
+            )}
+            {saveError && (
+              <span className="text-xs font-semibold text-red-600">{saveError}</span>
             )}
           </div>
         </form>
@@ -241,37 +278,41 @@ export default function SettingsPage() {
 
             <button
               type="button"
-              onClick={() => setShowInviteModal(true)}
-              className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-400 cursor-not-allowed"
+              disabled
+              title="Ekip daveti henüz canlı değil"
             >
-              + Yeni Üye Davet Et
+              + Yeni Üye Davet Et (Yakında)
             </button>
           </div>
 
           <div className="divide-y divide-slate-100">
-            {teamMembers.map((member) => (
-              <div key={member.id} className="flex items-center justify-between py-3.5 first:pt-1 last:pb-1">
+            {teamMember && (
+              <div className="flex items-center justify-between py-3.5 first:pt-1 last:pb-1">
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 font-bold text-xs text-slate-700">
-                    {member.name[0]?.toUpperCase()}
+                    {teamMember.name[0]?.toUpperCase()}
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-slate-900">{member.name}</h4>
-                    <p className="text-[11px] text-slate-400">{member.email}</p>
+                    <h4 className="text-xs font-bold text-slate-900">{teamMember.name}</h4>
+                    <p className="text-[11px] text-slate-400">{teamMember.email}</p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-700">
-                    {member.role}
+                    {teamMember.role}
                   </span>
                   <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
-                    {member.status}
+                    Aktif
                   </span>
                 </div>
               </div>
-            ))}
+            )}
           </div>
+          <p className="text-[11px] text-slate-400 italic">
+            Birden fazla ekip üyesi davet etme özelliği yakında aktif olacak.
+          </p>
         </div>
       )}
 
@@ -325,66 +366,6 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Invite Member Modal */}
-      {showInviteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <button
-            type="button"
-            aria-label="Kapat"
-            onClick={() => setShowInviteModal(false)}
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs"
-          />
-
-          <div className="relative w-full max-w-md rounded-[24px] border border-slate-100 bg-white p-6 shadow-2xl">
-            <h3 className="font-display text-base font-bold text-slate-900">Yeni Ekip Üyesi Davet Et</h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Davet bağlantısı gönderilecek e-posta adresini ve yetki rolünü belirleyin.
-            </p>
-
-            <form onSubmit={handleInvite} className="mt-4 space-y-3.5">
-              <div className="space-y-1">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">E-posta</label>
-                <input
-                  type="email"
-                  required
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder="arkadasiniz@sirket.com"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Rol</label>
-                <select
-                  value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none"
-                >
-                  <option value="editor">İçerik Editörü (Yalnızca Taslak & Düzenleme)</option>
-                  <option value="admin">Yönetici (Onay & Ayar Yetkisi)</option>
-                </select>
-              </div>
-
-              <div className="flex items-center justify-end gap-2.5 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setShowInviteModal(false)}
-                  className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-                >
-                  İptal
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-xl bg-slate-900 px-5 py-2 text-xs font-bold text-white shadow-xs hover:bg-slate-800"
-                >
-                  Daveti Gönder
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

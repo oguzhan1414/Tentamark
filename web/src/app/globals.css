@@ -3,8 +3,11 @@
 /* ===========================================================================
    TENTAMARK DESIGN TOKENS
 
-   Palette measured against sproutsocial / metricool / later, all of which
-   commit to ONE dominant canvas (59-78% coverage) and keep the accent under 4%.
+   The product touches every platform a brand posts to — Instagram's warmth,
+   LinkedIn's blue, TikTok's energy — so the site stays light and lets one
+   indigo-to-coral spectrum carry that "many channels, one brain" idea instead
+   of a flat corporate blue. No black canvas anywhere: dark ink is used for
+   text only, never as a section fill.
 
    Three ramps, so nothing is ever a one-off:
 
@@ -12,34 +15,49 @@
      text      ink  -> muted -> faint               (3 levels, loud to quiet)
      accent    accent -> hover -> subtle -> text    (fill, hover, tint, on-tint)
 
-   Contrast is computed, not eyeballed. Ratios noted per token.
+   Section washes (violet/coral/sky) are near-white tints, not blocks of
+   colour — adjacent sections stay close in lightness so the seams between
+   them read as a gradient, not a cut.
    =========================================================================== */
 
-/* Stable theme defaults: canvas tokens stay predictable across alternating sections */
 :root {
-  --bg: #ffffff;
+  --bg: #fbfaf9;
+  --bg-violet: #f5f2fc;
+  --bg-coral: #fdf2f3;
+  --bg-sky: #eff8fd;
+  --bg-mint: #eafbf3;
+  --bg-amber: #fff8ea;
+
   --surface: #ffffff;
-  --surface-soft: #f8fafc;
-  --surface-strong: #f1f5f9;
+  --surface-soft: #f7f5fb;
+  --surface-strong: #efebf9;
 
-  --ink: #0f172a;
-  --muted: #475569;
-  --faint: #64748b;
-  --line: #e2e8f0;
+  --ink: #1c1430;
+  --muted: #5b5470;
+  --faint: #8b84a0;
+  --line: #e6e1f2;
 
-  --accent: #2563eb;
-  --accent-hover: #1d4ed8;
-  --accent-subtle: #eff6ff;
-  --accent-text: #1d4ed8;
+  --accent: #6d4feb;
+  --accent-hover: #5a3fd6;
+  --accent-subtle: #efeafd;
+  --accent-text: #5a3fd6;
 
-  --sky: #0ea5e9;
+  --sky: #159fe0;
   --mint: #10b981;
-  --coral: #f43f5e;
-  --coral-bright: #e11d48;
+  --coral: #ff5470;
+  --coral-bright: #e63a57;
+  --amber: #d97706;
+
+  --spectrum: linear-gradient(115deg, #6d4feb 0%, #9b5de5 45%, #ff5470 100%);
 }
 
 @theme inline {
   --color-bg: var(--bg);
+  --color-bg-violet: var(--bg-violet);
+  --color-bg-coral: var(--bg-coral);
+  --color-bg-sky: var(--bg-sky);
+  --color-bg-mint: var(--bg-mint);
+  --color-bg-amber: var(--bg-amber);
   --color-surface: var(--surface);
   --color-surface-soft: var(--surface-soft);
   --color-surface-strong: var(--surface-strong);
@@ -58,6 +76,7 @@
   --color-mint: var(--mint);
   --color-coral: var(--coral);
   --color-coral-bright: var(--coral-bright);
+  --color-amber: var(--amber);
 
   --font-display: var(--font-display);
   --font-body: var(--font-body);
@@ -109,5 +128,77 @@ body {
 }
 
 .lift:hover {
-  box-shadow: 0 28px 56px -28px rgb(var(--lift-rgb, 34 26 38) / 0.42);
+  box-shadow: 0 28px 56px -28px rgb(var(--lift-rgb, 109 79 235) / 0.35);
 }
+
+/* --- Spectrum signature ----------------------------------------------------
+   The one recurring motif: indigo bleeding into coral, standing in for "every
+   platform's colour, orchestrated into one". Used sparingly — an emphasis
+   span in a headline, a badge edge, an ambient glow behind a section eyebrow.
+   Never a full section fill. */
+.spectrum-text {
+  background: var(--spectrum);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.spectrum-ring {
+  position: relative;
+}
+.spectrum-ring::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--spectrum);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* Soft, large-radius ambient light — the replacement for hard section-to-
+   section colour blocks. Absolutely positioned by the caller. */
+.glow {
+  pointer-events: none;
+  filter: blur(64px);
+  opacity: 0.5;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes marquee-ltr {
+  0% {
+    transform: translate3d(-50%, 0, 0);
+  }
+  100% {
+    transform: translate3d(0%, 0, 0);
+  }
+}
+
+.animate-marquee-ltr {
+  display: flex;
+  width: max-content;
+  animation: marquee-ltr 50s linear infinite;
+  will-change: transform;
+}
+
+.animate-marquee-ltr:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee-ltr {
+    animation: none;
+  }
+}
+

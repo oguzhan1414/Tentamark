@@ -1,11 +1,16 @@
 import type { IconType } from "react-icons";
 import {
+  FaDiscord,
   FaFacebook,
+  FaGoogle,
   FaInstagram,
   FaLinkedin,
   FaPinterest,
+  FaShopify,
+  FaTelegram,
   FaThreads,
   FaTiktok,
+  FaWhatsapp,
   FaXTwitter,
   FaYoutube,
 } from "react-icons/fa6";
@@ -20,6 +25,14 @@ import {
 
   Colours are the official brand hexes. They are deliberately hardcoded:
   a brand mark must not shift with our theme tokens.
+
+  PlatformName is the narrow, load-bearing type: dashboard code keys
+  Record<PlatformName, ...> maps (character limits, connection state) off it,
+  so it only ever names platforms the product can actually post to.
+  RoadmapPlatformName adds the icons-only, not-yet-integrated brands the
+  marketing site shows (Shopify, Telegram, Discord, ...) — PlatformIcon
+  renders either, but nothing outside the marketing components should key a
+  Record off the wider type.
 */
 export type PlatformName =
   | "instagram"
@@ -31,9 +44,17 @@ export type PlatformName =
   | "pinterest"
   | "threads";
 
+export type RoadmapPlatformName =
+  | PlatformName
+  | "shopify"
+  | "google-business"
+  | "telegram"
+  | "discord"
+  | "whatsapp";
+
 type Brand = { label: string; Icon: IconType; hex: string };
 
-const BRANDS: Record<PlatformName, Brand> = {
+const BRANDS: Record<RoadmapPlatformName, Brand> = {
   instagram: { label: "Instagram", Icon: FaInstagram, hex: "#E4405F" },
   facebook: { label: "Facebook", Icon: FaFacebook, hex: "#0866FF" },
   linkedin: { label: "LinkedIn", Icon: FaLinkedin, hex: "#0A66C2" },
@@ -42,14 +63,19 @@ const BRANDS: Record<PlatformName, Brand> = {
   x: { label: "X", Icon: FaXTwitter, hex: "#111111" },
   pinterest: { label: "Pinterest", Icon: FaPinterest, hex: "#E60023" },
   threads: { label: "Threads", Icon: FaThreads, hex: "#111111" },
+  shopify: { label: "Shopify", Icon: FaShopify, hex: "#95BF47" },
+  "google-business": { label: "Google Business Profile", Icon: FaGoogle, hex: "#4285F4" },
+  telegram: { label: "Telegram", Icon: FaTelegram, hex: "#26A5E4" },
+  discord: { label: "Discord", Icon: FaDiscord, hex: "#5865F2" },
+  whatsapp: { label: "WhatsApp Business", Icon: FaWhatsapp, hex: "#25D366" },
 };
 
-export function platformLabel(name: PlatformName) {
+export function platformLabel(name: RoadmapPlatformName) {
   return BRANDS[name].label;
 }
 
 type Props = {
-  name: PlatformName;
+  name: RoadmapPlatformName;
   /** "tile" = brand-coloured rounded square, white glyph. "bare" = glyph only. */
   variant?: "tile" | "bare";
   className?: string;

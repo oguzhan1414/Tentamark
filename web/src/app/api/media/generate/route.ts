@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateImagePrompt } from "@/lib/ai/generateImagePrompt";
 import { generateImage } from "@/lib/ai/generateImage";
+import { getBrandContext } from "@/lib/brand/getBrandContext";
 
 // Returns the generated image as a data URL — does not touch Storage or
 // the `media` table. See generateImage.ts for why: persisting only happens
@@ -8,7 +9,7 @@ import { generateImage } from "@/lib/ai/generateImage";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { visualConcept, title, brandName } = body;
+    const { visualConcept, title, brandName, brandId } = body;
 
     if (!visualConcept || typeof visualConcept !== "string") {
       return NextResponse.json(
@@ -17,7 +18,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const prompt = await generateImagePrompt(visualConcept, { title, brandName });
+    const colorPalette = typeof brandId === "string" ? (await getBrandContext(brandId)).colorPalette : [];
+
+    const prompt = await generateImagePrompt(visualConcept, { title, brandName, colorPalette });
     const result = await generateImage({ prompt });
 
     return NextResponse.json({

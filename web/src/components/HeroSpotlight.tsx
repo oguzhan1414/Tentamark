@@ -60,19 +60,26 @@ export default function HeroSpotlight() {
   );
 
   return (
-    <section id="top" ref={rootRef} className="relative bg-[#0a0a0b] text-white overflow-hidden px-6 pt-14 pb-20 sm:pt-20 sm:pb-28">
-      <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[1.02fr_0.98fr] lg:gap-16">
+    <section id="top" ref={rootRef} className="relative bg-bg text-ink overflow-hidden px-6 pt-14 pb-20 sm:pt-20 sm:pb-28">
+      {/* Ambient spectrum glow — the signature motif, never a solid fill */}
+      <div
+        className="glow absolute -top-40 left-1/2 h-[36rem] w-[56rem] -translate-x-1/2 rounded-full"
+        style={{ background: "var(--spectrum)", opacity: 0.16 }}
+        aria-hidden="true"
+      />
+
+      <div className="relative mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[1.02fr_0.98fr] lg:gap-16">
         {/* ---------------- copy ---------------- */}
         <div>
-          <p className="hs-eyebrow font-mono text-xs uppercase tracking-[0.28em] text-accent">
+          <p className="hs-eyebrow font-mono text-xs uppercase tracking-[0.28em] text-accent-text">
             AI Marketing Manager
           </p>
 
-          <h1 className="hs-headline mt-5 font-display text-4xl leading-[1.05] font-bold tracking-tight text-balance text-white sm:text-5xl lg:text-6xl">
-            Markanızın sosyal medyasını yöneten bir ekip. <span className="text-sky-400">Tek kişi bile olsanız.</span>
+          <h1 className="hs-headline mt-5 font-display text-4xl leading-[1.05] font-bold tracking-tight text-balance text-ink sm:text-5xl lg:text-6xl">
+            Markanızın sosyal medyasını yöneten bir ekip. <span className="spectrum-text">Tek kişi bile olsanız.</span>
           </h1>
 
-          <p className="hs-copy mt-6 max-w-lg font-body text-base leading-relaxed text-pretty text-white/70 sm:text-lg">
+          <p className="hs-copy mt-6 max-w-lg font-body text-base leading-relaxed text-pretty text-muted sm:text-lg">
             Tentamark markanızı öğrenir, haftalık içerik planını hazırlar ve her
             platforma ayrı yazar. Siz onaylarsınız, o yayınlar ve sonuçlardan
             öğrenir.
@@ -89,18 +96,28 @@ export default function HeroSpotlight() {
               id="hero-email"
               type="email"
               placeholder="ornek@marka.com"
-              className="w-full rounded-full border border-white/15 bg-white/5 px-5 py-3.5 font-body text-sm text-white placeholder:text-white/40 focus:border-accent focus:outline-none"
+              className="w-full rounded-full border border-line bg-surface px-5 py-3.5 font-body text-sm text-ink placeholder:text-faint focus:border-accent focus:outline-none"
             />
             <button
               type="submit"
-              className="shrink-0 rounded-full bg-white px-6 py-3.5 font-body text-sm font-semibold text-[#0a0a0b] transition-colors hover:bg-white/90"
+              className="shrink-0 rounded-full bg-accent px-6 py-3.5 font-body text-sm font-semibold text-white shadow-[0_10px_24px_-10px_rgb(109_79_235/0.6)] transition-colors hover:bg-accent-hover"
             >
               Erken erişime katıl
             </button>
           </form>
 
+          <div className="hs-form mt-3">
+            <a
+              href="#urun-vitrini"
+              className="inline-flex items-center gap-1.5 font-body text-sm font-semibold text-accent-text transition-colors hover:text-accent-hover"
+            >
+              Demo izle
+              <span aria-hidden="true">→</span>
+            </a>
+          </div>
+
           <div className="hs-trust mt-7">
-            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-white/40">
+            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-faint">
               Instagram, Facebook ve LinkedIn ile çalışır
             </p>
             <div className="mt-3 flex items-center gap-2.5">
@@ -113,7 +130,7 @@ export default function HeroSpotlight() {
 
         {/* ---------------- portrait + floating product UI ---------------- */}
         <div className="relative">
-          <div className="hs-photo relative aspect-[4/5] w-full overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+          <div className="hs-photo spectrum-ring relative aspect-[4/5] w-full overflow-hidden rounded-2xl border border-line bg-surface-soft">
             <Image
               src="/images/hero-portrait.jpg"
               alt="Kendi markasının sosyal medyasını Tentamark ile yöneten bir işletme sahibi"
@@ -125,7 +142,7 @@ export default function HeroSpotlight() {
           </div>
 
           {/* Outcome. One real-looking number, framed as a change not a vanity stat. */}
-          <div className="hs-card absolute -bottom-5 left-6 flex items-center gap-3 rounded-2xl border border-white/15 bg-[#141416]/95 px-4 py-3 shadow-[0_18px_40px_-24px_rgba(0,0,0,0.8)] backdrop-blur sm:left-10">
+          <div className="hs-card absolute -bottom-5 left-6 flex items-center gap-3 rounded-2xl border border-line bg-surface/95 px-4 py-3 shadow-[0_18px_40px_-24px_rgba(28,20,48,0.35)] backdrop-blur sm:left-10">
             <svg viewBox="0 0 64 30" className="h-7 w-14 text-mint" aria-hidden="true">
               <polyline
                 points="0,25 11,20 22,23 33,13 44,15 54,6 64,2"
@@ -137,8 +154,8 @@ export default function HeroSpotlight() {
               />
             </svg>
             <div>
-              <p className="font-display text-sm font-bold text-white">Etkileşim +%18</p>
-              <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-white/50">son 30 gün</p>
+              <p className="font-display text-sm font-bold text-ink">Etkileşim +%18</p>
+              <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-faint">son 30 gün</p>
             </div>
           </div>
         </div>

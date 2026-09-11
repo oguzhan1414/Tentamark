@@ -22,6 +22,7 @@ type TodayPost = {
   scheduledAt?: string;
   platforms: PlatformName[];
   imageUrl?: string | null;
+  imageIsVideo?: boolean;
 };
 
 function parseCoreIdea(coreIdea?: string | null): { hook: string | null; visualPrompt: string | null } {
@@ -34,12 +35,14 @@ function parseCoreIdea(coreIdea?: string | null): { hook: string | null; visualP
   };
 }
 
-function firstImageUrl(contentMedia: unknown): string | null {
+function firstMedia(contentMedia: unknown): { url: string; isVideo: boolean } | null {
   const rows = Array.isArray(contentMedia) ? contentMedia : contentMedia ? [contentMedia] : [];
   for (const row of rows as { media?: unknown }[]) {
     const media = Array.isArray(row.media) ? row.media[0] : row.media;
-    const url = (media as { file_url?: string } | undefined)?.file_url;
-    if (url) return url;
+    const typed = media as { file_url?: string; file_type?: string } | undefined;
+    if (typed?.file_url) {
+      return { url: typed.file_url, isVideo: (typed.file_type ?? "").startsWith("video/") };
+    }
   }
   return null;
 }
@@ -116,7 +119,7 @@ export default function DashboardHomePage() {
           supabase
             .from("content")
             .select(
-              "id, title, core_idea, category, status, created_at, content_media(media(file_url)), content_platforms(id, platform, status, scheduled_at)"
+              "id, title, core_idea, category, status, created_at, content_media(media(file_url, file_type)), content_platforms(id, platform, status, scheduled_at)"
             )
             .eq("brand_id", brand.id)
             .order("created_at", { ascending: false })
@@ -134,7 +137,7 @@ export default function DashboardHomePage() {
         if (postsRes.data) {
           const mapped: TodayPost[] = postsRes.data.map((item) => {
             const { hook } = parseCoreIdea(item.core_idea);
-            const imgUrl = firstImageUrl(item.content_media);
+            const media = firstMedia(item.content_media);
             const plats = (item.content_platforms as Array<{ platform: string; scheduled_at?: string }>) || [];
             const platformNames = Array.from(new Set(plats.map((p) => p.platform as PlatformName)));
 
@@ -145,7 +148,8 @@ export default function DashboardHomePage() {
               status: String(item.status),
               scheduledAt: plats[0]?.scheduled_at,
               platforms: platformNames.length > 0 ? platformNames : ["instagram"],
-              imageUrl: imgUrl,
+              imageUrl: media?.url ?? null,
+              imageIsVideo: media?.isVideo ?? false,
             };
           });
           setTodayPosts(mapped);
@@ -422,7 +426,11 @@ export default function DashboardHomePage() {
                       {/* Platform Icon or Image thumbnail */}
                       {post.imageUrl ? (
                         <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-slate-100 shadow-xs">
-                          <Image src={post.imageUrl} alt="" fill sizes="44px" className="object-cover" />
+                          {post.imageIsVideo ? (
+                            <video src={post.imageUrl} muted playsInline className="h-full w-full object-cover" />
+                          ) : (
+                            <Image src={post.imageUrl} alt="" fill sizes="44px" className="object-cover" />
+                          )}
                         </div>
                       ) : (
                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">

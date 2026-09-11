@@ -38,19 +38,29 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const { data: accounts } = await supabase
     .from("social_accounts")
-    .select("platform")
+    .select("platform, status")
     .eq("brand_id", brand.id);
 
   const connectedPlatforms = Array.from(
     new Set((accounts ?? []).map((a) => a.platform as PlatformName))
   );
 
+  const hasBrokenConnection = (accounts ?? []).some((a) => a.status !== "active");
+
+  const { count: failedContentCount } = await supabase
+    .from("content_platforms")
+    .select("id, content!inner(brand_id)", { count: "exact", head: true })
+    .eq("content.brand_id", brand.id)
+    .in("status", ["FAILED", "NEEDS_USER_ACTION"]);
+
+  const systemHealthy = !hasBrokenConnection && !failedContentCount;
+
   return (
     <BrandProvider brand={brand}>
       <div className="flex min-h-dvh bg-[#F8FAFC] text-slate-900 antialiased selection:bg-indigo-500 selection:text-white">
         <DashboardSidebar connectedPlatforms={connectedPlatforms} />
         <div className="flex min-w-0 flex-1 flex-col">
-          <DashboardTopbar brandName={brand.name} />
+          <DashboardTopbar brandName={brand.name} systemHealthy={systemHealthy} />
           <DashboardMobileNav />
           <main className="flex-1 overflow-y-auto">{children}</main>
         </div>

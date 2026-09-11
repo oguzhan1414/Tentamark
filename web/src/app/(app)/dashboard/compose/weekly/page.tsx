@@ -164,6 +164,7 @@ export default function WeeklyPackPage() {
           visualConcept: card.visualPrompt || card.title,
           title: card.title,
           brandName: brand.name,
+          brandId: brand.id,
         }),
       });
 

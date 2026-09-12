@@ -91,12 +91,18 @@ export default function ComposePage() {
   // Preview simulator platform
   const [previewPlatform, setPreviewPlatform] = useState<PlatformName>("instagram");
 
+  // TikTok's Direct Post has no text/image-only path — a real video is
+  // mandatory (tiktokProvider.publish() throws without one), so selecting it
+  // switches the media picker from photo to video mode.
+  const requiresVideo = selectedPlatforms.includes("tiktok");
+
   // Local media preview
   const mediaPreview = useMemo(() => {
     if (imageUrl) return imageUrl;
     if (mediaFile) return URL.createObjectURL(mediaFile);
     return null;
   }, [imageUrl, mediaFile]);
+  const mediaPreviewIsVideo = !imageUrl && Boolean(mediaFile?.type.startsWith("video/"));
 
   useEffect(() => {
     return () => {
@@ -197,6 +203,10 @@ export default function ComposePage() {
   // Submit to Supabase
   async function submit(targetStatus: "DRAFT" | "NEEDS_REVIEW") {
     if (!drafts || !scheduledAt) return;
+    if (requiresVideo && !mediaFile?.type.startsWith("video/")) {
+      setSubmitError("TikTok seçiliyken bir video dosyası yüklemen gerekiyor — TikTok metin veya fotoğrafla paylaşım yapamıyor.");
+      return;
+    }
     setSubmitting(true);
     setSubmitError(null);
 
@@ -646,8 +656,8 @@ export default function ComposePage() {
                   <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 space-y-3.5">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                        <span>🎨</span>
-                        <span>AI Görsel Üretim Motoru</span>
+                        <span>{requiresVideo ? "🎬" : "🎨"}</span>
+                        <span>{requiresVideo ? "Video Yükleme" : "AI Görsel Üretim Motoru"}</span>
                       </span>
                       {imageUrl && (
                         <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
@@ -656,48 +666,61 @@ export default function ComposePage() {
                       )}
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <input
-                        type="text"
-                        value={visualPrompt}
-                        onChange={(e) => setVisualPrompt(e.target.value)}
-                        placeholder="Görsel konsepti veya fotoğraf sahnesi prompt'u..."
-                        className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none"
-                      />
+                    {requiresVideo && (
+                      <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2">
+                        TikTok metin veya fotoğrafla paylaşım yapamıyor — Direct Post için gerçek bir video dosyası
+                        yüklemen gerekiyor (AI görsel üretimi burada kullanılamaz).
+                      </p>
+                    )}
 
-                      <button
-                        type="button"
-                        onClick={triggerImageGeneration}
-                        disabled={generatingImage || (!visualPrompt.trim() && !idea.trim())}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition disabled:opacity-50 shrink-0"
-                      >
-                        {generatingImage ? (
-                          <>
-                            <svg className="h-3.5 w-3.5 animate-spin text-white" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span>Üretiliyor...</span>
-                          </>
-                        ) : (
-                          <>
-                            <span>Görsel Üret</span>
-                            <span className="rounded bg-indigo-500/30 px-1 text-[10px]">⚡ AI</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
+                    {!requiresVideo && (
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <input
+                          type="text"
+                          value={visualPrompt}
+                          onChange={(e) => setVisualPrompt(e.target.value)}
+                          placeholder="Görsel konsepti veya fotoğraf sahnesi prompt'u..."
+                          className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={triggerImageGeneration}
+                          disabled={generatingImage || (!visualPrompt.trim() && !idea.trim())}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition disabled:opacity-50 shrink-0"
+                        >
+                          {generatingImage ? (
+                            <>
+                              <svg className="h-3.5 w-3.5 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              <span>Üretiliyor...</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>Görsel Üret</span>
+                              <span className="rounded bg-indigo-500/30 px-1 text-[10px]">⚡ AI</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
 
                     {imageError && (
                       <p className="text-[11px] text-red-600 bg-red-50 p-2 rounded-lg">{imageError}</p>
                     )}
 
-                    {/* Image Preview / File Upload Option */}
+                    {/* Media Preview / File Upload Option */}
                     <div className="flex items-center gap-3">
                       {mediaPreview ? (
                         <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-200 shadow-xs">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={mediaPreview} alt="Preview" className="h-full w-full object-cover" />
+                          {mediaPreviewIsVideo ? (
+                            <video src={mediaPreview} muted className="h-full w-full object-cover" />
+                          ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={mediaPreview} alt="Preview" className="h-full w-full object-cover" />
+                          )}
                         </div>
                       ) : null}
 
@@ -708,11 +731,17 @@ export default function ComposePage() {
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                         </svg>
-                        <span>{mediaFile ? mediaFile.name : "veya Bilgisayardan Fotoğraf Yükle"}</span>
+                        <span>
+                          {mediaFile
+                            ? mediaFile.name
+                            : requiresVideo
+                              ? "Video Yükle (TikTok için zorunlu)"
+                              : "veya Bilgisayardan Fotoğraf Yükle"}
+                        </span>
                         <input
                           id="compose_media"
                           type="file"
-                          accept="image/*"
+                          accept={requiresVideo ? "video/mp4,video/webm" : "image/*"}
                           className="sr-only"
                           onChange={(e) => {
                             setMediaFile(e.target.files?.[0] ?? null);
@@ -830,8 +859,12 @@ export default function ComposePage() {
               {/* Mockup Media Image */}
               <div className="relative aspect-[4/3] w-full bg-slate-100 overflow-hidden">
                 {mediaPreview ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={mediaPreview} alt="" className="h-full w-full object-cover" />
+                  mediaPreviewIsVideo ? (
+                    <video src={mediaPreview} muted loop autoPlay className="h-full w-full object-cover" />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={mediaPreview} alt="" className="h-full w-full object-cover" />
+                  )
                 ) : (
                   <div className="flex h-full w-full flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-indigo-50 via-slate-50 to-purple-50">
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-indigo-500 shadow-sm mb-2">

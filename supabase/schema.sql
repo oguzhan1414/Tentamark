@@ -682,8 +682,11 @@ create policy "Publish attempts select" on public.publish_attempts
 -- without needing a VPS/domain.
 -- ==============================================================================
 
+-- 128MB / video/mp4|webm added for TikTok (patch 0018) — Direct Post has no
+-- text/image-only path, so Compose needs to be able to produce a file
+-- tiktokProvider.ts's publish() can actually accept.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('media', 'media', true, 10485760, array['image/png', 'image/jpeg', 'image/webp', 'image/gif'])
+values ('media', 'media', true, 134217728, array['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'])
 on conflict (id) do update set
   public = excluded.public,
   file_size_limit = excluded.file_size_limit,

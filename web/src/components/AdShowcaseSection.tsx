@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /*
   Vision preview, not a live feature — Tentamark doesn't generate video today
@@ -26,8 +26,31 @@ const CLIPS = [
   { src: "/ads/12.mp4", alt: "Fitness koçu stüdyoda esneme hareketi gösteriyor" },
 ];
 
+// 22 cards (11 clips x 2, duplicated for the seamless marquee loop) all
+// autoplaying at once was forcing every one of them to fully download
+// immediately, regardless of the preload hint. Only the handful actually
+// inside the viewport now play — everything else stays unfetched until it
+// scrolls in.
 function ClipCard({ src, alt }: { src: string; alt: string }) {
   const [broken, setBroken] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          el.play().catch(() => {});
+        } else {
+          el.pause();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <div className="lift w-[190px] sm:w-[220px] md:w-[245px] shrink-0 overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
@@ -43,12 +66,12 @@ function ClipCard({ src, alt }: { src: string; alt: string }) {
           </div>
         ) : (
           <video
+            ref={videoRef}
             src={src}
-            autoPlay
             loop
             muted
             playsInline
-            preload="metadata"
+            preload="none"
             aria-label={alt}
             onError={() => setBroken(true)}
             className="h-full w-full object-cover"

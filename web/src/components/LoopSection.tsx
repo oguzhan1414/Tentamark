@@ -209,7 +209,7 @@ export default function LoopSection() {
           loop
           muted
           playsInline
-          preload="auto"
+          preload="metadata"
           className="pointer-events-none absolute inset-x-0 top-0 -bottom-24 object-cover sm:-bottom-32"
           aria-hidden="true"
         >

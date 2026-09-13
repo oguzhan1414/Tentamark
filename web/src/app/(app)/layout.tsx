@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentBrand } from "@/lib/brand";
 import { createClient } from "@/lib/supabase/server";
 import { BrandProvider } from "@/components/dashboard/BrandProvider";
+import { ComposeModalProvider } from "@/components/dashboard/ComposeModalProvider";
 import DashboardMobileNav from "@/components/dashboard/DashboardMobileNav";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import DashboardTopbar from "@/components/dashboard/DashboardTopbar";
@@ -29,6 +30,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const brand = await getCurrentBrand();
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", user.id)
+    .maybeSingle();
+  const userName = profile?.full_name || user.email?.split("@")[0] || "Kullanıcı";
+
   if (!brand) {
     // Signed in but no org/brand yet — shouldn't happen once handle_new_user
     // runs on every signup, but fail safely rather than crash the panel on
@@ -55,16 +63,35 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const systemHealthy = !hasBrokenConnection && !failedContentCount;
 
+  const { count: pendingApprovals } = await supabase
+    .from("content")
+    .select("id", { count: "exact", head: true })
+    .eq("brand_id", brand.id)
+    .eq("status", "NEEDS_REVIEW");
+
+  const { count: unreadInboxCount } = await supabase
+    .from("social_messages")
+    .select("id", { count: "exact", head: true })
+    .eq("brand_id", brand.id)
+    .eq("direction", "inbound")
+    .eq("status", "open");
+
   return (
     <BrandProvider brand={brand}>
-      <div className="flex min-h-dvh bg-[#F8FAFC] text-slate-900 antialiased selection:bg-indigo-500 selection:text-white">
-        <DashboardSidebar connectedPlatforms={connectedPlatforms} />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <DashboardTopbar brandName={brand.name} systemHealthy={systemHealthy} />
-          <DashboardMobileNav />
-          <main className="flex-1 overflow-y-auto">{children}</main>
+      <ComposeModalProvider>
+        <div className="flex min-h-dvh bg-[#F8FAFC] text-slate-900 antialiased selection:bg-[#FA5252] selection:text-white">
+          <DashboardSidebar
+            connectedPlatforms={connectedPlatforms}
+            pendingApprovals={pendingApprovals ?? 0}
+            unreadInboxCount={unreadInboxCount ?? 0}
+          />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <DashboardTopbar userName={userName} systemHealthy={systemHealthy} />
+            <DashboardMobileNav />
+            <main className="flex-1 overflow-y-auto">{children}</main>
+          </div>
         </div>
-      </div>
+      </ComposeModalProvider>
     </BrandProvider>
   );
 }

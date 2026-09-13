@@ -64,6 +64,13 @@ create table if not exists public.brand_dna (
   color_palette jsonb default '[]'::jsonb,  -- Primary, secondary, accents
   forbidden_words jsonb default '[]'::jsonb, -- Competitors, clichés, negative keywords
   competitors jsonb default '[]'::jsonb,
+  competitor_analysis jsonb default '[]'::jsonb, -- rich per-competitor insight (see patches/0012)
+  trait_scores jsonb default '{}'::jsonb, -- e.g. {"samimi": 80, "profesyonel": 70, ...} (see patches/0013)
+  tone_position jsonb default '{"x": 0, "y": 0}'::jsonb, -- tone quadrant dot: x=professional/casual, y=reserved/energetic
+  audience_persona jsonb default '{}'::jsonb, -- structured persona: label/age/location/language/career/goal/pain_point (see patches/0014)
+  audience_pain_points jsonb default '[]'::jsonb,
+  audience_motivations jsonb default '[]'::jsonb,
+  market_comparison jsonb default '{}'::jsonb, -- dimensions/brandScores/competitiveGap/opportunity (see patches/0015)
   raw_notes text,
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null
@@ -76,6 +83,8 @@ create table if not exists public.brand_strategy (
   version integer default 1 not null,
   payload jsonb not null, -- Positioning pillars, weekly themes, content pillars
   source_ai_run_id uuid,  -- Reference to ai_runs table
+  input_snapshot jsonb default '{}'::jsonb, -- brand_dna fields used to generate this version (see patches/0016)
+  change_notes jsonb default '{}'::jsonb, -- real diff vs previous version: changed_inputs[] + pillar_diffs[]
   generated_at timestamptz default now() not null,
   unique(brand_id, version)
 );
@@ -134,6 +143,9 @@ create table if not exists public.campaigns (
   start_date date,
   end_date date,
   status text default 'active' not null, -- 'active', 'completed', 'archived'
+  -- Which channels this campaign is scoped to (patch 0022) — a scoping
+  -- label only, doesn't restrict what Compose lets you target.
+  platforms text[] not null default '{}',
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null
 );
@@ -151,15 +163,33 @@ create table if not exists public.content (
   core_idea text not null,
   category text, -- 'educational', 'promotional', 'behind_the_scenes', 'product_update'
   status text default 'DRAFT' not null, -- IDEA, GENERATING, DRAFT, NEEDS_REVIEW, APPROVED, SCHEDULED, PUBLISHED, PARTIALLY_PUBLISHED, ANALYZED
+  format text default 'post' not null, -- post, story, reel — classification + AI prompt tone only, no publish-path branching yet
   tags jsonb default '[]'::jsonb,
   -- AI-generated extras (hook, visual/video concept) from features like the
   -- weekly pack. Real structured storage — not text-encoded into core_idea.
   metadata jsonb,
   ai_generated boolean default true,
   created_by uuid references public.profiles(id) on delete set null,
+  -- "Onaya ata" (patches/0027) — no notification infra exists, so this is
+  -- just an assignment record/filter, not a "ping this person" feature.
+  assigned_to uuid references public.profiles(id) on delete set null,
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null
 );
+
+create index if not exists idx_content_assigned_to on public.content(assigned_to);
+
+-- content_comments — a real threaded discussion on a piece of content
+-- (Planable-style: teammates leaving notes like "Alright! Scheduled." right
+-- on the post), separate from the approve/reject status change itself.
+create table if not exists public.content_comments (
+  id uuid default gen_random_uuid() primary key,
+  content_id uuid references public.content on delete cascade not null,
+  author_id uuid references public.profiles(id) on delete set null,
+  body text not null,
+  created_at timestamptz default now() not null
+);
+create index if not exists idx_content_comments_content on public.content_comments(content_id, created_at);
 
 -- Content Media Pivot (Order/Positioning of assets)
 create table if not exists public.content_media (
@@ -203,6 +233,18 @@ create table if not exists public.content_platforms (
 create index if not exists idx_cp_platform_post_id on public.content_platforms(platform_post_id);
 create index if not exists idx_cp_scheduled_status on public.content_platforms(status, scheduled_at);
 create index if not exists idx_cp_content_id on public.content_platforms(content_id);
+
+-- calendar_notes (patch 0019, color added in 0020) — free-text sticky notes
+-- on a calendar day, independent of any real content/post.
+create table if not exists public.calendar_notes (
+  id uuid default gen_random_uuid() primary key,
+  brand_id uuid references public.brands on delete cascade not null,
+  note_date date not null,
+  text text not null,
+  color text not null default 'amber',
+  created_at timestamptz default now() not null
+);
+create index if not exists idx_calendar_notes_brand_date on public.calendar_notes(brand_id, note_date);
 
 -- Publishing Attempts (Complete historical log of all publish requests)
 create table if not exists public.publish_attempts (
@@ -261,6 +303,24 @@ create table if not exists public.ai_runs (
   error text,
   created_at timestamptz default now() not null
 );
+
+-- Assistant Messages (persisted chat history for the AI marketing copilot —
+-- see patches/0017). Doubles as the raw dataset for future fine-tuning:
+-- draft + draft_status (pending/accepted/rejected) is a real quality signal
+-- (did the user accept the draft as-is, or reject it) without any extra
+-- logging work.
+create table if not exists public.assistant_messages (
+  id uuid default gen_random_uuid() primary key,
+  brand_id uuid references public.brands on delete cascade not null,
+  role text not null, -- 'user' | 'assistant'
+  content text not null,
+  draft jsonb, -- ContentDraft shape (title/category/day_offset/captions), null if this turn wasn't a draft
+  draft_status text, -- 'pending' | 'accepted' | 'rejected', null if no draft
+  content_id uuid references public.content on delete set null, -- set once an accepted draft becomes real content
+  created_at timestamptz default now() not null
+);
+
+create index if not exists idx_assistant_messages_brand_created on public.assistant_messages(brand_id, created_at);
 
 -- Audit Logs (Tamper-evident history: who did what, when)
 create table if not exists public.audit_logs (
@@ -349,9 +409,12 @@ alter table public.campaigns enable row level security;
 alter table public.content enable row level security;
 alter table public.content_media enable row level security;
 alter table public.content_platforms enable row level security;
+alter table public.content_comments enable row level security;
+alter table public.calendar_notes enable row level security;
 alter table public.publish_attempts enable row level security;
 alter table public.analytics_snapshots enable row level security;
 alter table public.ai_runs enable row level security;
+alter table public.assistant_messages enable row level security;
 alter table public.audit_logs enable row level security;
 
 -- Helper function: check if user is a member of an organization.
@@ -464,6 +527,51 @@ create policy "Content platforms insert" on public.content_platforms
     )
   );
 
+-- Content Comments: same brand-membership gate as Content Platforms above.
+create policy "Content comments select" on public.content_comments
+  for select to authenticated using (
+    exists (
+      select 1 from public.content c
+      join public.brands b on b.id = c.brand_id
+      where c.id = content_id and private.is_org_member(b.organization_id)
+    )
+  );
+
+create policy "Content comments insert" on public.content_comments
+  for insert to authenticated with check (
+    exists (
+      select 1 from public.content c
+      join public.brands b on b.id = c.brand_id
+      where c.id = content_id and private.is_org_member(b.organization_id)
+    )
+  );
+
+-- Calendar Notes: plain brand-scoped CRUD (no update — delete + re-add is
+-- simpler than an edit path for a short sticky note).
+create policy "Calendar notes select" on public.calendar_notes
+  for select to authenticated using (
+    exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
+  );
+
+create policy "Calendar notes insert" on public.calendar_notes
+  for insert to authenticated with check (
+    exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
+  );
+
+create policy "Calendar notes delete" on public.calendar_notes
+  for delete to authenticated using (
+    exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
+  );
+
+-- Notes are edited in place (text/color both change post-creation), so an
+-- update path is needed (added in patch 0021).
+create policy "Calendar notes update" on public.calendar_notes
+  for update to authenticated using (
+    exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
+  ) with check (
+    exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
+  );
+
 -- Audit Logs: Members can read org audit logs, only service_role can insert
 create policy "Audit logs select" on public.audit_logs
   for select to authenticated using (private.is_org_member(organization_id));
@@ -477,6 +585,26 @@ create policy "AI runs select" on public.ai_runs
 
 create policy "AI runs insert" on public.ai_runs
   for insert to authenticated with check (
+    exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
+  );
+
+-- Assistant Messages: needs update (unlike ai_runs) — accepting/rejecting a
+-- draft updates draft_status + content_id on the existing row rather than
+-- logging a new one, since it's the same conversational turn.
+create policy "Assistant messages select" on public.assistant_messages
+  for select to authenticated using (
+    exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
+  );
+
+create policy "Assistant messages insert" on public.assistant_messages
+  for insert to authenticated with check (
+    exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
+  );
+
+create policy "Assistant messages update" on public.assistant_messages
+  for update to authenticated using (
+    exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
+  ) with check (
     exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
   );
 
@@ -828,3 +956,327 @@ create policy "Campaigns delete" on public.campaigns
   for delete to authenticated using (
     exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
   );
+
+-- ==============================================================================
+-- 13. SOCIAL INBOX — inbound comments/DMs via Meta's real-time event
+-- webhooks (Instagram + Facebook Page), plus outbound replies sent from the
+-- app. Distinct from the signed_request-based deauthorize/data-deletion
+-- callbacks (api/connections/*/deauthorize) — this table is fed by
+-- api/webhooks/meta, which verifies the X-Hub-Signature-256 header scheme
+-- instead (see src/lib/social/webhookSignature.ts).
+-- ==============================================================================
+
+create table if not exists public.social_messages (
+  id uuid default gen_random_uuid() primary key,
+  brand_id uuid references public.brands on delete cascade not null,
+  social_account_id uuid references public.social_accounts on delete set null,
+  platform text not null, -- 'instagram' | 'facebook'
+  kind text not null, -- 'comment' | 'dm'
+  direction text not null default 'inbound', -- 'inbound' | 'outbound'
+  external_id text not null, -- comment_id, or message mid for DMs
+  external_thread_id text, -- post/media id (comment) or the other party's PSID/IGSID (dm)
+  author_name text,
+  author_external_id text,
+  body text,
+  status text not null default 'open', -- 'open' | 'done'
+  external_created_at timestamptz,
+  created_at timestamptz default now() not null,
+  unique(platform, external_id)
+);
+
+create index if not exists idx_social_messages_brand on public.social_messages(brand_id, created_at desc);
+create index if not exists idx_social_messages_thread on public.social_messages(brand_id, external_thread_id);
+
+alter table public.social_messages enable row level security;
+
+create policy "Social messages select" on public.social_messages
+  for select to authenticated using (
+    exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
+  );
+
+create policy "Social messages insert" on public.social_messages
+  for insert to authenticated with check (
+    exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
+  );
+
+create policy "Social messages update" on public.social_messages
+  for update to authenticated using (
+    exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
+  ) with check (
+    exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
+  );
+
+-- ==============================================================================
+-- 14. TEAM INVITES — org owners invite teammates by email + role, via a
+-- shareable link (no transactional email infra exists in this project, so
+-- invites aren't sent automatically — the owner shares the link themselves).
+-- See supabase/patches/0026_organization_invites.sql for the full reasoning,
+-- especially accept_invite's org-cleanup safety conditions.
+-- ==============================================================================
+
+create table if not exists public.organization_invites (
+  id uuid default gen_random_uuid() primary key,
+  organization_id uuid references public.organizations on delete cascade not null,
+  email text not null,
+  role text not null default 'member', -- 'admin' | 'member' — never 'owner' via invite
+  token text unique not null default (replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '')),
+  invited_by uuid references public.profiles(id) on delete set null,
+  status text not null default 'pending', -- 'pending' | 'accepted' | 'revoked'
+  created_at timestamptz default now() not null,
+  expires_at timestamptz not null default (now() + interval '14 days')
+);
+
+create index if not exists idx_org_invites_org on public.organization_invites(organization_id);
+
+alter table public.organization_invites enable row level security;
+
+create or replace function private.is_org_owner(org_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = ''
+stable
+as $$
+  select exists (
+    select 1 from public.organization_members
+    where organization_id = org_id
+      and user_id = (select auth.uid())
+      and role = 'owner'
+  );
+$$;
+
+grant execute on function private.is_org_owner(uuid) to authenticated;
+
+create policy "Org invites select" on public.organization_invites
+  for select to authenticated using (private.is_org_owner(organization_id));
+
+create policy "Org invites insert" on public.organization_invites
+  for insert to authenticated with check (private.is_org_owner(organization_id));
+
+create policy "Org invites update" on public.organization_invites
+  for update to authenticated using (private.is_org_owner(organization_id)) with check (private.is_org_owner(organization_id));
+
+create policy "Org invites delete" on public.organization_invites
+  for delete to authenticated using (private.is_org_owner(organization_id));
+
+-- organization_members only ever had a select policy (§9) — the `role`
+-- column existed from day one but nothing could ever change it or remove a
+-- member. These two close that gap, owner-gated.
+create policy "Org members update by owner" on public.organization_members
+  for update to authenticated using (private.is_org_owner(organization_id)) with check (private.is_org_owner(organization_id));
+
+create policy "Org members delete by owner" on public.organization_members
+  for delete to authenticated using (private.is_org_owner(organization_id));
+
+create or replace function public.resolve_invite(p_token text)
+returns table (
+  organization_name text,
+  brand_name text,
+  role text,
+  email text,
+  status text,
+  expires_at timestamptz
+)
+language sql
+security definer
+set search_path = ''
+stable
+as $$
+  select o.name, b.name, i.role, i.email, i.status, i.expires_at
+  from public.organization_invites i
+  join public.organizations o on o.id = i.organization_id
+  left join public.brands b on b.organization_id = o.id
+  where i.token = p_token
+  limit 1;
+$$;
+
+grant execute on function public.resolve_invite(text) to authenticated, anon;
+
+create or replace function public.accept_invite(p_token text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_invite record;
+  v_uid uuid;
+  v_email text;
+  v_old_org uuid;
+  v_old_membership_created_at timestamptz;
+  v_old_org_has_content boolean;
+  v_old_org_has_accounts boolean;
+begin
+  v_uid := auth.uid();
+  if v_uid is null then
+    raise exception 'Bu daveti kabul etmek için önce giriş yapmalısınız.';
+  end if;
+
+  select * into v_invite from public.organization_invites where token = p_token for update;
+  if not found then
+    raise exception 'Davet bulunamadı.';
+  end if;
+  if v_invite.status <> 'pending' then
+    raise exception 'Bu davet artık geçerli değil.';
+  end if;
+  if v_invite.expires_at < now() then
+    raise exception 'Bu davetin süresi dolmuş.';
+  end if;
+
+  select email into v_email from auth.users where id = v_uid;
+  if v_email is null or lower(v_email) <> lower(v_invite.email) then
+    raise exception 'Bu davet farklı bir e-posta adresi için oluşturuldu.';
+  end if;
+
+  select organization_id, created_at into v_old_org, v_old_membership_created_at
+    from public.organization_members
+    where user_id = v_uid
+    order by created_at asc
+    limit 1;
+
+  insert into public.organization_members (organization_id, user_id, role)
+  values (v_invite.organization_id, v_uid, v_invite.role)
+  on conflict (organization_id, user_id) do update set role = excluded.role;
+
+  if v_old_org is not null and v_old_org <> v_invite.organization_id
+     and v_old_membership_created_at > now() - interval '1 hour' then
+    select exists(
+      select 1 from public.content c join public.brands b on b.id = c.brand_id where b.organization_id = v_old_org
+    ) into v_old_org_has_content;
+    select exists(
+      select 1 from public.social_accounts sa join public.brands b on b.id = sa.brand_id where b.organization_id = v_old_org
+    ) into v_old_org_has_accounts;
+
+    if not v_old_org_has_content and not v_old_org_has_accounts then
+      delete from public.organizations where id = v_old_org;
+    end if;
+  end if;
+
+  update public.organization_invites set status = 'accepted' where id = v_invite.id;
+end;
+$$;
+
+grant execute on function public.accept_invite(text) to authenticated;
+
+-- ==============================================================================
+-- 15. DIŞ PAYLAŞIM LİNKİ — token-based, no-login-required approval page for
+-- a single piece of content. See patches/0028_content_share_links.sql for
+-- full reasoning, including why this also fixed a pre-existing dishonest
+-- "Paylaşmak" button (it used to copy the dashboard URL, useless to anyone
+-- without an account).
+-- ==============================================================================
+
+create table if not exists public.content_share_links (
+  id uuid default gen_random_uuid() primary key,
+  content_id uuid references public.content on delete cascade not null,
+  token text unique not null default (replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '')),
+  created_by uuid references public.profiles(id) on delete set null,
+  status text not null default 'active', -- 'active' | 'revoked'
+  created_at timestamptz default now() not null
+);
+
+create index if not exists idx_content_share_links_content on public.content_share_links(content_id);
+
+alter table public.content_share_links enable row level security;
+
+create policy "Content share links select" on public.content_share_links
+  for select to authenticated using (
+    exists (
+      select 1 from public.content c join public.brands b on b.id = c.brand_id
+      where c.id = content_id and private.is_org_member(b.organization_id)
+    )
+  );
+
+create policy "Content share links insert" on public.content_share_links
+  for insert to authenticated with check (
+    exists (
+      select 1 from public.content c join public.brands b on b.id = c.brand_id
+      where c.id = content_id and private.is_org_member(b.organization_id)
+    )
+  );
+
+create policy "Content share links update" on public.content_share_links
+  for update to authenticated using (
+    exists (
+      select 1 from public.content c join public.brands b on b.id = c.brand_id
+      where c.id = content_id and private.is_org_member(b.organization_id)
+    )
+  );
+
+alter table public.content_comments add column if not exists is_external boolean not null default false;
+
+create or replace function public.resolve_share_link(p_token text)
+returns table (
+  link_status text,
+  brand_name text,
+  platform text,
+  caption text,
+  media_url text,
+  media_type text,
+  content_status text
+)
+language sql
+security definer
+set search_path = ''
+stable
+as $$
+  select
+    l.status,
+    b.name,
+    cp.platform,
+    coalesce(cp.caption, c.core_idea),
+    m.file_url,
+    m.file_type,
+    c.status
+  from public.content_share_links l
+  join public.content c on c.id = l.content_id
+  join public.brands b on b.id = c.brand_id
+  left join lateral (
+    select platform, caption from public.content_platforms where content_id = c.id order by created_at asc limit 1
+  ) cp on true
+  left join lateral (
+    select media_id from public.content_media where content_id = c.id order by position asc limit 1
+  ) cm on true
+  left join public.media m on m.id = cm.media_id
+  where l.token = p_token
+  limit 1;
+$$;
+
+grant execute on function public.resolve_share_link(text) to authenticated, anon;
+
+create or replace function public.respond_to_share_link(p_token text, p_action text, p_note text default null)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_content_id uuid;
+  v_status text;
+begin
+  select l.content_id, l.status into v_content_id, v_status
+  from public.content_share_links l
+  where l.token = p_token;
+
+  if v_content_id is null then
+    raise exception 'Bağlantı bulunamadı.';
+  end if;
+  if v_status <> 'active' then
+    raise exception 'Bu bağlantı artık geçerli değil.';
+  end if;
+
+  if p_action = 'approve' then
+    update public.content set status = 'APPROVED' where id = v_content_id;
+  elsif p_action = 'feedback' then
+    if p_note is null or trim(p_note) = '' then
+      raise exception 'Geri bildirim boş olamaz.';
+    end if;
+    insert into public.content_comments (content_id, author_id, body, is_external)
+    values (v_content_id, null, p_note, true);
+  else
+    raise exception 'Geçersiz işlem.';
+  end if;
+end;
+$$;
+
+grant execute on function public.respond_to_share_link(text, text, text) to authenticated, anon;

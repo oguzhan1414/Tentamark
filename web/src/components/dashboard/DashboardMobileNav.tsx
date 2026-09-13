@@ -10,12 +10,7 @@ export default function DashboardMobileNav() {
   return (
     <nav className="flex gap-2 overflow-x-auto border-b border-line bg-surface px-4 py-2.5 lg:hidden">
       {NAV.map((item) => {
-        // "/dashboard" is a real page of its own now (Ana Sayfa) — exact
-        // match only, or every /dashboard/* child route would also light it up.
-        const active =
-          item.href === "/dashboard"
-            ? pathname === item.href
-            : pathname === item.href || pathname.startsWith(item.href + "/");
+        const active = pathname === item.href || pathname.startsWith(item.href + "/");
         return (
           <Link
             key={item.href}

@@ -1,8 +1,11 @@
 "use client";
 
+import { useLanguage } from "@/context/LanguageContext";
 import StampMark from "./StampMark";
 
 export default function FinalCta() {
+  const { t } = useLanguage();
+
   return (
     <section
       id="erken-erisim"
@@ -13,14 +16,14 @@ export default function FinalCta() {
         <StampMark className="h-36 w-36 text-accent opacity-90" />
 
         <p className="mt-8 font-mono text-xs uppercase tracking-[0.25em] text-accent-text font-semibold">
-          Erken Erişim
+          {t.finalCta.eyebrow}
         </p>
         <h2 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-          Markanızı anlatın, <span className="spectrum-text">planınızı görelim.</span>
+          {t.finalCta.titleBefore}
+          <span className="spectrum-text">{t.finalCta.titleHighlight}</span>
         </h2>
         <p className="mt-4 max-w-md font-body text-base leading-relaxed text-muted">
-          Şu an erken erişim listesi oluşturuyoruz. İlk kullanıcı grubuna
-          katılın, ürün hazır olduğunda ilk siz haberdar olun.
+          {t.finalCta.copy}
         </p>
 
         <form
@@ -29,19 +32,19 @@ export default function FinalCta() {
         >
           <input
             type="email"
-            placeholder="ornek@marka.com"
+            placeholder={t.finalCta.emailPlaceholder}
             className="w-full rounded-full border border-line bg-surface px-5 py-3.5 font-body text-sm text-ink placeholder:text-faint focus:border-accent focus:outline-none"
           />
           <button
             type="submit"
             className="shrink-0 rounded-full bg-accent px-6 py-3.5 font-body text-sm font-semibold text-white shadow-[0_10px_24px_-10px_rgb(109_79_235/0.6)] transition-colors hover:bg-accent-hover"
           >
-            Listeye katıl
+            {t.finalCta.buttonText}
           </button>
         </form>
 
         <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.15em] text-faint">
-          Spam yok · İstediğiniz zaman ayrılın
+          {t.finalCta.guarantee}
         </p>
       </div>
     </section>

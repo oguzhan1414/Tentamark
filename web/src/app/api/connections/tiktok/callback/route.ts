@@ -17,7 +17,7 @@ type TikTokProfile = {
 };
 
 function fail(origin: string, reason: string) {
-  return NextResponse.redirect(new URL(`/dashboard/connections?connect_error=tiktok_${reason}`, origin));
+  return NextResponse.redirect(new URL(`/settings?tab=baglantilar&connect_error=tiktok_${reason}`, origin));
 }
 
 export async function GET(request: Request) {
@@ -103,5 +103,5 @@ export async function GET(request: Request) {
     return fail(origin, "save");
   }
 
-  return NextResponse.redirect(new URL("/dashboard/connections?connected=tiktok", origin));
+  return NextResponse.redirect(new URL("/settings?tab=baglantilar&connected=tiktok", origin));
 }

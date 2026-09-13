@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useBrand } from "@/components/dashboard/BrandProvider";
 import { createClient } from "@/lib/supabase/client";
-import { generateDrafts, type GeneratedDrafts, type LaunchPlatform } from "@/lib/ai/generateDrafts";
+import { generateDrafts, type ContentFormat, type GeneratedDrafts, type LaunchPlatform } from "@/lib/ai/generateDrafts";
+import { suggestPostIdea } from "@/lib/ai/suggestPostIdea";
+import { analyzePostHookAndVirality, type HookAnalysisResult } from "@/lib/ai/analyzePostHookAndVirality";
 import { ALL_PLATFORMS } from "@/lib/ai/platforms";
 import PlatformIcon, { platformLabel, type PlatformName } from "@/components/PlatformIcon";
+import MediaLibraryModal, { type MediaLibraryItem } from "@/components/dashboard/MediaLibraryModal";
 
 const CHAR_LIMIT: Record<PlatformName, number> = {
   instagram: 2200,
@@ -39,12 +41,16 @@ function extractHashtags(text: string): string[] {
   return Array.from(new Set(matches));
 }
 
+function toDatetimeLocalValue(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function defaultScheduleValue(): string {
   const d = new Date();
   d.setDate(d.getDate() + 1);
   d.setHours(19, 30, 0, 0); // Default to peak evening time
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return toDatetimeLocalValue(d);
 }
 
 function dataUrlToBlob(dataUrl: string): { blob: Blob; contentType: string } {
@@ -59,20 +65,81 @@ function dataUrlToBlob(dataUrl: string): { blob: Blob; contentType: string } {
 type Mode = "ai" | "manual";
 type GenState = "idle" | "generating" | "ready" | "submitted";
 
-export default function ComposePage() {
+/*
+  The one real content studio in the app — reachable exclusively through
+  ComposeModal.tsx (see useComposeModal() in ComposeModalProvider.tsx). Used
+  to also render as a standalone /dashboard/compose page; that page was
+  removed once Calendar itself could trigger this same modal with full
+  power, so every caller (Calendar's day cells, a campaign's "+ İçerik
+  Üret", Gönderiler's empty state, ...) now goes through the shared modal
+  instead of duplicating this much logic in a second, simpler composer.
+*/
+export default function ComposeForm({
+  onSubmitted,
+  onNavigate,
+  initialCampaignId,
+  initialDate,
+  initialHour,
+}: {
+  onSubmitted?: () => void;
+  // Called when the success screen's "go look at it" links are clicked.
+  // Only meaningful inside ComposeModal — the modal's own isOpen state lives
+  // in the layout-level provider, so it survives a route change on its own;
+  // without this, clicking "Takvimi Gör" would navigate to Calendar with the
+  // modal still floating on top of it.
+  onNavigate?: () => void;
+  // Pre-fills from whoever opened the modal (a campaign card's "+ İçerik
+  // Üret", a Calendar day cell's "+") — passed as props now, not read from
+  // the URL, since every caller opens this as a modal via useComposeModal()
+  // rather than navigating to a page with query params.
+  initialCampaignId?: string;
+  initialDate?: string;
+  initialHour?: number;
+} = {}) {
   const brand = useBrand();
   const supabase = useMemo(() => createClient(), []);
 
   const [mode, setMode] = useState<Mode>("ai");
-  const [selectedPlatforms, setSelectedPlatforms] = useState<LaunchPlatform[]>(ALL_PLATFORMS);
+  const [format, setFormat] = useState<ContentFormat>("post");
+  const [selectedPlatforms, setSelectedPlatforms] = useState<LaunchPlatform[]>([]);
+  // null = still loading. Only platforms with a real, active connection are
+  // offerable here — selecting an unconnected platform would just produce
+  // content nothing can ever actually publish to.
+  const [connectedPlatforms, setConnectedPlatforms] = useState<LaunchPlatform[] | null>(null);
   const [campaigns, setCampaigns] = useState<{ id: string; name: string }[]>([]);
-  const [campaignId, setCampaignId] = useState<string>("");
+  const [campaignId, setCampaignId] = useState<string>(initialCampaignId ?? "");
   const [selectedTone, setSelectedTone] = useState<string>("natural");
+  // Free-text labels alongside the campaign link — content.tags already
+  // existed in the schema (jsonb array) but nothing wrote to it until now.
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
 
   const [idea, setIdea] = useState("");
+  // A proactive AI-proposed topic, shown above the idea field before the
+  // user has typed anything — matches Planable's compose box surfacing a
+  // suggestion unprompted instead of waiting for a "generate" click.
+  // Dismissed permanently (this mount) once used, skipped, or typed over.
+  const [suggestedIdea, setSuggestedIdea] = useState<string | null>(null);
+  // Starts true (not set inside an effect) — the mount effect below fetches
+  // immediately, so "loading" is true from the very first render already.
+  const [suggestingIdea, setSuggestingIdea] = useState(true);
+  const [suggestionDismissed, setSuggestionDismissed] = useState(false);
   const [hook, setHook] = useState("");
   const [visualPrompt, setVisualPrompt] = useState("");
-  const [scheduledAt, setScheduledAt] = useState(defaultScheduleValue());
+  const [scheduledAt, setScheduledAt] = useState<string>(() => {
+    if (initialDate) {
+      const d = new Date(initialDate);
+      if (!Number.isNaN(d.getTime())) {
+        if (initialHour !== undefined && !Number.isNaN(initialHour)) {
+          d.setHours(initialHour, 0, 0, 0);
+        } else {
+          d.setHours(19, 30, 0, 0);
+        }
+        return toDatetimeLocalValue(d);
+      }
+    }
+    return defaultScheduleValue();
+  });
   const [state, setState] = useState<GenState>("idle");
   const [drafts, setDrafts] = useState<GeneratedDrafts | null>(null);
   const [activePlatformTab, setActivePlatformTab] = useState<LaunchPlatform>("instagram");
@@ -80,8 +147,15 @@ export default function ComposePage() {
   // Image generation state
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [existingMedia, setExistingMedia] = useState<MediaLibraryItem | null>(null);
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
+
+  // Hook & Virality analysis state
+  const [analyzingHook, setAnalyzingHook] = useState(false);
+  const [hookAnalysis, setHookAnalysis] = useState<HookAnalysisResult | null>(null);
+  const [hookError, setHookError] = useState<string | null>(null);
 
   // Status & Submit
   const [genError, setGenError] = useState<string | null>(null);
@@ -98,17 +172,20 @@ export default function ComposePage() {
 
   // Local media preview
   const mediaPreview = useMemo(() => {
+    if (existingMedia) return existingMedia.file_url;
     if (imageUrl) return imageUrl;
     if (mediaFile) return URL.createObjectURL(mediaFile);
     return null;
-  }, [imageUrl, mediaFile]);
-  const mediaPreviewIsVideo = !imageUrl && Boolean(mediaFile?.type.startsWith("video/"));
+  }, [existingMedia, imageUrl, mediaFile]);
+  const mediaPreviewIsVideo = existingMedia
+    ? existingMedia.file_type.startsWith("video/")
+    : !imageUrl && Boolean(mediaFile?.type.startsWith("video/"));
 
   useEffect(() => {
     return () => {
-      if (mediaFile && mediaPreview && !imageUrl) URL.revokeObjectURL(mediaPreview);
+      if (mediaFile && mediaPreview && !imageUrl && !existingMedia) URL.revokeObjectURL(mediaPreview);
     };
-  }, [mediaFile, mediaPreview, imageUrl]);
+  }, [mediaFile, mediaPreview, imageUrl, existingMedia]);
 
   useEffect(() => {
     let ignore = false;
@@ -125,6 +202,131 @@ export default function ComposePage() {
       ignore = true;
     };
   }, [supabase, brand.id]);
+
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      const { data } = await supabase
+        .from("social_accounts")
+        .select("platform")
+        .eq("brand_id", brand.id)
+        .eq("status", "active");
+      if (ignore) return;
+      const connected = ALL_PLATFORMS.filter((p) => (data ?? []).some((a) => a.platform === p));
+      setConnectedPlatforms(connected);
+      // Default to selecting every connected platform — the user narrows
+      // down from there, same as before this only offered the full list.
+      setSelectedPlatforms(connected);
+      // Functional-updater form (reads the latest value from React state,
+      // not a closure) so this effect doesn't need activePlatformTab as a
+      // dependency — adding it would re-run this fetch on every tab switch.
+      if (connected.length > 0) {
+        setActivePlatformTab((current) => (connected.includes(current) ? current : connected[0]));
+        setPreviewPlatform((current) => (connected.includes(current as LaunchPlatform) ? current : connected[0]));
+      }
+    })();
+    return () => {
+      ignore = true;
+    };
+  }, [supabase, brand.id]);
+
+  // Fires once per mount — proposing a fresh idea on every keystroke would
+  // be noise, not help. Inlined directly (not a call to an outer named
+  // function) so the React Compiler lint rule can see the setState calls
+  // only happen after the await, same shape as every other fetch effect
+  // in this file.
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      try {
+        const result = await suggestPostIdea(brand.id);
+        if (!ignore) setSuggestedIdea(result);
+      } catch (err) {
+        console.warn("Fikir önerisi alınamadı:", err);
+      } finally {
+        if (!ignore) setSuggestingIdea(false);
+      }
+    })();
+    return () => {
+      ignore = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // "Tekrar Dene" — a click handler, not an effect, so there's no lint
+  // concern calling this named helper directly from a button's onClick.
+  async function retryIdeaSuggestion() {
+    setSuggestingIdea(true);
+    try {
+      const result = await suggestPostIdea(brand.id);
+      setSuggestedIdea(result);
+    } catch (err) {
+      console.warn("Fikir önerisi alınamadı:", err);
+    } finally {
+      setSuggestingIdea(false);
+    }
+  }
+
+  function useSuggestedIdea() {
+    if (!suggestedIdea) return;
+    setIdea(suggestedIdea);
+    setSuggestionDismissed(true);
+  }
+
+  function addTag() {
+    const t = tagInput.trim();
+    if (t && !tags.includes(t)) setTags((prev) => [...prev, t]);
+    setTagInput("");
+  }
+
+  function removeTag(t: string) {
+    setTags((prev) => prev.filter((x) => x !== t));
+  }
+
+  async function handleAnalyzeHook() {
+    const currentCaption = drafts?.[activePlatformTab] || idea;
+    if (!currentCaption.trim()) return;
+    setAnalyzingHook(true);
+    setHookError(null);
+    try {
+      const res = await analyzePostHookAndVirality(brand.id, currentCaption, activePlatformTab);
+      setHookAnalysis(res);
+    } catch (err) {
+      setHookError(err instanceof Error ? err.message : "Kanca analiz edilemedi.");
+    } finally {
+      setAnalyzingHook(false);
+    }
+  }
+
+  function applyHook(newHook: string) {
+    if (!drafts) return;
+    const currentText = drafts[activePlatformTab] ?? "";
+    const newlineIdx = currentText.indexOf("\n");
+
+    if (newlineIdx === -1) {
+      // No line break to anchor on — swap only the first sentence (up to
+      // the first ./!/? followed by a space or the end) so the rest of a
+      // single-paragraph caption survives. Replacing the whole string here
+      // silently discarded everything after the opening line whenever a
+      // draft had no hard line break, which most don't.
+      const sentenceMatch = currentText.match(/^.*?[.!?](?=\s|$)/);
+      if (sentenceMatch && sentenceMatch[0].length < currentText.length) {
+        setDrafts({ ...drafts, [activePlatformTab]: newHook + currentText.slice(sentenceMatch[0].length) });
+      } else {
+        setDrafts({ ...drafts, [activePlatformTab]: newHook });
+      }
+      return;
+    }
+
+    const lines = currentText.split("\n");
+    lines[0] = newHook;
+    setDrafts({ ...drafts, [activePlatformTab]: lines.join("\n") });
+  }
+
+  function applyOptimizedCaption(fullCaption: string) {
+    if (!drafts) return;
+    setDrafts({ ...drafts, [activePlatformTab]: fullCaption });
+  }
 
   function togglePlatform(platform: LaunchPlatform) {
     setSelectedPlatforms((prev) => {
@@ -145,7 +347,7 @@ export default function ComposePage() {
       const toneObj = TONE_OPTIONS.find((t) => t.id === selectedTone);
       const enhancedPrompt = `${idea}\n(Marka Tonu: ${toneObj?.label || "Doğal"}, Hedef: Yüksek Etkileşim ve 2 saniyelik güçlü kanca)`;
 
-      const result = await generateDrafts(brand.id, enhancedPrompt, selectedPlatforms);
+      const result = await generateDrafts(brand.id, enhancedPrompt, selectedPlatforms, format);
       setDrafts(result);
 
       // Auto-extract or suggest hook from the first draft
@@ -187,6 +389,8 @@ export default function ComposePage() {
       }
 
       setImageUrl(data.dataUrl);
+      setMediaFile(null);
+      setExistingMedia(null);
     } catch (err) {
       setImageError(err instanceof Error ? err.message : "Görsel üretilirken bir hata oluştu.");
     } finally {
@@ -217,8 +421,10 @@ export default function ComposePage() {
 
       let mediaId: string | null = null;
 
-      // Handle AI generated base64 image or uploaded file
-      if (imageUrl && imageUrl.startsWith("data:")) {
+      // Handle a library reuse, an AI generated base64 image, or an uploaded file
+      if (existingMedia) {
+        mediaId = existingMedia.id;
+      } else if (imageUrl && imageUrl.startsWith("data:")) {
         const { blob, contentType } = dataUrlToBlob(imageUrl);
         const ext = contentType === "image/png" ? "png" : "jpg";
         const path = `${brand.id}/${crypto.randomUUID()}-ai-compose.${ext}`;
@@ -283,6 +489,8 @@ export default function ComposePage() {
           title,
           core_idea: coreDetails || idea.trim() || title,
           status: targetStatus,
+          format,
+          tags,
           ai_generated: mode === "ai",
           created_by: user?.id ?? null,
         })
@@ -313,6 +521,7 @@ export default function ComposePage() {
       if (cpError) throw new Error(cpError.message);
 
       setState("submitted");
+      onSubmitted?.();
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Gönderi kaydedilemedi.");
     } finally {
@@ -328,8 +537,12 @@ export default function ComposePage() {
     setVisualPrompt("");
     setImageUrl(null);
     setMediaFile(null);
+    setExistingMedia(null);
     setScheduledAt(defaultScheduleValue());
     setCampaignId("");
+    setTags([]);
+    setTagInput("");
+    setFormat("post");
   }
 
   // Live active preview text
@@ -348,7 +561,7 @@ export default function ComposePage() {
   }, [drafts, previewPlatform, idea]);
 
   return (
-    <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 space-y-6">
+    <div className="space-y-6">
       {/* 1. Header & Quick Switch */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -362,7 +575,8 @@ export default function ComposePage() {
 
         <Link
           href="/dashboard/compose/weekly"
-          className="inline-flex items-center gap-2 rounded-xl bg-[#6366F1] px-4 py-2.5 text-xs font-bold text-white shadow-sm shadow-indigo-500/25 hover:bg-indigo-600 transition self-start sm:self-auto"
+          onClick={onNavigate}
+          className="inline-flex items-center gap-2 rounded-xl bg-[#FA5252] px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-[#E03131] transition self-start sm:self-auto"
         >
           <span>🚀 7 Günlük Haftalık Paket Üret →</span>
         </Link>
@@ -382,12 +596,14 @@ export default function ComposePage() {
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Link
               href="/dashboard/calendar"
+              onClick={onNavigate}
               className="rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition"
             >
               Takvimi Gör
             </Link>
             <Link
               href="/dashboard/posts"
+              onClick={onNavigate}
               className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
             >
               Gönderiler / Onay Masası
@@ -395,7 +611,7 @@ export default function ComposePage() {
             <button
               type="button"
               onClick={reset}
-              className="rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-2.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition"
+              className="rounded-xl border border-rose-200 bg-rose-50 px-5 py-2.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition"
             >
               Yeni Gönderi Oluştur +
             </button>
@@ -438,36 +654,80 @@ export default function ComposePage() {
                   </button>
                 </div>
 
-                <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">
+                <span className="text-xs font-semibold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-full">
                   {brand.name} Kimliği Aktif
                 </span>
               </div>
 
-              {/* Target Platforms Row */}
+              {/* Content Format — classification + AI prompt tone only for
+                  now (see generateDrafts' FORMAT_RULE); no publish connector
+                  branches on this yet, so it doesn't change where a Reel
+                  actually posts, only how it reads. */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">İçerik Formatı</label>
+                <div className="flex gap-2">
+                  {(
+                    [
+                      { key: "post", label: "📄 Gönderi" },
+                      { key: "story", label: "⚡ Hikaye" },
+                      { key: "reel", label: "🎬 Makara" },
+                    ] as const
+                  ).map((f) => (
+                    <button
+                      key={f.key}
+                      type="button"
+                      onClick={() => setFormat(f.key)}
+                      className={`flex-1 rounded-xl border px-3 py-2 text-xs font-semibold transition ${
+                        format === f.key
+                          ? "border-rose-500 bg-rose-50/70 text-rose-900 ring-1 ring-rose-500"
+                          : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"
+                      }`}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Target Platforms Row — only platforms with a real, active
+                  connection are offered here (see the social_accounts fetch
+                  above); an unconnected platform could never actually
+                  publish, so it has no business being selectable. */}
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Hedef Platformlar
                 </label>
-                <div className="flex flex-wrap gap-2">
-                  {ALL_PLATFORMS.map((platform) => {
-                    const checked = selectedPlatforms.includes(platform);
-                    return (
-                      <button
-                        key={platform}
-                        type="button"
-                        onClick={() => togglePlatform(platform)}
-                        className={`flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-semibold transition ${
-                          checked
-                            ? "border-indigo-500 bg-indigo-50/70 text-indigo-900 shadow-2xs ring-1 ring-indigo-500"
-                            : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"
-                        }`}
-                      >
-                        <PlatformIcon name={platform} className="h-4 w-4" />
-                        <span>{platformLabel(platform)}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                {connectedPlatforms === null ? (
+                  <p className="text-xs text-slate-400">Bağlı hesaplar yükleniyor...</p>
+                ) : connectedPlatforms.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 p-3.5 text-xs text-slate-500">
+                    Henüz bağlı bir sosyal medya hesabın yok.{" "}
+                    <Link href="/settings?tab=baglantilar" className="font-semibold text-rose-600 hover:underline">
+                      Önce bir hesap bağla →
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {connectedPlatforms.map((platform) => {
+                      const checked = selectedPlatforms.includes(platform);
+                      return (
+                        <button
+                          key={platform}
+                          type="button"
+                          onClick={() => togglePlatform(platform)}
+                          className={`flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-semibold transition ${
+                            checked
+                              ? "border-rose-500 bg-rose-50/70 text-rose-900 shadow-2xs ring-1 ring-rose-500"
+                              : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"
+                          }`}
+                        >
+                          <PlatformIcon name={platform} className="h-4 w-4" />
+                          <span>{platformLabel(platform)}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Tone of Voice Selector */}
@@ -484,7 +744,7 @@ export default function ComposePage() {
                         onClick={() => setSelectedTone(t.id)}
                         className={`rounded-xl border p-2.5 text-left transition ${
                           selectedTone === t.id
-                            ? "border-indigo-500 bg-indigo-50/60 ring-1 ring-indigo-500"
+                            ? "border-rose-500 bg-rose-50/60 ring-1 ring-rose-500"
                             : "border-slate-200 bg-white hover:border-slate-300"
                         }`}
                       >
@@ -506,7 +766,7 @@ export default function ComposePage() {
                     id="campaign_select"
                     value={campaignId}
                     onChange={(e) => setCampaignId(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-800 focus:border-indigo-500 focus:outline-none"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-800 focus:border-slate-400 focus:outline-none"
                   >
                     <option value="">Genel İçerik (Kampanya Bağlantısız)</option>
                     {campaigns.map((c) => (
@@ -515,6 +775,93 @@ export default function ComposePage() {
                       </option>
                     ))}
                   </select>
+                </div>
+              )}
+
+              {/* Free-text Tags — separate from the campaign link, matching
+                  Planable's pattern of stacking a campaign tag with custom
+                  labels ("tarifler", "Makaleler") side by side. */}
+              <div className="space-y-1.5">
+                <label htmlFor="tag_input" className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Etiketler (Opsiyonel)
+                </label>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {tags.map((t) => (
+                    <span
+                      key={t}
+                      className="flex items-center gap-1 rounded-lg bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800"
+                    >
+                      #{t}
+                      <button
+                        type="button"
+                        onClick={() => removeTag(t)}
+                        className="text-amber-600 hover:text-amber-900"
+                        aria-label={`${t} etiketini kaldır`}
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                  <input
+                    id="tag_input"
+                    type="text"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === ",") {
+                        e.preventDefault();
+                        addTag();
+                      }
+                    }}
+                    onBlur={addTag}
+                    placeholder="Etiket yaz, Enter'a bas..."
+                    className="min-w-[140px] flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-800 placeholder-slate-400 focus:border-slate-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Proactive AI Idea Suggestion — offered unprompted, before
+                  the user has typed anything, instead of waiting for a
+                  "generate" click. Hides itself once they type their own
+                  idea or accept/dismiss this one. */}
+              {mode === "ai" && !suggestionDismissed && !idea.trim() && (
+                <div className="rounded-xl border border-rose-100/80 bg-rose-50/30 p-3.5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-rose-700">
+                      ⚡ Yapay zekamız bir fikir üretti
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSuggestionDismissed(true)}
+                      className="text-slate-400 hover:text-slate-600"
+                      aria-label="Kapat"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {suggestingIdea ? (
+                    <p className="text-xs text-slate-600">Markanıza uygun bir fikir düşünüyor...</p>
+                  ) : suggestedIdea ? (
+                    <>
+                      <p className="text-xs font-medium text-slate-900">{suggestedIdea}</p>
+                      <div className="flex items-center gap-3 pt-0.5">
+                        <button
+                          type="button"
+                          onClick={retryIdeaSuggestion}
+                          className="text-[11px] font-semibold text-rose-600 hover:underline"
+                        >
+                          Tekrar dene
+                        </button>
+                        <button
+                          type="button"
+                          onClick={useSuggestedIdea}
+                          className="rounded-lg bg-[#FA5252] px-3 py-1 text-[11px] font-bold text-white hover:bg-[#E03131] transition"
+                        >
+                          ✓ Kabul et
+                        </button>
+                      </div>
+                    </>
+                  ) : null}
                 </div>
               )}
 
@@ -532,7 +879,7 @@ export default function ComposePage() {
                   onChange={(e) => setIdea(e.target.value)}
                   placeholder="Örn: Yeni sürdürülebilir keten gömlek koleksiyonumuzun duyurusu. Doğal pamuk dokusu, sıcak yaz günlerinde nefes alan yapı ve şık minimal tasarım vurgulansın..."
                   rows={3}
-                  className="w-full resize-none rounded-xl border border-slate-200 bg-white p-3.5 text-xs leading-relaxed text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="w-full resize-none rounded-xl border border-slate-200 bg-white p-3.5 text-xs leading-relaxed text-slate-800 placeholder-slate-400 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-300"
                 />
 
                 {mode === "ai" && (
@@ -542,7 +889,7 @@ export default function ComposePage() {
                         key={chip}
                         type="button"
                         onClick={() => setIdea(chip)}
-                        className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/60 hover:text-indigo-700 transition"
+                        className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:border-rose-200 hover:bg-rose-50/60 hover:text-rose-700 transition"
                       >
                         {chip}
                       </button>
@@ -557,7 +904,7 @@ export default function ComposePage() {
                   type="button"
                   onClick={generate}
                   disabled={!idea.trim() || selectedPlatforms.length === 0 || state === "generating"}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3 text-xs font-bold text-white shadow-md shadow-indigo-500/20 hover:from-indigo-700 hover:to-violet-700 transition disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 to-[#FA5252] py-3 text-xs font-bold text-white shadow-md shadow-rose-500/20 hover:from-rose-600 hover:to-rose-700 transition disabled:opacity-50 cursor-pointer"
                 >
                   {state === "generating" ? (
                     <>
@@ -632,7 +979,7 @@ export default function ComposePage() {
                           }}
                           className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                             activePlatformTab === p
-                              ? "bg-indigo-600 text-white shadow-2xs"
+                              ? "bg-slate-900 text-white shadow-2xs"
                               : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                           }`}
                         >
@@ -648,8 +995,100 @@ export default function ComposePage() {
                         setDrafts((prev) => (prev ? { ...prev, [activePlatformTab]: e.target.value } : prev))
                       }
                       rows={6}
-                      className="w-full resize-none rounded-xl border border-slate-200 bg-white p-3 text-xs leading-relaxed text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className="w-full resize-none rounded-xl border border-slate-200 bg-white p-3 text-xs leading-relaxed text-slate-800 placeholder-slate-400 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-300"
                     />
+
+                    {/* AI Hook & Virality Score Optimizer */}
+                    <div className="rounded-xl border border-rose-100/80 bg-rose-50/30 p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
+                          <span>🪝</span>
+                          <span>AI Kanca & Viralite Skoru</span>
+                        </div>
+
+                        {!hookAnalysis && (
+                          <button
+                            type="button"
+                            onClick={handleAnalyzeHook}
+                            disabled={analyzingHook}
+                            className="rounded-lg border border-rose-200 bg-white px-2.5 py-1 text-[11px] font-bold text-rose-700 shadow-2xs hover:bg-rose-50 transition disabled:opacity-50 cursor-pointer"
+                          >
+                            {analyzingHook ? "Puanlanıyor…" : "✨ Kanca Gücünü Puanla"}
+                          </button>
+                        )}
+                      </div>
+
+                      {analyzingHook && (
+                        <div className="flex items-center gap-2 text-xs text-rose-600 font-medium py-1">
+                          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-rose-600 border-t-transparent" />
+                          <span>Metin algoritma kancalarına göre analiz ediliyor…</span>
+                        </div>
+                      )}
+
+                      {hookError && !analyzingHook && (
+                        <p className="text-[11px] text-red-600 bg-red-50 p-2 rounded-lg border border-red-100 font-medium">
+                          {hookError}
+                        </p>
+                      )}
+
+                      {hookAnalysis && (
+                        <div className="space-y-2 pt-0.5">
+                          <div className="flex items-center justify-between">
+                            <span className="flex items-center gap-1.5 rounded-md bg-white px-2 py-0.5 font-mono text-xs font-bold border border-slate-200 text-slate-900 shadow-2xs">
+                              <span>Puan:</span>
+                              <span className={hookAnalysis.score >= 80 ? "text-emerald-600" : "text-amber-600"}>
+                                {hookAnalysis.score}/100
+                              </span>
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={handleAnalyzeHook}
+                              disabled={analyzingHook}
+                              className="text-[10px] font-semibold text-rose-600 hover:underline"
+                            >
+                              Tekrar Puanla
+                            </button>
+                          </div>
+
+                          <p className="text-[11px] text-slate-600 italic">
+                            &ldquo;{hookAnalysis.critique}&rdquo;
+                          </p>
+
+                          {hookAnalysis.alternativeHooks.length > 0 && (
+                            <div className="space-y-1.5 pt-1">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                                Alternatif Açılış Kancaları (Tek Tıkla Uygula):
+                              </span>
+                              <div className="flex flex-col gap-1">
+                                {hookAnalysis.alternativeHooks.map((altHook, i) => (
+                                  <button
+                                    key={i}
+                                    type="button"
+                                    onClick={() => applyHook(altHook)}
+                                    title="Bu kancayı ilk cümle yap"
+                                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-2 text-left text-xs font-medium text-slate-800 hover:border-rose-200 hover:bg-rose-50/50 transition group cursor-pointer"
+                                  >
+                                    <span className="truncate pr-2">💡 &ldquo;{altHook}&rdquo;</span>
+                                    <span className="shrink-0 text-[10px] font-bold text-rose-600 opacity-0 group-hover:opacity-100">
+                                      Kullan →
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => applyOptimizedCaption(hookAnalysis.optimizedCaption)}
+                            className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 hover:underline"
+                          >
+                            <span>✓ Tüm Metni Optimize Edilmiş Haliyle Değiştir</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Visual Media & AI Image Engine Section */}
@@ -680,7 +1119,7 @@ export default function ComposePage() {
                           value={visualPrompt}
                           onChange={(e) => setVisualPrompt(e.target.value)}
                           placeholder="Görsel konsepti veya fotoğraf sahnesi prompt'u..."
-                          className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none"
+                          className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 focus:border-slate-400 focus:outline-none"
                         />
 
                         <button
@@ -700,7 +1139,7 @@ export default function ComposePage() {
                           ) : (
                             <>
                               <span>Görsel Üret</span>
-                              <span className="rounded bg-indigo-500/30 px-1 text-[10px]">⚡ AI</span>
+                              <span className="rounded bg-rose-500/20 text-rose-700 px-1 text-[10px]">⚡ AI</span>
                             </>
                           )}
                         </button>
@@ -726,7 +1165,7 @@ export default function ComposePage() {
 
                       <label
                         htmlFor="compose_media"
-                        className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-2 px-3 text-xs font-medium text-slate-600 hover:border-indigo-400 hover:text-indigo-600 transition"
+                        className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-2 px-3 text-xs font-medium text-slate-600 hover:border-rose-300 hover:text-rose-600 transition"
                       >
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -734,9 +1173,11 @@ export default function ComposePage() {
                         <span>
                           {mediaFile
                             ? mediaFile.name
-                            : requiresVideo
-                              ? "Video Yükle (TikTok için zorunlu)"
-                              : "veya Bilgisayardan Fotoğraf Yükle"}
+                            : existingMedia
+                              ? existingMedia.file_name
+                              : requiresVideo
+                                ? "Video Yükle (TikTok için zorunlu)"
+                                : "veya Bilgisayardan Fotoğraf Yükle"}
                         </span>
                         <input
                           id="compose_media"
@@ -746,9 +1187,23 @@ export default function ComposePage() {
                           onChange={(e) => {
                             setMediaFile(e.target.files?.[0] ?? null);
                             setImageUrl(null);
+                            setExistingMedia(null);
                           }}
                         />
                       </label>
+
+                      {!requiresVideo && (
+                        <button
+                          type="button"
+                          onClick={() => setLibraryOpen(true)}
+                          className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 transition cursor-pointer"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <span>Kütüphaneden Seç</span>
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -761,7 +1216,7 @@ export default function ComposePage() {
                       <button
                         type="button"
                         onClick={() => setScheduledAt(defaultScheduleValue())}
-                        className="text-[11px] font-semibold text-indigo-600 hover:underline"
+                        className="text-[11px] font-semibold text-rose-600 hover:underline"
                       >
                         ⚡ En İyi Zaman (Yarın 19:30)
                       </button>
@@ -772,7 +1227,7 @@ export default function ComposePage() {
                       type="datetime-local"
                       value={scheduledAt}
                       onChange={(e) => setScheduledAt(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-mono font-medium text-slate-800 focus:border-indigo-500 focus:outline-none"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-mono font-medium text-slate-800 focus:border-slate-400 focus:outline-none"
                     />
                   </div>
 
@@ -791,7 +1246,7 @@ export default function ComposePage() {
                       type="button"
                       disabled={!scheduledAt || submitting}
                       onClick={() => submit("NEEDS_REVIEW")}
-                      className="flex-1 rounded-xl bg-indigo-600 py-3 text-xs font-bold text-white shadow-md shadow-indigo-500/25 hover:bg-indigo-700 transition disabled:opacity-50"
+                      className="flex-1 rounded-xl bg-[#FA5252] py-3 text-xs font-bold text-white shadow-xs hover:bg-[#E03131] transition disabled:opacity-50"
                     >
                       {submitting ? "Kaydediliyor..." : "Zamanla & Onaya Gönder 🚀"}
                     </button>
@@ -837,13 +1292,13 @@ export default function ComposePage() {
               {/* Device Header Bar */}
               <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 bg-slate-50/50">
                 <div className="flex items-center gap-2.5">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 font-bold text-xs text-white shadow-2xs">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-rose-500 to-[#FA5252] font-bold text-xs text-white shadow-2xs">
                     {brand.name[0]?.toUpperCase() || "A"}
                   </div>
                   <div>
                     <div className="flex items-center gap-1">
                       <span className="font-display text-xs font-bold text-slate-900">{brand.name}</span>
-                      <svg className="h-3.5 w-3.5 text-indigo-500" viewBox="0 0 20 20" fill="currentColor">
+                      <svg className="h-3.5 w-3.5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
                     </div>
@@ -866,8 +1321,8 @@ export default function ComposePage() {
                     <img src={mediaPreview} alt="" className="h-full w-full object-cover" />
                   )
                 ) : (
-                  <div className="flex h-full w-full flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-indigo-50 via-slate-50 to-purple-50">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-indigo-500 shadow-sm mb-2">
+                  <div className="flex h-full w-full flex-col items-center justify-center p-6 text-center bg-slate-50">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-rose-500 shadow-sm mb-2">
                       <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
@@ -891,13 +1346,13 @@ export default function ComposePage() {
                       </svg>
                     </button>
                     {/* Comment */}
-                    <button type="button" className="hover:text-indigo-600 transition">
+                    <button type="button" className="hover:text-rose-600 transition">
                       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                       </svg>
                     </button>
                     {/* Share */}
-                    <button type="button" className="hover:text-indigo-600 transition">
+                    <button type="button" className="hover:text-rose-600 transition">
                       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                       </svg>
@@ -905,7 +1360,7 @@ export default function ComposePage() {
                   </div>
 
                   {/* Bookmark */}
-                  <button type="button" className="text-slate-800 hover:text-indigo-600 transition">
+                  <button type="button" className="text-slate-800 hover:text-rose-600 transition">
                     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                     </svg>
@@ -927,7 +1382,7 @@ export default function ComposePage() {
                 {/* Comment Bar Mockup */}
                 <div className="border-t border-slate-100 pt-2.5 flex items-center justify-between text-[11px] text-slate-400">
                   <span>Yorum ekle...</span>
-                  <span className="text-indigo-500 font-bold cursor-pointer">Paylaş</span>
+                  <span className="text-rose-600 font-bold cursor-pointer">Paylaş</span>
                 </div>
               </div>
             </div>
@@ -939,6 +1394,19 @@ export default function ComposePage() {
             </div>
           </div>
         </div>
+      )}
+
+      {libraryOpen && (
+        <MediaLibraryModal
+          brandId={brand.id}
+          onClose={() => setLibraryOpen(false)}
+          onSelect={(media) => {
+            setExistingMedia(media);
+            setImageUrl(null);
+            setMediaFile(null);
+            setLibraryOpen(false);
+          }}
+        />
       )}
     </div>
   );

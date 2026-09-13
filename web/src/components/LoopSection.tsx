@@ -4,62 +4,36 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import { useGSAP } from "@gsap/react";
 import { gsap, ScrollTrigger } from "@/lib/gsap";
+import { useLanguage } from "@/context/LanguageContext";
 
-type Step = {
-  key: string;
-  label: string;
-  title: string;
-  image: string;
-  badge: string;
-  cardBg: string;
-};
-
-const STEPS: Step[] = [
+const STEPS_CONFIG = [
   {
     key: "brand-dna",
-    label: "Brand DNA",
-    title: "Markanızı tanır, dijital kimliğini çıkarır.",
     image: "/images/step-1-brand-dna.png",
-    badge: "Marka DNA'sı",
     cardBg: "bg-bg-violet",
   },
   {
     key: "content-ai",
-    label: "TentaCast",
-    title: "Tek bir fikri tüm platformlara uyarlar.",
     image: "/images/step-2-tentacast.png",
-    badge: "Çoklu Yayın",
     cardBg: "bg-bg-sky",
   },
   {
     key: "approval",
-    label: "1-Tıkla Onay",
-    title: "Son söz her zaman sizdedir.",
     image: "/images/step-3-approval.jpeg",
-    badge: "İnsan Onaylı",
     cardBg: "bg-bg-mint",
   },
   {
     key: "publish",
-    label: "Otomatik Yayın",
-    title: "Doğru saatte, doğru kanalda yayında.",
     image: "/images/step-4-publish.jpeg",
-    badge: "Akıllı Zamanlama",
     cardBg: "bg-bg-coral",
   },
   {
     key: "learning",
-    label: "Öğrenme Döngüsü",
-    title: "Rakamlar bir sonraki haftanın planını yazar.",
     image: "/images/step-5-learning.jpeg",
-    badge: "Sürekli Gelişim",
     cardBg: "bg-bg-amber",
   },
 ];
 
-// Each card exits in its own direction — one repeated flight path read as
-// mechanical, four different corners reads as a hand actually tossing cards
-// aside. Order alternates corners so no two in a row match.
 const EXIT_DIRECTIONS: { x: number; y: number; rotate: number }[] = [
   { x: 1, y: -1, rotate: 1 }, // top-right
   { x: -1, y: 1, rotate: -1 }, // bottom-left
@@ -68,12 +42,7 @@ const EXIT_DIRECTIONS: { x: number; y: number; rotate: number }[] = [
   { x: 1, y: -1, rotate: 1 },
 ];
 
-// Depth 0 = front card. Depth > 0 = stacked behind (further back = higher
-// number). Depth < 0 = already flung away. Values tween toward their target
-// with power2 easing (matching what ajans360.com's own ScrollTrigger config
-// actually uses — scrub:1 + power2 curves, not a raw linear snap) instead of
-// gsap.set's instant jump, so it reads as eased motion, not a per-frame snap.
-function applyDepth(el: HTMLElement, depth: number, index: number) {
+function applyDepth(el: HTMLElement, depth: number, index: number, totalCount: number) {
   if (depth < 0) {
     const passed = Math.min(1, -depth);
     const dir = EXIT_DIRECTIONS[index % EXIT_DIRECTIONS.length];
@@ -83,7 +52,7 @@ function applyDepth(el: HTMLElement, depth: number, index: number) {
       rotate: passed * 26 * dir.rotate,
       scale: 1 - passed * 0.15,
       opacity: 1 - passed,
-      zIndex: STEPS.length + 1,
+      zIndex: totalCount + 1,
       duration: 0.5,
       ease: "power2.out",
       overwrite: "auto",
@@ -98,7 +67,7 @@ function applyDepth(el: HTMLElement, depth: number, index: number) {
     rotate: sign * d * 1.8,
     scale: 1 - d * 0.05,
     opacity: 1 - d * 0.18,
-    zIndex: STEPS.length - Math.round(d),
+    zIndex: totalCount - Math.round(d),
     duration: 0.5,
     ease: "power2.out",
     overwrite: "auto",
@@ -112,18 +81,22 @@ export default function LoopSection() {
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const scrollTriggerRef = useRef<ScrollTrigger | null>(null);
   const [active, setActive] = useState(0);
-  const currentStep = STEPS[active];
+  const { t } = useLanguage();
+
+  const steps = STEPS_CONFIG.map((cfg, i) => ({
+    ...cfg,
+    ...(t.loop.steps[i] || {}),
+  }));
+
+  const currentStep = steps[active] || steps[0];
 
   function renderStack(rawProgress: number) {
-    const scaled = rawProgress * (STEPS.length - 1);
+    const scaled = rawProgress * (steps.length - 1);
     cardRefs.current.forEach((el, i) => {
-      if (el) applyDepth(el, i - scaled, i);
+      if (el) applyDepth(el, i - scaled, i, steps.length);
     });
   }
 
-  // Scroll drives the step. All 5 cards sit stacked on top of each other;
-  // scrolling flings the front one off-screen and promotes the rest forward
-  // in depth — a deck of cards being worked through, not a tab menu.
   useGSAP(
     () => {
       const mm = gsap.matchMedia();
@@ -134,12 +107,12 @@ export default function LoopSection() {
         const st = ScrollTrigger.create({
           trigger: pinRef.current,
           start: "top top+=80",
-          end: () => `+=${STEPS.length * window.innerHeight * 0.8}`,
+          end: () => `+=${steps.length * window.innerHeight * 0.8}`,
           pin: true,
           scrub: 1,
           invalidateOnRefresh: true,
           onUpdate: (self) => {
-            const idx = Math.min(STEPS.length - 1, Math.floor(self.progress * STEPS.length));
+            const idx = Math.min(steps.length - 1, Math.floor(self.progress * steps.length));
             setActive(idx);
             renderStack(self.progress);
           },
@@ -170,39 +143,23 @@ export default function LoopSection() {
       <div className="relative mx-auto max-w-6xl">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent-subtle px-3 py-1 font-mono text-xs uppercase tracking-[0.2em] text-accent-text">
-            <span>Nasıl Çalışır</span>
+            <span>{t.loop.badge}</span>
           </div>
           <h2 className="mt-4 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-            Bir kere kurulmuyor, <span className="spectrum-text">her yayında daha akıllı hale geliyor.</span>
+            {t.loop.titleBefore}
+            <span className="spectrum-text">{t.loop.titleHighlight}</span>
           </h2>
           <p className="mt-3 font-body text-base text-muted leading-relaxed">
-            Çoğu araç içerik üretip bırakır. Tentamark&apos;ta döngü hiç kapanmaz: Her yayından öğrenilen sonuç, bir sonraki haftanın stratejisine geri beslenir.
+            {t.loop.copy}
           </p>
         </div>
       </div>
 
-      {/* Pinned while scrolling. The calc(50% - 50vw) margin trick breaks
-          this out to the true viewport edge regardless of the section's own
-          px-6 or any ancestor padding — a guessed -mx-6 left a visible gap
-          on the right because it only cancels this element's own parent
-          padding, not whatever else sits between it and the viewport edge.
-          min-h-[78vh] keeps it viewport-relative and short — decoupled from
-          the intro text's height above — so the video box stays close to
-          its own 16:9 aspect and object-cover doesn't have to crop in hard
-          to fill it. */}
       <div
         ref={pinRef}
         className="relative mt-10 flex min-h-[78vh] w-screen flex-col items-center justify-center"
         style={{ marginLeft: "calc(50% - 50vw)", marginRight: "calc(50% - 50vw)" }}
       >
-        {/* Video/scrim bleed past pinRef's own bottom edge into the
-            section's pb-24/sm:pb-32 — that space has no content in it (only
-            the top has the intro text to protect), so nothing stops the
-            color from reaching the section's true bottom edge instead of
-            stopping short and leaving a plain band. No overflow-hidden on
-            pinRef itself — that would clip this bleed right back off; the
-            section's own overflow-hidden (for its rounded corners) is the
-            only clip boundary that should apply here. */}
         <video
           ref={videoRef}
           autoPlay
@@ -219,42 +176,42 @@ export default function LoopSection() {
 
         <div className="relative mx-auto w-full max-w-3xl px-4 pb-16 sm:px-6">
           <div className="relative aspect-[4/3] w-full">
-            {STEPS.map((step, i) => (
+            {steps.map((step, i) => (
               <div
-                  key={step.key}
-                  ref={(el) => {
-                    cardRefs.current[i] = el;
-                  }}
-                  className={`absolute inset-0 flex flex-col overflow-hidden rounded-[1.75rem] border border-line shadow-xl ${step.cardBg}`}
-                  style={{ transformOrigin: "50% 100%" }}
-                >
-                  <div className="relative min-h-0 flex-1 p-4 sm:p-6">
-                    <div className="relative h-full w-full overflow-hidden rounded-2xl">
-                      <Image
-                        src={step.image}
-                        alt={step.title}
-                        fill
-                        sizes="(min-width: 1024px) 40vw, 90vw"
-                        className="object-contain object-center"
-                      />
-                    </div>
-                  </div>
-                  <div className="px-6 pb-6 pt-1 sm:px-8 sm:pb-7">
-                    <p className="font-display text-xl font-bold text-ink sm:text-2xl">{step.label}</p>
-                    <p className="mt-1 font-mono text-xs uppercase tracking-[0.12em] text-muted">{step.badge}</p>
+                key={step.key}
+                ref={(el) => {
+                  cardRefs.current[i] = el;
+                }}
+                className={`absolute inset-0 flex flex-col overflow-hidden rounded-[1.75rem] border border-line shadow-xl ${step.cardBg}`}
+                style={{ transformOrigin: "50% 100%" }}
+              >
+                <div className="relative min-h-0 flex-1 p-4 sm:p-6">
+                  <div className="relative h-full w-full overflow-hidden rounded-2xl">
+                    <Image
+                      src={step.image}
+                      alt={step.title}
+                      fill
+                      sizes="(min-width: 1024px) 40vw, 90vw"
+                      className="object-contain object-center"
+                    />
                   </div>
                 </div>
-              ))}
-            </div>
+                <div className="px-6 pb-6 pt-1 sm:px-8 sm:pb-7">
+                  <p className="font-display text-xl font-bold text-ink sm:text-2xl">{step.label}</p>
+                  <p className="mt-1 font-mono text-xs uppercase tracking-[0.12em] text-muted">{step.badge}</p>
+                </div>
+              </div>
+            ))}
           </div>
+        </div>
 
-          <p className="relative z-30 mt-4 max-w-lg text-center font-display text-lg font-semibold text-ink sm:text-xl">
-            {currentStep.title}
-          </p>
+        <p className="relative z-30 mt-4 max-w-lg text-center font-display text-lg font-semibold text-ink sm:text-xl">
+          {currentStep.title}
+        </p>
 
-          <span className="relative z-30 mt-5 inline-flex items-center gap-1.5 rounded-full bg-surface/80 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.15em] text-muted backdrop-blur-sm">
-            <span aria-hidden="true">↓</span> kaydırdıkça ilerler
-          </span>
+        <span className="relative z-30 mt-5 inline-flex items-center gap-1.5 rounded-full bg-surface/80 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.15em] text-muted backdrop-blur-sm">
+          <span aria-hidden="true">↓</span> {t.loop.scrollHint}
+        </span>
       </div>
     </section>
   );

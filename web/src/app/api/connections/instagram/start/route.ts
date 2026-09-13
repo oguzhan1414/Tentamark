@@ -3,7 +3,12 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-const SCOPES = ["instagram_business_basic", "instagram_business_content_publish"].join(",");
+const SCOPES = [
+  "instagram_business_basic",
+  "instagram_business_content_publish",
+  "instagram_business_manage_comments",
+  "instagram_business_manage_messages",
+].join(",");
 
 /*
   "Instagram API with Instagram Login" — instagram.com, not facebook.com.
@@ -13,6 +18,13 @@ const SCOPES = ["instagram_business_basic", "instagram_business_content_publish"
   from the authorize screen entirely — the whole reason this flow exists
   instead of reusing metaProvider's Page-based one: no Facebook Page
   requirement, no detour through facebook.com.
+
+  instagram_business_manage_comments/_manage_messages (added for the Social
+  Inbox feature) were verified against Meta's current webhook-fields doc —
+  each comment/message webhook field requires its matching scope on top of
+  instagram_business_basic. Accounts connected before this change need to
+  reconnect once to actually grant them; a stored token from before this
+  change will still verify fine but won't receive inbox events.
 */
 export async function GET(request: Request) {
   const supabase = await createClient();

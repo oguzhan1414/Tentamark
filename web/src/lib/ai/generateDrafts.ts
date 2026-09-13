@@ -65,10 +65,19 @@ ${shape}`;
 */
 import { getBrandContext } from "../brand/getBrandContext";
 
+export type ContentFormat = "post" | "story" | "reel";
+
+const FORMAT_RULE: Record<ContentFormat, string> = {
+  post: "Bu standart bir besleme (feed) gönderisi — normal uzunlukta, kalıcı bir paylaşım.",
+  story: "Bu bir Hikaye (Story) — kısa ömürlü, samimi, anlık ve ham hissettiren, çok kısa bir metin yaz.",
+  reel: "Bu bir Makara (Reels/Shorts) videosu için altyazı — kısa, enerjik, ilk saniyede durduran bir kanca ile başla.",
+};
+
 export async function generateDrafts(
   brandId: string,
   idea: string,
-  platforms: LaunchPlatform[]
+  platforms: LaunchPlatform[],
+  format: ContentFormat = "post"
 ): Promise<GeneratedDrafts> {
   if (platforms.length === 0) {
     throw new Error("En az bir platform seçilmeli.");
@@ -82,6 +91,8 @@ export async function generateDrafts(
   const platformRules = platforms.map((p) => `- ${PLATFORM_RULE[p]}`).join("\n");
 
   const systemPrompt = `Sen Tentamark için çalışan bir sosyal medya metin yazarısın. Verilen marka bağlamını ve fikri kullanarak ${platformList} için ayrı, birbirinden farklı gönderi metinleri yaz.
+
+İçerik Formatı: ${FORMAT_RULE[format]}
 
 Kurallar:
 - Türkçe yaz, doğal ve akıcı, çeviri gibi durmasın.

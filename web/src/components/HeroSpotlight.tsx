@@ -4,6 +4,7 @@ import { useRef } from "react";
 import Image from "next/image";
 import { useGSAP } from "@gsap/react";
 import { gsap, SplitText } from "@/lib/gsap";
+import { useLanguage } from "@/context/LanguageContext";
 import PlatformIcon, { type PlatformName } from "./PlatformIcon";
 
 const PLATFORMS: PlatformName[] = ["instagram", "facebook", "linkedin"];
@@ -16,6 +17,7 @@ const PLATFORMS: PlatformName[] = ["instagram", "facebook", "linkedin"];
 */
 export default function HeroSpotlight() {
   const rootRef = useRef<HTMLElement>(null);
+  const { t } = useLanguage();
 
   useGSAP(
     () => {
@@ -72,17 +74,16 @@ export default function HeroSpotlight() {
         {/* ---------------- copy ---------------- */}
         <div>
           <p className="hs-eyebrow font-mono text-xs uppercase tracking-[0.28em] text-accent-text">
-            AI Marketing Manager
+            {t.hero.eyebrow}
           </p>
 
           <h1 className="hs-headline mt-5 font-display text-4xl leading-[1.05] font-bold tracking-tight text-balance text-ink sm:text-5xl lg:text-6xl">
-            Markanızın sosyal medyasını yöneten bir ekip. <span className="spectrum-text">Tek kişi bile olsanız.</span>
+            {t.hero.headlineBefore}
+            <span className="spectrum-text">{t.hero.headlineHighlight}</span>
           </h1>
 
           <p className="hs-copy mt-6 max-w-lg font-body text-base leading-relaxed text-pretty text-muted sm:text-lg">
-            Tentamark markanızı öğrenir, haftalık içerik planını hazırlar ve her
-            platforma ayrı yazar. Siz onaylarsınız, o yayınlar ve sonuçlardan
-            öğrenir.
+            {t.hero.copy}
           </p>
 
           <form
@@ -90,19 +91,19 @@ export default function HeroSpotlight() {
             onSubmit={(e) => e.preventDefault()}
           >
             <label htmlFor="hero-email" className="sr-only">
-              E-posta adresiniz
+              {t.hero.emailLabel}
             </label>
             <input
               id="hero-email"
               type="email"
-              placeholder="ornek@marka.com"
+              placeholder={t.hero.emailPlaceholder}
               className="w-full rounded-full border border-line bg-surface px-5 py-3.5 font-body text-sm text-ink placeholder:text-faint focus:border-accent focus:outline-none"
             />
             <button
               type="submit"
               className="shrink-0 rounded-full bg-accent px-6 py-3.5 font-body text-sm font-semibold text-white shadow-[0_10px_24px_-10px_rgb(109_79_235/0.6)] transition-colors hover:bg-accent-hover"
             >
-              Erken erişime katıl
+              {t.hero.ctaButton}
             </button>
           </form>
 
@@ -111,14 +112,14 @@ export default function HeroSpotlight() {
               href="#urun-vitrini"
               className="inline-flex items-center gap-1.5 font-body text-sm font-semibold text-accent-text transition-colors hover:text-accent-hover"
             >
-              Demo izle
+              {t.hero.watchDemo}
               <span aria-hidden="true">→</span>
             </a>
           </div>
 
           <div className="hs-trust mt-7">
             <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-faint">
-              Instagram, Facebook ve LinkedIn ile çalışır
+              {t.hero.trustText}
             </p>
             <div className="mt-3 flex items-center gap-2.5">
               {PLATFORMS.map((name) => (
@@ -133,7 +134,7 @@ export default function HeroSpotlight() {
           <div className="hs-photo spectrum-ring relative aspect-[4/5] w-full overflow-hidden rounded-2xl border border-line bg-surface-soft">
             <Image
               src="/images/hero-portrait.jpg"
-              alt="Kendi markasının sosyal medyasını Tentamark ile yöneten bir işletme sahibi"
+              alt={t.hero.portraitAlt}
               fill
               priority
               sizes="(min-width: 1024px) 46vw, 100vw"
@@ -141,7 +142,7 @@ export default function HeroSpotlight() {
             />
           </div>
 
-          {/* Outcome. One real-looking number, framed as a change not a vanity stat. */}
+          {/* Outcome stat card */}
           <div className="hs-card absolute -bottom-5 left-6 flex items-center gap-3 rounded-2xl border border-line bg-surface/95 px-4 py-3 shadow-[0_18px_40px_-24px_rgba(28,20,48,0.35)] backdrop-blur sm:left-10">
             <svg viewBox="0 0 64 30" className="h-7 w-14 text-mint" aria-hidden="true">
               <polyline
@@ -154,8 +155,8 @@ export default function HeroSpotlight() {
               />
             </svg>
             <div>
-              <p className="font-display text-sm font-bold text-ink">Etkileşim +%18</p>
-              <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-faint">son 30 gün</p>
+              <p className="font-display text-sm font-bold text-ink">{t.hero.statValue}</p>
+              <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-faint">{t.hero.statPeriod}</p>
             </div>
           </div>
         </div>

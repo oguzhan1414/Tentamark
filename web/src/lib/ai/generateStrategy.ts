@@ -35,18 +35,100 @@ export type BrandStrategyPayload = {
   };
 };
 
+export type InputSnapshot = {
+  industry: string;
+  tone_of_voice: string;
+  brand_traits: string[];
+  target_audience: string[];
+  competitors: string[];
+};
+
+export type PillarDiff = {
+  name: string;
+  oldPercentage: number | null; // null = new pillar, didn't exist before
+  newPercentage: number | null; // null = removed pillar, doesn't exist now
+};
+
+export type ChangeNotes = {
+  changedInputs: string[];
+  pillarDiffs: PillarDiff[];
+  isManualRevert?: boolean;
+  revertedToVersion?: number;
+};
+
 export type BrandStrategyRecord = {
   id: string;
   version: number;
   payload: BrandStrategyPayload;
+  changeNotes: ChangeNotes;
   generated_at: string;
 };
+
+export type StrategyVersionSummary = {
+  id: string;
+  version: number;
+  generated_at: string;
+  changeNotes: ChangeNotes;
+};
+
+function parseChangeNotes(raw: unknown): ChangeNotes {
+  const obj = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const changedInputs = Array.isArray(obj.changed_inputs) ? obj.changed_inputs.map(String) : [];
+  const pillarDiffsRaw = Array.isArray(obj.pillar_diffs) ? obj.pillar_diffs : [];
+  const pillarDiffs: PillarDiff[] = pillarDiffsRaw.map((d) => {
+    const item = (d && typeof d === "object" ? d : {}) as Record<string, unknown>;
+    return {
+      name: String(item.name ?? ""),
+      oldPercentage: item.old_percentage === null || item.old_percentage === undefined ? null : Number(item.old_percentage),
+      newPercentage: item.new_percentage === null || item.new_percentage === undefined ? null : Number(item.new_percentage),
+    };
+  });
+  return {
+    changedInputs,
+    pillarDiffs,
+    isManualRevert: Boolean(obj.is_manual_revert),
+    revertedToVersion: typeof obj.reverted_to_version === "number" ? obj.reverted_to_version : undefined,
+  };
+}
+
+function computePillarDiffs(oldPillars: ContentPillar[], newPillars: ContentPillar[]): PillarDiff[] {
+  const oldMap = new Map(oldPillars.map((p) => [p.name, p.percentage]));
+  const newMap = new Map(newPillars.map((p) => [p.name, p.percentage]));
+  const names = new Set([...oldMap.keys(), ...newMap.keys()]);
+  const diffs: PillarDiff[] = [];
+  for (const name of names) {
+    const oldPct = oldMap.has(name) ? oldMap.get(name)! : null;
+    const newPct = newMap.has(name) ? newMap.get(name)! : null;
+    if (oldPct !== newPct) {
+      diffs.push({ name, oldPercentage: oldPct, newPercentage: newPct });
+    }
+  }
+  return diffs;
+}
+
+function computeChangedInputs(prev: InputSnapshot | null, current: InputSnapshot): string[] {
+  if (!prev) return ["İlk strateji — karşılaştırılacak önceki versiyon yok"];
+  const changes: string[] = [];
+  if (prev.industry !== current.industry) changes.push("Sektör bilgisi güncellendi");
+  if (prev.tone_of_voice !== current.tone_of_voice) changes.push("Ses tonu güncellendi");
+  if (JSON.stringify(prev.brand_traits) !== JSON.stringify(current.brand_traits)) {
+    changes.push("Marka nitelikleri güncellendi");
+  }
+  if (JSON.stringify(prev.target_audience) !== JSON.stringify(current.target_audience)) {
+    changes.push("Hedef kitle güncellendi");
+  }
+  if (JSON.stringify(prev.competitors) !== JSON.stringify(current.competitors)) {
+    changes.push("Rakip listesi güncellendi");
+  }
+  if (changes.length === 0) changes.push("Girdilerde değişiklik yok — manuel olarak yeniden üretildi");
+  return changes;
+}
 
 export async function getLatestStrategy(brandId: string): Promise<BrandStrategyRecord | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("brand_strategy")
-    .select("id, version, payload, generated_at")
+    .select("id, version, payload, change_notes, generated_at")
     .eq("brand_id", brandId)
     .order("version", { ascending: false })
     .limit(1)
@@ -58,13 +140,39 @@ export async function getLatestStrategy(brandId: string): Promise<BrandStrategyR
     id: data.id,
     version: data.version,
     payload: data.payload as BrandStrategyPayload,
+    changeNotes: parseChangeNotes(data.change_notes),
     generated_at: data.generated_at,
   };
+}
+
+export async function listStrategyVersions(brandId: string): Promise<StrategyVersionSummary[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("brand_strategy")
+    .select("id, version, change_notes, generated_at")
+    .eq("brand_id", brandId)
+    .order("version", { ascending: false })
+    .limit(20);
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    version: row.version,
+    generated_at: row.generated_at,
+    changeNotes: parseChangeNotes(row.change_notes),
+  }));
 }
 
 export async function generateBrandStrategy(brandId: string): Promise<BrandStrategyRecord> {
   const brandCtx = await getBrandContext(brandId, { excludeStrategy: true });
   const supabase = await createClient();
+
+  const currentSnapshot: InputSnapshot = {
+    industry: brandCtx.industry,
+    tone_of_voice: brandCtx.toneOfVoice,
+    brand_traits: brandCtx.brandTraits,
+    target_audience: brandCtx.targetAudience,
+    competitors: brandCtx.competitors,
+  };
 
   const systemPrompt = `Sen Tentamark AI için çalışan kıdemli bir sosyal medya stratejisti ve marka danışmanısın.
 Görevin: Verilen Marka DNA'sını derinlemesine incelemek ve bu markanın sosyal medyada organik büyümesini, topluluk oluşturmasını ve satışa dönüşmesini sağlayacak profesyonel bir "İçerik Stratejisi" (Brand Strategy) oluşturmak.
@@ -142,16 +250,25 @@ Notlar:
 
     const admin = createAdminClient();
 
-    // Get current latest version to increment
-    const { data: latest } = await admin
+    // Get previous version to increment from AND diff against
+    const { data: previous } = await admin
       .from("brand_strategy")
-      .select("version")
+      .select("version, payload, input_snapshot")
       .eq("brand_id", brandId)
       .order("version", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    const nextVersion = (latest?.version ?? 0) + 1;
+    const nextVersion = (previous?.version ?? 0) + 1;
+    const previousSnapshot = previous?.input_snapshot && Object.keys(previous.input_snapshot).length > 0
+      ? (previous.input_snapshot as InputSnapshot)
+      : null;
+    const changeNotes: ChangeNotes = {
+      changedInputs: computeChangedInputs(previousSnapshot, currentSnapshot),
+      pillarDiffs: previous?.payload
+        ? computePillarDiffs((previous.payload as BrandStrategyPayload).content_pillars ?? [], payload.content_pillars ?? [])
+        : [],
+    };
 
     // Insert new strategy version
     const { data: inserted, error: insertError } = await admin
@@ -160,8 +277,17 @@ Notlar:
         brand_id: brandId,
         version: nextVersion,
         payload,
+        input_snapshot: currentSnapshot,
+        change_notes: {
+          changed_inputs: changeNotes.changedInputs,
+          pillar_diffs: changeNotes.pillarDiffs.map((d) => ({
+            name: d.name,
+            old_percentage: d.oldPercentage,
+            new_percentage: d.newPercentage,
+          })),
+        },
       })
-      .select("id, version, payload, generated_at")
+      .select("id, version, payload, change_notes, generated_at")
       .single();
 
     if (insertError || !inserted) {
@@ -184,6 +310,7 @@ Notlar:
       id: inserted.id,
       version: inserted.version,
       payload: inserted.payload as BrandStrategyPayload,
+      changeNotes: parseChangeNotes(inserted.change_notes),
       generated_at: inserted.generated_at,
     };
   } catch (err) {
@@ -198,4 +325,62 @@ Notlar:
     });
     throw err;
   }
+}
+
+// "Reddet" in spirit: not a draft/approval queue (strategies apply
+// immediately, same as before), but a real, honest way back — copies an
+// older version's payload forward as a new version, so history stays intact
+// and nothing is silently overwritten.
+export async function revertToStrategyVersion(brandId: string, targetVersion: number): Promise<BrandStrategyRecord> {
+  const admin = createAdminClient();
+
+  const { data: target, error: targetError } = await admin
+    .from("brand_strategy")
+    .select("version, payload, input_snapshot")
+    .eq("brand_id", brandId)
+    .eq("version", targetVersion)
+    .maybeSingle();
+
+  if (targetError || !target) {
+    throw new Error("Geri dönülecek versiyon bulunamadı.");
+  }
+
+  const { data: latest } = await admin
+    .from("brand_strategy")
+    .select("version")
+    .eq("brand_id", brandId)
+    .order("version", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const nextVersion = (latest?.version ?? 0) + 1;
+
+  const { data: inserted, error: insertError } = await admin
+    .from("brand_strategy")
+    .insert({
+      brand_id: brandId,
+      version: nextVersion,
+      payload: target.payload,
+      input_snapshot: target.input_snapshot,
+      change_notes: {
+        changed_inputs: [`v${targetVersion}'a manuel olarak geri dönüldü`],
+        pillar_diffs: [],
+        is_manual_revert: true,
+        reverted_to_version: targetVersion,
+      },
+    })
+    .select("id, version, payload, change_notes, generated_at")
+    .single();
+
+  if (insertError || !inserted) {
+    throw new Error(`Geri dönülemedi: ${insertError?.message}`);
+  }
+
+  return {
+    id: inserted.id,
+    version: inserted.version,
+    payload: inserted.payload as BrandStrategyPayload,
+    changeNotes: parseChangeNotes(inserted.change_notes),
+    generated_at: inserted.generated_at,
+  };
 }

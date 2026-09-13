@@ -1,3 +1,7 @@
+"use client";
+
+import { useLanguage } from "@/context/LanguageContext";
+
 type IconProps = { className?: string };
 
 function IconConsistency({ className }: IconProps) {
@@ -84,78 +88,30 @@ function IconVideo({ className }: IconProps) {
   );
 }
 
-const FOUNDATION = {
-  icon: IconConsistency,
-  title: "Marka tutarlılığı",
-  body: "Her içerik, markanızın tonuna, renklerine ve yasak konularına sadık kalır. Brand DNA'nız tüm üretimin temelidir.",
-};
-
-// A manager's job isn't one skill, it's several — grouped here instead of a
-// flat icon grid so the "yönetici" framing shows up in the structure itself,
-// not just the headline.
-const GROUPS = [
+const GROUPS_CONFIG = [
   {
     key: "uretim",
-    label: "İçerik Üretimi",
     cardBg: "bg-bg-coral",
     iconColor: "text-coral-bright",
-    items: [
-      {
-        icon: IconAdapt,
-        title: "Platforma özel uyarlama",
-        body: "Aynı fikir; Instagram'da kısa ve enerjik, LinkedIn'de profesyonel ve tartışmaya açık şekilde yeniden yazılır.",
-      },
-      {
-        icon: IconImage,
-        title: "Görsel üretimi",
-        body: "Çekim konseptini yazın, markanızın renk paletine uygun profesyonel bir görsel AI ile üretilsin.",
-      },
-      {
-        icon: IconVideo,
-        title: "Video üretimi",
-        body: "Aynı motor, kısa reklam ve sosyal medya videoları da üretir — stüdyoya gerek kalmadan.",
-      },
-    ],
+    icons: [IconAdapt, IconImage, IconVideo],
   },
   {
     key: "operasyon",
-    label: "Operasyon & Onay",
     cardBg: "bg-bg-violet",
     iconColor: "text-accent-text",
-    items: [
-      {
-        icon: IconApproval,
-        title: "İnsan onaylı yayınlama",
-        body: "AI önerir, siz onaylarsınız. Onayınız olmadan tek bir gönderi bile yayınlanmaz.",
-      },
-      {
-        icon: IconCalendar,
-        title: "İçerik takvimi",
-        body: "Haftalık ve aylık görünümde, markanızın önümüzdeki 30 gününü tek bakışta görün.",
-      },
-    ],
+    icons: [IconApproval, IconCalendar],
   },
   {
     key: "analiz",
-    label: "Analiz & Öğrenme",
     cardBg: "bg-bg-mint",
     iconColor: "text-mint",
-    items: [
-      {
-        icon: IconInsight,
-        title: "Performanstan öneriye",
-        body: "Hangi içerik neden iyi çalıştı, AI analiz eder ve bir sonraki planı buna göre yeniden kurar.",
-      },
-      {
-        icon: IconSpark,
-        title: "Haftalık AI önerileri",
-        body: "Boş sayfa yok. Her hafta markanıza özel, hazır içerik fikirleriyle başlarsınız.",
-      },
-    ],
+    icons: [IconInsight, IconSpark],
   },
 ];
 
 export default function FeaturesGrid() {
+  const { t } = useLanguage();
+
   return (
     <section
       id="ozellikler"
@@ -165,56 +121,68 @@ export default function FeaturesGrid() {
       <div className="mx-auto max-w-6xl">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.25em] text-accent-text font-semibold mb-2">
-            Neler Yapar
+            {t.features.eyebrow}
           </p>
           <h2 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-            Bir asistan değil, <span className="spectrum-text">bir yönetici.</span>
+            {t.features.titleBefore}
+            <span className="spectrum-text">{t.features.titleHighlight}</span>
           </h2>
           <p className="mt-3 font-body text-base leading-relaxed text-muted">
-            Stratejiden içerik üretimine, onaydan analize kadar; markanızın sosyal
-            medya operasyonunun tamamı tek elden yürür.
+            {t.features.copy}
           </p>
         </div>
 
-        {/* Foundation: everything else in this section depends on it, so it
-            sits alone, above the three operational pillars, not as a fourth
-            equal card. */}
+        {/* Foundation */}
         <div
           style={{ ["--lift-rgb" as string]: "109 79 235" }}
           className="lift spectrum-ring relative mt-10 flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6 shadow-sm sm:flex-row sm:items-center sm:gap-6 sm:p-7"
         >
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent-subtle text-accent-text">
-            <FOUNDATION.icon className="h-6 w-6 stroke-current" />
+            <IconConsistency className="h-6 w-6 stroke-current" />
           </div>
           <div>
-            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-faint">Temel</p>
-            <h3 className="mt-1 font-display text-lg font-bold text-ink">{FOUNDATION.title}</h3>
-            <p className="mt-1 font-body text-sm leading-relaxed text-muted">{FOUNDATION.body}</p>
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-faint">
+              {t.features.foundation.tag}
+            </p>
+            <h3 className="mt-1 font-display text-lg font-bold text-ink">
+              {t.features.foundation.title}
+            </h3>
+            <p className="mt-1 font-body text-sm leading-relaxed text-muted">
+              {t.features.foundation.body}
+            </p>
           </div>
         </div>
 
+        {/* Groups */}
         <div className="mt-6 grid gap-5 lg:grid-cols-3">
-          {GROUPS.map((group) => (
-            <div
-              key={group.key}
-              className={`rounded-2xl border border-line p-6 shadow-sm sm:p-7 ${group.cardBg}`}
-            >
-              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">
-                {group.label}
-              </p>
-              <div className="mt-4 space-y-5">
-                {group.items.map(({ icon: Icon, title, body }) => (
-                  <div key={title}>
-                    <div className="flex items-center gap-2.5">
-                      <Icon className={`h-5 w-5 stroke-current ${group.iconColor}`} />
-                      <h4 className="font-display text-base font-bold text-ink">{title}</h4>
-                    </div>
-                    <p className="mt-1.5 font-body text-sm leading-relaxed text-muted">{body}</p>
-                  </div>
-                ))}
+          {GROUPS_CONFIG.map((groupCfg, gIdx) => {
+            const groupData = t.features.groups[gIdx] || { label: "", items: [] };
+
+            return (
+              <div
+                key={groupCfg.key}
+                className={`rounded-2xl border border-line p-6 shadow-sm sm:p-7 ${groupCfg.cardBg}`}
+              >
+                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">
+                  {groupData.label}
+                </p>
+                <div className="mt-4 space-y-5">
+                  {groupData.items.map((item, itemIdx) => {
+                    const Icon = groupCfg.icons[itemIdx] || IconAdapt;
+                    return (
+                      <div key={item.title}>
+                        <div className="flex items-center gap-2.5">
+                          <Icon className={`h-5 w-5 stroke-current ${groupCfg.iconColor}`} />
+                          <h4 className="font-display text-base font-bold text-ink">{item.title}</h4>
+                        </div>
+                        <p className="mt-1.5 font-body text-sm leading-relaxed text-muted">{item.body}</p>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

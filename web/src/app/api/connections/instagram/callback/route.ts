@@ -9,7 +9,7 @@ type IGLongTokenResponse = { access_token?: string; expires_in?: number };
 type IGProfile = { id: string; username?: string; profile_picture_url?: string };
 
 function fail(origin: string, reason: string) {
-  return NextResponse.redirect(new URL(`/dashboard/connections?connect_error=instagram_${reason}`, origin));
+  return NextResponse.redirect(new URL(`/settings?tab=baglantilar&connect_error=instagram_${reason}`, origin));
 }
 
 export async function GET(request: Request) {
@@ -92,5 +92,5 @@ export async function GET(request: Request) {
     return fail(origin, "save");
   }
 
-  return NextResponse.redirect(new URL("/dashboard/connections?connected=instagram", origin));
+  return NextResponse.redirect(new URL("/settings?tab=baglantilar&connected=instagram", origin));
 }

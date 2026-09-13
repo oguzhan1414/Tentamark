@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import TentamarkLogo from "@/components/TentamarkLogo";
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/).slice(0, 2);
@@ -7,10 +8,10 @@ function initials(name: string) {
 }
 
 export default function DashboardTopbar({
-  brandName,
+  userName,
   systemHealthy,
 }: {
-  brandName: string;
+  userName: string;
   systemHealthy: boolean;
 }) {
   return (
@@ -18,10 +19,7 @@ export default function DashboardTopbar({
       {/* Left / Brand Info & AI Status Badge */}
       <div className="flex items-center gap-3 sm:gap-4">
         <div className="flex items-center gap-2.5 lg:hidden">
-          <span className="relative block h-8 w-8 shrink-0">
-            <Image src="/images/tenta-mark.png" alt="" fill sizes="32px" className="object-contain" />
-          </span>
-          <span className="font-bold tracking-tight text-slate-900 text-sm">Tentamark</span>
+          <TentamarkLogo size={24} withWordmark={true} />
         </div>
 
         {/* AI Engine Status Pill — reflects real connection/publish health */}
@@ -37,7 +35,7 @@ export default function DashboardTopbar({
           </div>
         ) : (
           <Link
-            href="/dashboard/connections"
+            href="/settings?tab=baglantilar"
             className="flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-50/70 px-3.5 py-1.5 shadow-[0_2px_8px_rgba(217,119,6,0.08)] hover:bg-amber-100/70 transition"
           >
             <span className="relative flex h-2 w-2">
@@ -68,13 +66,16 @@ export default function DashboardTopbar({
           </svg>
         </button>
 
-        {/* User / Brand Profile Pill */}
-        <div className="flex items-center gap-2.5 rounded-full border border-slate-200/80 bg-white py-1 pl-1.5 pr-3.5 shadow-sm transition hover:border-slate-300">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 font-semibold text-xs text-white shadow-xs">
-            {initials(brandName)}
+        {/* User Profile Pill — links to the account tab in Settings */}
+        <Link
+          href="/settings"
+          className="flex items-center gap-2.5 rounded-full border border-slate-200/80 bg-white py-1 pl-1.5 pr-3.5 shadow-xs transition hover:border-rose-200 hover:bg-rose-50/30"
+        >
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 font-semibold text-xs text-white shadow-2xs">
+            {initials(userName)}
           </div>
-          <span className="text-xs font-semibold text-slate-800 leading-tight">{brandName}</span>
-        </div>
+          <span className="text-xs font-semibold text-slate-800 leading-tight">{userName}</span>
+        </Link>
       </div>
     </header>
   );

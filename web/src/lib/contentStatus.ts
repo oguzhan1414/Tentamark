@@ -1,6 +1,7 @@
-export type UIStatus = "review" | "scheduled" | "published" | "failed";
+export type UIStatus = "draft" | "review" | "scheduled" | "published" | "failed";
 
 export const STATUS_LABEL: Record<UIStatus, { label: string; className: string }> = {
+  draft: { label: "Taslak", className: "bg-slate-100 text-slate-500" },
   published: { label: "Yayınlandı", className: "bg-mint/10 text-mint" },
   scheduled: { label: "Zamanlandı", className: "bg-accent-subtle text-accent-text" },
   review: { label: "Onay bekliyor", className: "bg-coral/10 text-coral-bright" },
@@ -8,13 +9,17 @@ export const STATUS_LABEL: Record<UIStatus, { label: string; className: string }
 };
 
 /*
-  content.status decides review-vs-scheduled; content_platforms.status only
-  becomes meaningful once the scheduler (checklist phase 7) actually attempts
-  a publish — until then every row is PENDING regardless of approval state.
+  content.status decides draft/review-vs-scheduled; content_platforms.status
+  only becomes meaningful once the scheduler (checklist phase 7) actually
+  attempts a publish — until then every row is PENDING regardless of
+  approval state. DRAFT is checked ahead of the "review" fallback — before
+  this, a saved-but-not-submitted draft silently fell into "review" (looked
+  like it was awaiting approval when nobody had ever seen it).
 */
 export function deriveStatus(contentStatus: string, cpStatus: string): UIStatus {
   if (cpStatus === "PUBLISHED") return "published";
   if (cpStatus === "FAILED" || cpStatus === "NEEDS_USER_ACTION") return "failed";
   if (contentStatus === "APPROVED" || contentStatus === "SCHEDULED") return "scheduled";
+  if (contentStatus === "DRAFT" || contentStatus === "IDEA" || contentStatus === "GENERATING") return "draft";
   return "review";
 }

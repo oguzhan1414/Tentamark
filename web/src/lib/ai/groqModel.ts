@@ -14,6 +14,17 @@ type GroqCallOptions = {
   maxTokens?: number;
   /** Defaults to true — most callers want a structured JSON response. */
   jsonMode?: boolean;
+  /** Prior turns inserted between the system prompt and the final user
+   * message — only the assistant chat needs real multi-turn context, every
+   * other callsite omits this and gets the original single-shot shape. */
+  history?: { role: "user" | "assistant"; content: string }[];
+  /** MODEL (openai/gpt-oss-120b) is a reasoning model — its hidden reasoning
+   * tokens are drawn from the same maxTokens budget as the visible output,
+   * so a large structured response (e.g. a multi-item JSON pack) can get
+   * cut off mid-JSON with plenty of maxTokens still "spent" on reasoning.
+   * Only set this on callsites that hit that in practice — leaving it
+   * unset preserves every other callsite's existing behavior exactly. */
+  reasoningEffort?: "low" | "medium" | "high";
 };
 
 // Shared by every Groq callsite (generateDrafts, getDashboardBriefing,
@@ -40,10 +51,12 @@ export async function callGroq(
       model: MODEL,
       messages: [
         { role: "system", content: systemPrompt },
+        ...(options?.history ?? []),
         { role: "user", content: userMessage },
       ],
       temperature: options?.temperature ?? 0.8,
       ...(options?.maxTokens ? { max_tokens: options.maxTokens } : {}),
+      ...(options?.reasoningEffort ? { reasoning_effort: options.reasoningEffort } : {}),
       ...(options?.jsonMode === false ? {} : { response_format: { type: "json_object" } }),
     }),
   });

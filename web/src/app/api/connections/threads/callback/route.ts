@@ -9,7 +9,7 @@ type ThreadsLongTokenResponse = { access_token?: string; expires_in?: number };
 type ThreadsProfile = { id: string; username?: string; threads_profile_picture_url?: string };
 
 function fail(origin: string, reason: string) {
-  return NextResponse.redirect(new URL(`/dashboard/connections?connect_error=threads_${reason}`, origin));
+  return NextResponse.redirect(new URL(`/settings?tab=baglantilar&connect_error=threads_${reason}`, origin));
 }
 
 export async function GET(request: Request) {
@@ -90,5 +90,5 @@ export async function GET(request: Request) {
     return fail(origin, "save");
   }
 
-  return NextResponse.redirect(new URL("/dashboard/connections?connected=threads", origin));
+  return NextResponse.redirect(new URL("/settings?tab=baglantilar&connected=threads", origin));
 }

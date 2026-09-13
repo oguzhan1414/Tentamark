@@ -1,31 +1,12 @@
-// Alternating tint (mor-beyaz-mor-beyaz), not a "this one's best" callout —
-// the badge was removed, so `tinted` is purely a rhythm/scan aid across the
-// four columns now, not a recommendation signal.
-const TIERS = [
-  { name: "Free", price: "$0", for: "Denemek isteyenler için", tinted: true },
-  { name: "Starter", price: "$19", for: "Tek başına yönetenler için", tinted: false },
-  { name: "Pro", price: "$49", for: "Büyüyen markalar için", tinted: true },
-  { name: "Business", price: "$99", for: "Ekip ve ajanslar için", tinted: false },
-];
+"use client";
 
-// Every row grounded in something real or already committed to elsewhere on
-// the page — nothing invented just to pad the table out. Prices are fixed,
-// not ranges: a real policy to react to, not a shrug. Positioned deliberately
-// under the closest AI-content peers we researched (Predis.ai $24/$55/$212,
-// Ocoya $29/$79/$199) — a new, unlaunched entrant prices under the
-// established players it's closest to, not above them.
-const FEATURES: { label: string; values: [string, string, string, string] }[] = [
-  { label: "Marka sayısı", values: ["1", "2", "5", "Sınırsız"] },
-  { label: "Sosyal hesap sayısı", values: ["1", "5", "15", "40"] },
-  { label: "AI kredisi / ay", values: ["5", "150", "500", "1.500"] },
-  { label: "Görsel üretimi", values: ["—", "✓", "✓", "✓"] },
-  { label: "Video üretimi", values: ["—", "—", "✓", "✓"] },
-  { label: "İçerik takvimi", values: ["Temel", "Temel", "Sürükle-bırak + öneriler", "Sürükle-bırak + öneriler"] },
-  { label: "Onay akışı", values: ["Tek aşama", "Tek aşama", "Çok aşama", "Çok aşama + roller"] },
-  { label: "Haftalık AI içerik paketi", values: ["—", "✓", "✓", "✓"] },
-  { label: "Performans → strateji analizi", values: ["—", "Temel", "Gelişmiş", "Gelişmiş"] },
-  { label: "Ekip üyesi", values: ["1", "1", "3", "Sınırsız"] },
-  { label: "Destek", values: ["Topluluk", "E-posta", "Öncelikli e-posta", "Öncelikli + özel temsilci"] },
+import { useLanguage } from "@/context/LanguageContext";
+
+const TIER_META = [
+  { tinted: true },
+  { tinted: false },
+  { tinted: true },
+  { tinted: false },
 ];
 
 function Cell({ value, tinted }: { value: string; tinted: boolean }) {
@@ -39,6 +20,13 @@ function Cell({ value, tinted }: { value: string; tinted: boolean }) {
 }
 
 export default function PricingTeaser() {
+  const { t } = useLanguage();
+
+  const tiers = t.pricing.tiers.map((tier, idx) => ({
+    ...tier,
+    tinted: TIER_META[idx]?.tinted ?? false,
+  }));
+
   return (
     <section
       id="fiyatlandirma"
@@ -48,20 +36,17 @@ export default function PricingTeaser() {
       <div className="mx-auto max-w-6xl">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent-text">
-            Fiyatlandırma
+            {t.pricing.eyebrow}
           </p>
           <h2 className="mt-4 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-            Küçük başlayın, <span className="spectrum-text">büyüdükçe genişletin.</span>
+            {t.pricing.titleBefore}
+            <span className="spectrum-text">{t.pricing.titleHighlight}</span>
           </h2>
           <p className="mt-4 font-body text-base leading-relaxed text-muted">
-            Fiyatlar henüz kesinleşmedi. İlk kullanıcılarımızla birlikte test
-            ediyoruz, ama aşağıdaki rakamlar bir taslak değil — bugünkü hedef
-            politikamız bu.
+            {t.pricing.copy}
           </p>
           <p className="mt-2 font-body text-sm leading-relaxed text-faint">
-            AI kredisi nedir? Bir metin gönderisi ~1, bir görsel ~5, bir video
-            ~15 kredi kullanır — üretim gücü farklı olduğu için tüketimleri de
-            farklıdır.
+            {t.pricing.creditExplainer}
           </p>
         </div>
 
@@ -70,7 +55,7 @@ export default function PricingTeaser() {
             <thead>
               <tr>
                 <th className="sticky left-0 z-10 w-48 border-b border-line bg-surface p-4 align-bottom" />
-                {TIERS.map((tier) => (
+                {tiers.map((tier) => (
                   <th
                     key={tier.name}
                     className={
@@ -81,7 +66,9 @@ export default function PricingTeaser() {
                     <p className="font-display text-base font-bold text-ink">{tier.name}</p>
                     <p className="mt-0.5 font-mono text-xl font-bold text-accent-text">
                       {tier.price}
-                      <span className="ml-1 font-body text-xs font-normal text-faint">/ay</span>
+                      <span className="ml-1 font-body text-xs font-normal text-faint">
+                        {t.pricing.perMonth}
+                      </span>
                     </p>
                     <p className="mt-0.5 font-body text-[11px] font-normal text-muted">{tier.for}</p>
                   </th>
@@ -89,20 +76,20 @@ export default function PricingTeaser() {
               </tr>
             </thead>
             <tbody>
-              {FEATURES.map((feature, i) => (
+              {t.pricing.features.map((feature, i) => (
                 <tr key={feature.label} className={i % 2 === 1 ? "bg-surface-soft/50" : undefined}>
                   <td className="sticky left-0 z-10 border-b border-line bg-[inherit] p-4 font-body text-sm font-medium text-ink">
                     {feature.label}
                   </td>
                   {feature.values.map((val, ti) => (
                     <td
-                      key={TIERS[ti].name}
+                      key={`${tiers[ti]?.name}-${feature.label}`}
                       className={
                         "border-b border-line p-4 text-center font-body text-sm " +
-                        (TIERS[ti].tinted ? "bg-accent-subtle/40" : "")
+                        (tiers[ti]?.tinted ? "bg-accent-subtle/40" : "")
                       }
                     >
-                      <Cell value={val} tinted={TIERS[ti].tinted} />
+                      <Cell value={val} tinted={tiers[ti]?.tinted ?? false} />
                     </td>
                   ))}
                 </tr>

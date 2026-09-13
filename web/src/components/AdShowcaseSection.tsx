@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useLanguage } from "@/context/LanguageContext";
 
 /*
   Vision preview, not a live feature — Tentamark doesn't generate video today
@@ -8,9 +9,6 @@ import { useEffect, useRef, useState } from "react";
   future tense on purpose. Clips live at /public/ads/01.mp4 etc; until a file
   exists, its card falls back to a gradient placeholder instead of a broken
   video box.
-
-  02.mp4 (a sneaker clip) was removed — the generated shoe had a visible
-  Nike swoosh, real trademark risk on a live marketing page.
 */
 const CLIPS = [
   { src: "/ads/01.mp4", alt: "Parfüm şişesi, boş etiket alanıyla, altın ışıkta" },
@@ -26,12 +24,7 @@ const CLIPS = [
   { src: "/ads/12.mp4", alt: "Fitness koçu stüdyoda esneme hareketi gösteriyor" },
 ];
 
-// 22 cards (11 clips x 2, duplicated for the seamless marquee loop) all
-// autoplaying at once was forcing every one of them to fully download
-// immediately, regardless of the preload hint. Only the handful actually
-// inside the viewport now play — everything else stays unfetched until it
-// scrolls in.
-function ClipCard({ src, alt }: { src: string; alt: string }) {
+function ClipCard({ src, alt, fallbackText }: { src: string; alt: string; fallbackText: string }) {
   const [broken, setBroken] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -61,7 +54,7 @@ function ClipCard({ src, alt }: { src: string; alt: string }) {
             style={{ background: "var(--spectrum)", opacity: 0.85 }}
           >
             <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-white/90">
-              Video yakında
+              {fallbackText}
             </span>
           </div>
         ) : (
@@ -83,6 +76,8 @@ function ClipCard({ src, alt }: { src: string; alt: string }) {
 }
 
 export default function AdShowcaseSection() {
+  const { t } = useLanguage();
+
   return (
     <section
       id="icerik-vizyonu"
@@ -94,33 +89,43 @@ export default function AdShowcaseSection() {
         aria-hidden="true"
       />
 
-      {/* Başlık alanı navbar orantısına uygun şekilde ortalı tutulur */}
+      {/* Başlık alanı */}
       <div className="relative mx-auto max-w-6xl px-6">
         <div className="mx-auto text-center">
           <span className="inline-flex items-center rounded-full border border-accent/25 bg-accent-subtle px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-accent-text">
-            Yakında · Vizyonumuz
+            {t.adShowcase.badge}
           </span>
           <h2 className="mt-4 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-            Markanız adına <span className="spectrum-text">içeriği de biz üretelim.</span>
+            {t.adShowcase.titleBefore}
+            <span className="spectrum-text">{t.adShowcase.titleHighlight}</span>
           </h2>
           <p className="mt-3 font-body text-base leading-relaxed text-muted">
-            Bugün metni ve görseli Brand DNA&apos;nızdan üretiyoruz. Sırada video var —
-            sadece planlamıyoruz, üretip önünüze koyuyoruz. Siz sadece onaylıyorsunuz.
+            {t.adShowcase.copy}
           </p>
         </div>
       </div>
 
-      {/* Sağ ve sol boşluklar kaldırılmış, tam genişlikte tek satır halinde soldan girip sağdan çıkan yavaş sonsuz akış */}
+      {/* Marquee video akışı */}
       <div className="relative mt-10 w-full overflow-hidden py-2">
         <div className="animate-marquee-ltr">
           <div className="flex shrink-0 items-center gap-4 pr-4 sm:gap-5 sm:pr-5">
             {CLIPS.map((clip, idx) => (
-              <ClipCard key={`first-${clip.src}-${idx}`} src={clip.src} alt={clip.alt} />
+              <ClipCard
+                key={`first-${clip.src}-${idx}`}
+                src={clip.src}
+                alt={clip.alt}
+                fallbackText={t.adShowcase.fallbackText}
+              />
             ))}
           </div>
           <div className="flex shrink-0 items-center gap-4 pr-4 sm:gap-5 sm:pr-5" aria-hidden="true">
             {CLIPS.map((clip, idx) => (
-              <ClipCard key={`second-${clip.src}-${idx}`} src={clip.src} alt={clip.alt} />
+              <ClipCard
+                key={`second-${clip.src}-${idx}`}
+                src={clip.src}
+                alt={clip.alt}
+                fallbackText={t.adShowcase.fallbackText}
+              />
             ))}
           </div>
         </div>
@@ -133,7 +138,7 @@ export default function AdShowcaseSection() {
             href="#erken-erisim"
             className="inline-flex items-center rounded-full bg-accent px-6 py-3 font-body text-sm font-semibold text-white shadow-[0_10px_24px_-10px_rgb(109_79_235/0.6)] transition-colors hover:bg-accent-hover"
           >
-            Erken erişime katıl
+            {t.adShowcase.ctaButton}
           </a>
         </div>
       </div>

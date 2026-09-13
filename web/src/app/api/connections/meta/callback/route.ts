@@ -11,7 +11,7 @@ type MetaPage = { id: string; name: string; access_token: string };
 type MetaPagesResponse = { data?: MetaPage[]; error?: { message: string } };
 
 function fail(origin: string, reason: string) {
-  return NextResponse.redirect(new URL(`/dashboard/connections?connect_error=${reason}`, origin));
+  return NextResponse.redirect(new URL(`/settings?tab=baglantilar&connect_error=${reason}`, origin));
 }
 
 /*
@@ -105,5 +105,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(new URL("/dashboard/connections?connected=meta", origin));
+  return NextResponse.redirect(new URL("/settings?tab=baglantilar&connected=meta", origin));
 }

@@ -4,9 +4,11 @@ import { useRef } from "react";
 import Image from "next/image";
 import { useGSAP } from "@gsap/react";
 import { gsap } from "@/lib/gsap";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function ProductShowcase() {
   const sectionRef = useRef<HTMLElement>(null);
+  const { t } = useLanguage();
 
   useGSAP(
     () => {
@@ -46,14 +48,14 @@ export default function ProductShowcase() {
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
           <div className="ps-reveal">
             <p className="font-mono text-xs uppercase tracking-[0.25em] text-sky font-semibold mb-2">
-              Haftalık Akış & Planlama
+              {t.productShowcase.eyebrow}
             </p>
             <h2 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-              Haftanın tamamı <span className="text-sky">tek ekranda.</span>
+              {t.productShowcase.titleBefore}
+              <span className="text-sky">{t.productShowcase.titleHighlight}</span>
             </h2>
             <p className="mt-3 font-body text-base leading-relaxed text-muted">
-              Hangi içerik hangi platforma ne zaman gidiyor, hangisi sizi bekliyor.
-              Karmaşık ayar yok, menü avı yok.
+              {t.productShowcase.copy}
             </p>
           </div>
         </div>
@@ -63,7 +65,7 @@ export default function ProductShowcase() {
             <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl bg-surface border border-line">
               <Image
                 src="/images/ui-calendar.png"
-                alt="Tentamark Haftalık İçerik Takvimi"
+                alt={t.productShowcase.imageAlt}
                 fill
                 priority
                 sizes="(min-width: 1024px) 70vw, 100vw"

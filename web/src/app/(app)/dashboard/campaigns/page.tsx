@@ -3,9 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useBrand } from "@/components/dashboard/BrandProvider";
+import { useComposeModal } from "@/components/dashboard/ComposeModalProvider";
 import { createClient } from "@/lib/supabase/client";
+import CampaignFormModal, { type CampaignFormValues, type CampaignStatus } from "@/components/dashboard/CampaignFormModal";
+import CampaignPlannerModal from "@/components/dashboard/CampaignPlannerModal";
+import { ALL_PLATFORMS, type LaunchPlatform } from "@/lib/ai/platforms";
+import PlatformIcon from "@/components/PlatformIcon";
 
-type Status = "active" | "completed" | "archived";
+type Status = CampaignStatus;
 
 type Campaign = {
   id: string;
@@ -14,6 +19,7 @@ type Campaign = {
   start_date: string | null;
   end_date: string | null;
   status: Status;
+  platforms: string[];
   totalContent: number;
   publishedContent: number;
 };
@@ -26,19 +32,35 @@ const STATUS_CONFIG: Record<Status, { label: string; className: string }> = {
 
 export default function CampaignsPage() {
   const brand = useBrand();
+  const composeModal = useComposeModal();
   const supabase = useMemo(() => createClient(), []);
 
   const [campaigns, setCampaigns] = useState<Campaign[] | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  // "create" opens a blank form; a Campaign opens the form pre-filled for
+  // editing that campaign — one modal, one code path for both.
+  const [formModal, setFormModal] = useState<"create" | Campaign | null>(null);
+  const [plannerFor, setPlannerFor] = useState<Campaign | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"all" | Status>("all");
+  const [connectedPlatforms, setConnectedPlatforms] = useState<LaunchPlatform[]>([]);
 
-  // Form states
-  const [name, setName] = useState("");
-  const [objective, setObjective] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
+  // Only channels with a real, active connection can be offered — same
+  // reasoning as Compose's platform picker.
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      const { data } = await supabase
+        .from("social_accounts")
+        .select("platform")
+        .eq("brand_id", brand.id)
+        .eq("status", "active");
+      if (ignore) return;
+      setConnectedPlatforms(ALL_PLATFORMS.filter((p) => (data ?? []).some((a) => a.platform === p)));
+    })();
+    return () => {
+      ignore = true;
+    };
+  }, [supabase, brand.id]);
 
   useEffect(() => {
     let ignore = false;
@@ -46,7 +68,7 @@ export default function CampaignsPage() {
       const [{ data, error }, { data: contentRows, error: contentError }] = await Promise.all([
         supabase
           .from("campaigns")
-          .select("id, name, objective, start_date, end_date, status")
+          .select("id, name, objective, start_date, end_date, status, platforms")
           .eq("brand_id", brand.id)
           .order("created_at", { ascending: false }),
         supabase
@@ -88,32 +110,24 @@ export default function CampaignsPage() {
     };
   }, [supabase, brand.id, refreshKey]);
 
-  async function createCampaign(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) return;
-    setCreating(true);
-    setCreateError(null);
+  async function saveCampaign(values: CampaignFormValues): Promise<string | null> {
+    const payload = {
+      name: values.name,
+      objective: values.objective || null,
+      start_date: values.startDate || null,
+      end_date: values.endDate || null,
+      status: values.status,
+      platforms: values.platforms,
+    };
 
-    const { error } = await supabase.from("campaigns").insert({
-      brand_id: brand.id,
-      name: name.trim(),
-      objective: objective.trim() || null,
-      start_date: startDate || null,
-      end_date: endDate || null,
-      status: "active",
-    });
+    const { error } =
+      formModal === "create"
+        ? await supabase.from("campaigns").insert({ brand_id: brand.id, ...payload })
+        : await supabase.from("campaigns").update(payload).eq("id", (formModal as Campaign).id);
 
-    setCreating(false);
-    if (error) {
-      setCreateError(error.message);
-      return;
-    }
-    setName("");
-    setObjective("");
-    setStartDate("");
-    setEndDate("");
-    setShowCreateModal(false);
+    if (error) return error.message;
     setRefreshKey((k) => k + 1);
+    return null;
   }
 
   async function setStatus(id: string, status: Status) {
@@ -137,6 +151,12 @@ export default function CampaignsPage() {
 
   const activeCount = useMemo(() => campaigns?.filter((c) => c.status === "active").length ?? 0, [campaigns]);
 
+  const filteredCampaigns = useMemo(() => {
+    if (!campaigns) return null;
+    if (statusFilter === "all") return campaigns;
+    return campaigns.filter((c) => c.status === statusFilter);
+  }, [campaigns, statusFilter]);
+
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
       {/* 1. Header & Primary Action */}
@@ -152,7 +172,7 @@ export default function CampaignsPage() {
 
         <button
           type="button"
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => setFormModal("create")}
           className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-slate-800 transition self-start sm:self-auto"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -201,14 +221,41 @@ export default function CampaignsPage() {
         </div>
       </div>
 
-      {/* 3. Campaigns Grid */}
-      {campaigns === null ? (
+      {/* 3. Status Filter Tabs */}
+      {campaigns !== null && campaigns.length > 0 && (
+        <div className="flex items-center gap-1 border-b border-slate-200 pb-px">
+          {(
+            [
+              { key: "all", label: "Tümü" },
+              { key: "active", label: "Aktif" },
+              { key: "completed", label: "Tamamlandı" },
+              { key: "archived", label: "Arşivlendi" },
+            ] as const
+          ).map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setStatusFilter(tab.key)}
+              className={`relative cursor-pointer px-3.5 py-2.5 text-sm font-semibold transition ${
+                statusFilter === tab.key
+                  ? "text-slate-900 after:absolute after:bottom-[-1px] after:left-0 after:right-0 after:h-0.5 after:bg-[#FA5252]"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* 4. Campaigns Grid */}
+      {campaigns === null || filteredCampaigns === null ? (
         <div className="flex h-64 items-center justify-center rounded-[22px] border border-slate-100 bg-white text-sm text-slate-400">
           Kampanyalar yükleniyor...
         </div>
       ) : campaigns.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-[24px] border border-dashed border-slate-200 bg-white py-16 text-center shadow-xs">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
             </svg>
@@ -219,15 +266,26 @@ export default function CampaignsPage() {
           </p>
           <button
             type="button"
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => setFormModal("create")}
             className="mt-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition"
           >
             + İlk Kampanyayı Başlat
           </button>
         </div>
+      ) : filteredCampaigns.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 rounded-[24px] border border-dashed border-slate-200 bg-white py-12 text-center shadow-xs">
+          <p className="text-sm font-semibold text-slate-600">Bu filtrede kampanya yok.</p>
+          <button
+            type="button"
+            onClick={() => setStatusFilter("all")}
+            className="text-xs font-semibold text-rose-600 hover:underline"
+          >
+            Tümünü göster
+          </button>
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {campaigns.map((c) => {
+          {filteredCampaigns.map((c) => {
             const cfg = STATUS_CONFIG[c.status];
             return (
               <div
@@ -237,7 +295,7 @@ export default function CampaignsPage() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
                         </svg>
@@ -255,7 +313,24 @@ export default function CampaignsPage() {
                   </div>
 
                   <div>
-                    <h3 className="font-display text-base font-bold text-slate-900">{c.name}</h3>
+                    <div className="flex items-start justify-between gap-2">
+                      <Link
+                        href={`/dashboard/campaigns/${c.id}`}
+                        className="font-display text-base font-bold text-slate-900 hover:text-rose-600 transition"
+                      >
+                        {c.name}
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => setFormModal(c)}
+                        title="Kampanyayı düzenle"
+                        className="shrink-0 cursor-pointer rounded-lg p-1 text-slate-300 hover:bg-slate-50 hover:text-rose-600 transition"
+                      >
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                    </div>
                     <p className="mt-1 text-xs text-slate-500 line-clamp-2">
                       {c.objective || "Belirli bir hedef tanımı girilmedi."}
                     </p>
@@ -276,6 +351,14 @@ export default function CampaignsPage() {
                     </div>
                   )}
 
+                  {c.platforms.length > 0 && (
+                    <div className="flex items-center gap-1">
+                      {c.platforms.map((p) => (
+                        <PlatformIcon key={p} name={p as LaunchPlatform} className="h-5 w-5 rounded-md" />
+                      ))}
+                    </div>
+                  )}
+
                   {/* Visual Progress Bar — real content counts, not a placeholder */}
                   <div className="pt-2">
                     {c.totalContent > 0 ? (
@@ -288,7 +371,7 @@ export default function CampaignsPage() {
                         </div>
                         <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
                           <div
-                            className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-600"
+                            className="h-full rounded-full bg-gradient-to-r from-rose-500 to-[#FA5252]"
                             style={{ width: `${Math.round((c.publishedContent / c.totalContent) * 100)}%` }}
                           ></div>
                         </div>
@@ -301,12 +384,28 @@ export default function CampaignsPage() {
 
                 {/* Bottom Actions */}
                 <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-3.5 gap-2">
-                  <Link
-                    href={`/dashboard/compose?campaign=${c.id}`}
-                    className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-700"
-                  >
-                    <span>+ İçerik Üret</span>
-                  </Link>
+                  {/* A campaign with a real date range gets the ranged
+                      planner, opened in place (no page navigation) as a
+                      modal — spreads N items across its actual timeline,
+                      auto-tagged to it. One without dates falls back to
+                      plain single-post Compose, same as before. */}
+                  {c.start_date && c.end_date ? (
+                    <button
+                      type="button"
+                      onClick={() => setPlannerFor(c)}
+                      className="inline-flex cursor-pointer items-center gap-1 text-xs font-bold text-rose-600 hover:text-rose-700"
+                    >
+                      <span>+ İçerik Planla</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => composeModal.open({ campaignId: c.id })}
+                      className="inline-flex cursor-pointer items-center gap-1 text-xs font-bold text-rose-600 hover:text-rose-700"
+                    >
+                      <span>+ İçerik Üret</span>
+                    </button>
+                  )}
 
                   <div className="flex items-center gap-2">
                     <select
@@ -337,105 +436,39 @@ export default function CampaignsPage() {
         </div>
       )}
 
-      {/* 4. Create Campaign Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <button
-            type="button"
-            aria-label="Kapat"
-            onClick={() => setShowCreateModal(false)}
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs"
-          />
+      {/* 4. Create / Edit Campaign Modal */}
+      {formModal && (
+        <CampaignFormModal
+          mode={formModal === "create" ? "create" : "edit"}
+          initial={
+            formModal === "create"
+              ? undefined
+              : {
+                  name: formModal.name,
+                  objective: formModal.objective ?? "",
+                  startDate: formModal.start_date ?? "",
+                  endDate: formModal.end_date ?? "",
+                  status: formModal.status,
+                  platforms: formModal.platforms as LaunchPlatform[],
+                }
+          }
+          connectedPlatforms={connectedPlatforms}
+          onClose={() => setFormModal(null)}
+          onSubmit={saveCampaign}
+        />
+      )}
 
-          <div className="relative w-full max-w-lg rounded-[24px] border border-slate-100 bg-white p-6 sm:p-7 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <h3 className="font-display text-lg font-bold text-slate-900">Yeni Kampanya Oluştur</h3>
-              <button
-                type="button"
-                onClick={() => setShowCreateModal(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={createCampaign} className="mt-5 space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Kampanya Adı *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Örn: 2026 Yaz Koleksiyonu Lansmanı"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Pazarlama Hedefi (Objective)
-                </label>
-                <textarea
-                  rows={2}
-                  value={objective}
-                  onChange={(e) => setObjective(e.target.value)}
-                  placeholder="Örn: Web sitesi trafiğini %25 artırmak ve e-bülten kaydı toplamak..."
-                  className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                    Başlangıç Tarihi
-                  </label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                    Bitiş Tarihi
-                  </label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {createError && (
-                <p className="text-xs text-red-600 bg-red-50 p-2.5 rounded-lg">{createError}</p>
-              )}
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-                >
-                  İptal
-                </button>
-                <button
-                  type="submit"
-                  disabled={creating || !name.trim()}
-                  className="rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
-                >
-                  {creating ? "Oluşturuluyor..." : "Kampanyayı Başlat"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {/* 5. Campaign Content Planner Modal */}
+      {plannerFor?.start_date && plannerFor?.end_date && (
+        <CampaignPlannerModal
+          key={plannerFor.id}
+          campaignId={plannerFor.id}
+          campaignName={plannerFor.name}
+          campaignObjective={plannerFor.objective}
+          startDate={plannerFor.start_date}
+          endDate={plannerFor.end_date}
+          onClose={() => setPlannerFor(null)}
+        />
       )}
     </div>
   );

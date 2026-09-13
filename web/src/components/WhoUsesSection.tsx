@@ -1,17 +1,10 @@
-const FIT = [
-  "Sosyal medyayı siz veya tek kişilik bir ekip yönetiyor",
-  "Markanızın sesini biliyorsunuz ama her gün yazacak vaktiniz yok",
-  "İçeriğin yayınlanmadan önce sizden geçmesini istiyorsunuz",
-  "Hangi platformda olursanız olun (bugün veya yarın), sosyal medyada aktif ve görünür kalmak istiyorsunuz",
-];
+"use client";
 
-const NOT_FIT = [
-  "İçerik üretimini uçtan uca tamamen bir ajansa devretmek istiyorsunuz",
-  "Sosyal medya stratejiniz yok, önce bir insan danışman arıyorsunuz",
-  "Hiçbir içeriğin AI yardımıyla hazırlanmasını istemiyorsunuz",
-];
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function WhoUsesSection() {
+  const { t } = useLanguage();
+
   return (
     <section
       id="kimler-icin"
@@ -21,23 +14,17 @@ export default function WhoUsesSection() {
       <div className="mx-auto max-w-5xl">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.25em] text-sky font-semibold mb-2">
-            Kimler İçin
+            {t.whoUses.eyebrow}
           </p>
           <h2 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-            Tentamark <span className="text-sky">herkes için değil.</span>
+            {t.whoUses.titleBefore}
+            <span className="text-sky">{t.whoUses.titleHighlight}</span>
           </h2>
           <p className="mt-3 font-body text-base leading-relaxed text-muted">
-            Kimin için doğru olduğunu net söylemek, olmayan biri için zaman
-            kaybetmenizi engeller.
+            {t.whoUses.copy}
           </p>
         </div>
 
-        {/* Weighted 3:2 split, not an even comparison table — the fit card
-            carries the section's full visual identity (spectrum ring, glow,
-            filled check badges, a closing confidence line) while the
-            disqualifiers sit in a quiet dashed aside. Honest, but not equal
-            weight: nothing here suggests we're neutral about who should
-            convert. */}
         <div className="mt-10 grid gap-5 lg:grid-cols-[3fr_2fr]">
           <div
             style={{ ["--lift-rgb" as string]: "16 185 129" }}
@@ -49,11 +36,13 @@ export default function WhoUsesSection() {
             />
             <span className="relative inline-flex items-center gap-1.5 rounded-full border border-mint/30 bg-surface/80 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-mint">
               <span className="h-1.5 w-1.5 rounded-full bg-mint" aria-hidden="true" />
-              En uygun profil
+              {t.whoUses.fitBadge}
             </span>
-            <p className="relative mt-4 font-display text-lg font-bold text-ink">Sizin için doğru, eğer:</p>
+            <p className="relative mt-4 font-display text-lg font-bold text-ink">
+              {t.whoUses.fitTitle}
+            </p>
             <ul className="relative mt-4 space-y-3">
-              {FIT.map((item) => (
+              {t.whoUses.fitItems.map((item) => (
                 <li key={item} className="flex items-start gap-3 font-body text-sm leading-relaxed text-ink/90">
                   <span
                     className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-mint text-[11px] font-bold text-surface"
@@ -66,16 +55,16 @@ export default function WhoUsesSection() {
               ))}
             </ul>
             <p className="relative mt-6 border-t border-line/70 pt-4 font-body text-sm font-semibold text-ink">
-              Bu maddelerin çoğu size uyuyorsa, Tentamark ilk haftadan itibaren fark yaratır.
+              {t.whoUses.fitConclusion}
             </p>
           </div>
 
           <div className="flex flex-col justify-center rounded-2xl border border-dashed border-line p-6 sm:p-7">
             <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-faint">
-              Muhtemelen değil, eğer
+              {t.whoUses.notFitTitle}
             </p>
             <ul className="mt-4 space-y-3">
-              {NOT_FIT.map((item) => (
+              {t.whoUses.notFitItems.map((item) => (
                 <li key={item} className="flex items-start gap-2.5 font-body text-sm leading-relaxed text-faint">
                   <span className="mt-0.5" aria-hidden="true">✕</span>
                   <span>{item}</span>

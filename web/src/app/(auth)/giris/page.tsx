@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { TentamarkIcon } from "@/components/TentamarkLogo";
 
 import { createClient } from "@/lib/supabase/client";
 
@@ -37,10 +37,10 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/dashboard");
+      router.push("/dashboard/calendar");
     } catch (err) {
       console.error("Login error:", err);
-      router.push("/dashboard");
+      router.push("/dashboard/calendar");
     } finally {
       setLoading(false);
     }
@@ -61,7 +61,7 @@ export default function LoginPage() {
         setLoading(false);
       }
     } catch {
-      router.push("/dashboard");
+      router.push("/dashboard/calendar");
     }
   };
 
@@ -72,18 +72,11 @@ export default function LoginPage() {
         {/* Top: Logo & Back Link */}
         <div className="mx-auto flex w-full max-w-md items-center justify-between">
           <Link href="/" className="group flex items-center gap-2.5">
-            <span className="relative block h-9 w-9 shrink-0 transition-transform duration-200 group-hover:scale-110">
-              <Image
-                src="/images/tenta-mark.png"
-                alt="Tentamark"
-                fill
-                sizes="36px"
-                priority
-                className="object-contain"
-              />
+            <span className="relative flex h-8 w-8 shrink-0 items-center justify-center transition-transform duration-200 group-hover:scale-105">
+              <TentamarkIcon size={32} variant="coral" />
             </span>
             <span className="font-display text-xl font-bold tracking-tight text-white">
-              Tentamark
+              Tenta<span className="text-[#FA5252]">mark</span>
             </span>
           </Link>
 

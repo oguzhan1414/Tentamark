@@ -21,6 +21,16 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "*.tiktokcdn-us.com",
       },
+      {
+        // Instagram avatars (also covers Threads — same underlying CDN)
+        protocol: "https",
+        hostname: "*.cdninstagram.com",
+      },
+      {
+        // Facebook Page avatars
+        protocol: "https",
+        hostname: "*.fbcdn.net",
+      },
     ],
   },
 };

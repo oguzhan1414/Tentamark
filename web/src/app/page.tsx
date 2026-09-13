@@ -1,3 +1,6 @@
+"use client";
+
+import { LanguageProvider, useLanguage } from "@/context/LanguageContext";
 import AdShowcaseSection from "@/components/AdShowcaseSection";
 import AnalyticsTeaser from "@/components/AnalyticsTeaser";
 import ConnectStrip from "@/components/ConnectStrip";
@@ -16,12 +19,14 @@ import SiteHeader from "@/components/SiteHeader";
 import UseCasesSection from "@/components/UseCasesSection";
 import WhoUsesSection from "@/components/WhoUsesSection";
 
-export default function Home() {
+function LandingPageContent() {
+  const { locale } = useLanguage();
+
   return (
     <div className="flex flex-1 flex-col bg-bg text-ink">
-      <ScrollRefresher />
+      <ScrollRefresher key={`refresher-${locale}`} />
       <SiteHeader />
-      <main className="flex-1 overflow-x-clip">
+      <main key={`main-${locale}`} className="flex-1 overflow-x-clip">
         <HeroSpotlight />
         <AdShowcaseSection />
         <ConnectStrip />
@@ -39,5 +44,13 @@ export default function Home() {
       </main>
       <SiteFooter />
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <LanguageProvider>
+      <LandingPageContent />
+    </LanguageProvider>
   );
 }

@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { askAssistant, type ChatTurn, type ContentDraft } from "@/lib/ai/askAssistant";
 import { PLATFORM_LABEL, type LaunchPlatform } from "@/lib/ai/platforms";
 import MediaLibraryModal, { type MediaLibraryItem } from "@/components/dashboard/MediaLibraryModal";
+import { HiOutlineSparkles } from "react-icons/hi2";
 
 export type Message = {
   id: string;
@@ -564,10 +565,8 @@ export default function AssistantPage() {
     <div className="flex h-[calc(100dvh-5.5rem)] flex-col p-3 sm:p-5 lg:p-6">
       {/* Top Breadcrumb & Status Bar */}
       <div className="mb-3.5 flex shrink-0 items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-[#FA5252] text-white shadow-xs">
-            <span className="text-base">✨</span>
-          </div>
+        <div className="flex items-center gap-2.5">
+          <HiOutlineSparkles className="h-6 w-6 stroke-[1.75] text-slate-700 shrink-0" />
           <div>
             <h1 className="font-display text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
               AI Pazarlama Asistanı & Copilot
@@ -772,17 +771,16 @@ export default function AssistantPage() {
             {/* Empty State: Sleek ChatGPT-style Welcome */}
             {activeMessages.length === 0 && (
               <div className="flex flex-col items-center justify-center min-h-[380px] max-w-2xl mx-auto text-center px-4 py-8">
-                <div className="relative mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-tr from-rose-500 to-[#FA5252] text-white shadow-lg shadow-rose-500/20">
+                {/* Freestanding Mascot Logo without background box */}
+                <div className="relative mb-3 flex items-center justify-center">
                   <Image
                     src="/images/tentamark-mascot.png"
                     alt="Tentamark"
-                    width={44}
-                    height={44}
-                    className="object-contain"
+                    width={72}
+                    height={72}
+                    className="object-contain drop-shadow-sm transition-transform duration-200 hover:scale-105"
+                    priority
                   />
-                  <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[10px] text-white font-bold ring-2 ring-white">
-                    ✓
-                  </span>
                 </div>
 
                 <h3 className="font-display text-xl font-bold text-slate-900 sm:text-2xl">
@@ -827,8 +825,14 @@ export default function AssistantPage() {
               >
                 {/* Assistant Avatar */}
                 {m.role === "assistant" && (
-                  <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-[#FA5252] text-white font-bold text-xs shadow-xs">
-                    T
+                  <div className="relative flex h-8 w-8 shrink-0 items-center justify-center">
+                    <Image
+                      src="/images/tentamark-mascot.png"
+                      alt="Tentamark"
+                      width={28}
+                      height={28}
+                      className="object-contain"
+                    />
                   </div>
                 )}
 
@@ -949,8 +953,14 @@ export default function AssistantPage() {
             {/* Typing indicator */}
             {loading && (
               <div className="flex gap-3.5 items-center">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-[#FA5252] text-white font-bold text-xs shadow-xs">
-                  T
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center">
+                  <Image
+                    src="/images/tentamark-mascot.png"
+                    alt="Tentamark"
+                    width={28}
+                    height={28}
+                    className="object-contain animate-pulse"
+                  />
                 </div>
                 <div className="flex items-center gap-2 rounded-2xl border border-rose-100 bg-rose-50/50 px-4 py-3 text-xs text-rose-700 font-medium">
                   <span className="flex gap-1">

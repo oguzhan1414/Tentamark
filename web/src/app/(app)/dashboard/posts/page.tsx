@@ -454,18 +454,10 @@ function PostsPageContent() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5">
-              {boardMode === "kanban" && (
-                <button
-                  type="button"
-                  onClick={() => setShowDemo((v) => !v)}
-                  title="Panonun tasarımını örnek gönderilerle önizle — gerçek verini etkilemez"
-                  className={`rounded-xl px-3 py-2.5 text-xs font-semibold transition cursor-pointer ${
-                    showDemo ? "bg-rose-100 text-rose-700" : "text-slate-500 hover:bg-slate-100"
-                  }`}
-                >
-                  🧪 Örnek verileri {showDemo ? "gizle" : "göster"}
-                </button>
-              )}
+              {/* Demo-data preview toggle intentionally hidden for now —
+                  showDemo still defaults to false and the kanbanAll merge
+                  logic above is untouched, so it's a one-line JSX re-add
+                  away from coming back later. */}
 
               {reviewIds.length > 0 && (
                 <button

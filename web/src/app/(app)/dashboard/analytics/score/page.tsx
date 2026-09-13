@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useBrand } from "@/components/dashboard/BrandProvider";
 import { getAnalyticsOverview } from "@/lib/ai/getAnalyticsOverview";
 import { computeSocialScore, type SocialScoreResult } from "@/lib/analytics/socialScore";
-import AnalyticsNav from "@/components/dashboard/analytics/AnalyticsNav";
+import AnalyticsPageHeader from "@/components/dashboard/analytics/AnalyticsPageHeader";
 import {
   HiOutlineSparkles,
   HiOutlineBolt,
@@ -78,8 +78,9 @@ export default function SocialScorePage() {
   }, [brand.id]);
 
   return (
-    <div className="space-y-6 p-4 sm:p-6 lg:p-8 max-w-[1720px] mx-auto">
-      <AnalyticsNav
+    <div className="space-y-6">
+      <AnalyticsPageHeader
+        icon={HiOutlineSparkles}
         title="Sosyal Performans Skoru & AI Teşhisi"
         subtitle={`${brand.name} markasının gerçek üretim verilerinden hesaplanan sağlık puanı — yayın başarısı, strateji uyumu, üretim tutarlılığı ve hesap sağlığından oluşur.`}
       />

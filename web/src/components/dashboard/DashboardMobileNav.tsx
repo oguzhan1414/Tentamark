@@ -8,7 +8,7 @@ export default function DashboardMobileNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex gap-2 overflow-x-auto border-b border-line bg-surface px-4 py-2.5 lg:hidden">
+    <nav className="flex gap-2 overflow-x-auto border-b border-line bg-surface px-4 py-2.5 lg:hidden print:hidden">
       {NAV.map((item) => {
         const active = pathname === item.href || pathname.startsWith(item.href + "/");
         return (

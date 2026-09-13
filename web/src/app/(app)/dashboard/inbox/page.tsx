@@ -233,16 +233,10 @@ export default function InboxPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowDemo((v) => !v)}
-            title="Gelen kutusunun tasarımını örnek mesajlarla önizle — gerçek verini etkilemez"
-            className={`rounded-xl px-3.5 py-2 text-xs font-semibold transition cursor-pointer ${
-              showDemo ? "bg-rose-100 text-rose-700" : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            🧪 Örnek verileri {showDemo ? "gizle" : "göster"}
-          </button>
+          {/* Demo-data preview toggle intentionally hidden for now —
+              showDemo still defaults to false and the messages merge logic
+              above is untouched, so it's a one-line JSX re-add away from
+              coming back later. */}
           <button
             type="button"
             onClick={() => setRefreshKey((k) => k + 1)}

@@ -465,18 +465,9 @@ export default function CalendarPage() {
           filterCount={activeFilterCount}
         />
 
-        <div className="flex items-center justify-end border-b border-slate-100 bg-white px-4 py-1.5">
-          <button
-            type="button"
-            onClick={() => setShowDemo((v) => !v)}
-            title="Takvimin tasarımını örnek gönderilerle önizle — gerçek verini etkilemez"
-            className={`rounded-lg px-3 py-1 text-xs font-semibold transition cursor-pointer ${
-              showDemo ? "bg-rose-100 text-rose-700" : "text-slate-500 hover:bg-slate-100"
-            }`}
-          >
-            🧪 Örnek verileri {showDemo ? "gizle" : "göster"}
-          </button>
-        </div>
+        {/* Demo-data preview toggle intentionally hidden for now — showDemo
+            still defaults to false and the merge logic below is untouched,
+            so it's a one-line JSX re-add away from coming back later. */}
 
         {/* Main Calendar Content Area */}
         <div className="relative flex flex-1 overflow-hidden">

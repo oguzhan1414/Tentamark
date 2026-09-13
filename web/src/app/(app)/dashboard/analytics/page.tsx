@@ -8,13 +8,13 @@ import {
   getAnalyticsOverview,
   type AnalyticsOverview,
   type SocialChannelMetric,
-  type TopPostMetric,
 } from "@/lib/ai/getAnalyticsOverview";
 import { STATUS_LABEL, type UIStatus } from "@/lib/contentStatus";
 import { PLATFORM_LABEL } from "@/lib/ai/platforms";
 import PlatformIcon, { type PlatformName } from "@/components/PlatformIcon";
-import AnalyticsNav from "@/components/dashboard/analytics/AnalyticsNav";
+import AnalyticsPageHeader from "@/components/dashboard/analytics/AnalyticsPageHeader";
 import {
+  HiOutlineChartBar,
   HiOutlineUsers,
   HiOutlineDocumentText,
   HiOutlineBolt,
@@ -69,9 +69,9 @@ export default function AnalyticsPage() {
   }, [data, selectedChannel]);
 
   return (
-    <div className="space-y-6 p-4 sm:p-6 lg:p-8 max-w-[1720px] mx-auto">
-      {/* 1. Top Header with Analytics Sub-Navigation Tabs */}
-      <AnalyticsNav
+    <div className="space-y-6">
+      <AnalyticsPageHeader
+        icon={HiOutlineChartBar}
         title="Sosyal Medya Performans & Analitik"
         subtitle={`${brand.name} markasının bağlı kanallarındaki (Instagram, LinkedIn, Facebook, TikTok) kitle büyümesi ve etkileşim metrikleri.`}
       >
@@ -121,7 +121,7 @@ export default function AnalyticsPage() {
         >
           Takvime Git →
         </Link>
-      </AnalyticsNav>
+      </AnalyticsPageHeader>
 
       {loading || !data ? (
         <div className="flex h-64 items-center justify-center rounded-2xl border border-slate-200 bg-white text-xs text-slate-400">

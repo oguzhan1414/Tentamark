@@ -17,6 +17,31 @@ import type { ConnectionHealth, MediaValidation, PublishResult, SocialProvider }
 
 const GRAPH = "https://graph.instagram.com";
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// publish() used to call media_publish immediately after creating the
+// container — real testing hit "Media ID is not available" on media_publish
+// even though a status check moments later already showed FINISHED, i.e. a
+// genuine create-then-immediately-publish race against Meta's backend.
+// status_code (unlike on Threads' container object, where this exact field
+// name doesn't exist — verified live) is real here, confirmed against a
+// live test container.
+async function waitForInstagramContainer(id: string, token: string): Promise<void> {
+  const deadline = Date.now() + 45_000;
+  while (Date.now() < deadline) {
+    const res = await fetch(`${GRAPH}/v21.0/${id}?fields=status_code&access_token=${encodeURIComponent(token)}`);
+    const json = await res.json();
+    if (json.status_code === "FINISHED") return;
+    if (json.status_code === "ERROR" || json.status_code === "EXPIRED") {
+      throw new Error(`Instagram içeriği işlenirken hata oluştu (${json.status_code}).`);
+    }
+    await sleep(2_000);
+  }
+  throw new Error("Instagram içeriği 45 saniye içinde hazır olmadı.");
+}
+
 async function verifyConnection(freshToken: string): Promise<ConnectionHealth> {
   const res = await fetch(`${GRAPH}/v21.0/me?fields=id&access_token=${encodeURIComponent(freshToken)}`);
   if (!res.ok) {
@@ -71,6 +96,8 @@ export const instagramProvider: SocialProvider = {
     if (!createRes.ok || !createJson.id) {
       throw new Error(createJson?.error?.message ?? `Instagram container oluşturulamadı (HTTP ${createRes.status})`);
     }
+
+    await waitForInstagramContainer(createJson.id as string, freshToken);
 
     const publishRes = await fetch(`${GRAPH}/v21.0/${account.external_account_id}/media_publish`, {
       method: "POST",

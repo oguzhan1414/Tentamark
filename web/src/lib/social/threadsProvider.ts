@@ -24,14 +24,22 @@ function sleep(ms: number) {
 // Polling the container's own status is both what Meta's docs actually
 // recommend and finishes early for text/image instead of always waiting
 // the full 30s.
+//
+// The container's real field is `status` (FINISHED/IN_PROGRESS/ERROR/
+// EXPIRED/PUBLISHED) — `status_code` doesn't exist on this object at all.
+// Requesting a nonexistent field makes the WHOLE call fail (verified live:
+// `{"error":{"message":"Tried accessing nonexisting field (status_code)"}}`,
+// no `status` back either), so the very first version of this function
+// always polled a response with neither field present and burned the full
+// timeout on every single publish, image or not.
 async function waitForThreadsContainer(id: string, token: string): Promise<void> {
   const deadline = Date.now() + 45_000;
   while (Date.now() < deadline) {
-    const res = await fetch(`${GRAPH}/${id}?fields=status,status_code&access_token=${encodeURIComponent(token)}`);
+    const res = await fetch(`${GRAPH}/${id}?fields=status,error_message&access_token=${encodeURIComponent(token)}`);
     const json = await res.json();
-    if (json.status_code === "FINISHED") return;
-    if (json.status_code === "ERROR") {
-      throw new Error(`Threads içeriği işlenirken hata oluştu: ${json.status ?? "bilinmeyen hata"}`);
+    if (json.status === "FINISHED") return;
+    if (json.status === "ERROR" || json.status === "EXPIRED") {
+      throw new Error(`Threads içeriği işlenirken hata oluştu: ${json.error_message ?? json.status}`);
     }
     await sleep(3_000);
   }

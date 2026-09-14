@@ -151,7 +151,7 @@ export async function POST(req: NextRequest) {
       .eq("id", cp.id);
 
     await supabase.from("publish_attempts").insert({ content_platform_id: cp.id, status: "SUCCESS" });
-    await supabase.rpc("recompute_content_status", { p_content_id: cp.content_id });
+    await recomputeContentStatus(supabase, cp.content_id);
 
     return NextResponse.json({ ok: true, remoteId: result.remoteId });
   } catch (err) {
@@ -207,5 +207,36 @@ async function recordFailure(
     error_detail: info.message,
   });
 
-  await supabase.rpc("recompute_content_status", { p_content_id: contentId });
+  await recomputeContentStatus(supabase, contentId);
+}
+
+// Same logic as private.recompute_content_status() in schema.sql, done
+// directly against the tables via the admin client instead of an RPC call.
+// The RPC needs a Postgres grant to service_role AND a PostgREST schema
+// cache reload to be callable from outside the DB (supabase/patches/0029) —
+// real, but silent, failure mode: every publish succeeded while this
+// follow-up step failed unnoticed, since the original rpc() call's error
+// was never even checked, so content.status stayed stuck on APPROVED for
+// every single real publish. This has zero extra moving parts to misfire.
+async function recomputeContentStatus(supabase: ReturnType<typeof createAdminClient>, contentId: string) {
+  const { data: platforms, error } = await supabase
+    .from("content_platforms")
+    .select("status")
+    .eq("content_id", contentId);
+
+  if (error || !platforms) {
+    console.error("İçerik durumu hesaplanamadı:", error?.message);
+    return;
+  }
+
+  const total = platforms.length;
+  const published = platforms.filter((p) => p.status === "PUBLISHED").length;
+  const needsAction = platforms.filter((p) => p.status === "NEEDS_USER_ACTION").length;
+  if (total === 0 || published + needsAction < total) return; // something still in flight
+
+  const nextStatus = published === total ? "PUBLISHED" : published > 0 ? "PARTIALLY_PUBLISHED" : null;
+  if (!nextStatus) return; // every platform NEEDS_USER_ACTION — leave content.status as-is
+
+  const { error: updateError } = await supabase.from("content").update({ status: nextStatus }).eq("id", contentId);
+  if (updateError) console.error("İçerik durumu güncellenemedi:", updateError.message);
 }

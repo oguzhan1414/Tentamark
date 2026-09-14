@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentBrand } from "@/lib/brand";
 import { encryptToken } from "@/lib/crypto/tokenCipher";
@@ -62,26 +63,57 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // A random per-connection secret Telegram echoes back on every webhook
+  // POST (as X-Telegram-Bot-Api-Secret-Token) — the receiver checks it
+  // against this stored value before trusting a payload, same role
+  // X-Hub-Signature-256 plays for Meta's webhook, just a static compare
+  // instead of an HMAC since that's what Telegram's own API offers.
+  const webhookSecret = randomBytes(24).toString("hex");
+
   const supabase = await createClient();
-  const { error: saveError } = await supabase.from("social_accounts").upsert(
-    {
-      brand_id: brand.id,
-      platform: "telegram",
-      external_account_id: channelId,
-      username: channelId,
-      display_name: chat.result?.title ?? channelId,
-      avatar_url: null,
-      access_token_encrypted: encryptToken(rawToken, brand.id),
-      refresh_token_encrypted: null,
-      token_expires_at: null,
-      status: "active",
-      last_health_check_at: new Date().toISOString(),
-    },
-    { onConflict: "brand_id,platform,external_account_id" }
-  );
-  if (saveError) {
-    console.error("social_accounts upsert (telegram) failed:", saveError.message);
+  const { data: accountRow, error: saveError } = await supabase
+    .from("social_accounts")
+    .upsert(
+      {
+        brand_id: brand.id,
+        platform: "telegram",
+        external_account_id: channelId,
+        username: channelId,
+        display_name: chat.result?.title ?? channelId,
+        avatar_url: null,
+        access_token_encrypted: encryptToken(rawToken, brand.id),
+        refresh_token_encrypted: null,
+        token_expires_at: null,
+        status: "active",
+        last_health_check_at: new Date().toISOString(),
+        metadata: { webhookSecret },
+      },
+      { onConflict: "brand_id,platform,external_account_id" }
+    )
+    .select("id")
+    .single();
+  if (saveError || !accountRow) {
+    console.error("social_accounts upsert (telegram) failed:", saveError?.message);
     return NextResponse.json({ error: "Doğrulandı ama veritabanına kaydedilemedi." }, { status: 500 });
+  }
+
+  // Registers Gelen Kutu for this bot — DMs sent to it start showing up in
+  // the inbox. Best-effort on purpose: publishing (the core feature) is
+  // already saved and working regardless of whether this succeeds, so a
+  // Telegram-side hiccup here shouldn't fail the whole connection.
+  const origin = new URL(request.url).origin;
+  const webhookRes = await fetch(`${API_BASE}/bot${rawToken}/setWebhook`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      url: `${origin}/api/webhooks/telegram/${accountRow.id}`,
+      secret_token: webhookSecret,
+      allowed_updates: ["message"],
+    }),
+  });
+  const webhookJson = await webhookRes.json().catch(() => null);
+  if (!webhookJson?.ok) {
+    console.error("Telegram setWebhook failed:", webhookJson?.description);
   }
 
   return NextResponse.json({ ok: true });

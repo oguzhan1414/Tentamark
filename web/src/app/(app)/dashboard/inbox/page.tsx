@@ -10,7 +10,7 @@ import PlatformIcon from "@/components/PlatformIcon";
 
 type SocialMessage = {
   id: string;
-  platform: "instagram" | "facebook";
+  platform: "instagram" | "facebook" | "telegram";
   kind: "comment" | "dm";
   direction: "inbound" | "outbound";
   external_id: string;
@@ -249,7 +249,7 @@ export default function InboxPage() {
 
       {!loading && !hasAnyConnection && (
         <div className="mb-5 rounded-2xl border border-dashed border-amber-200 bg-amber-50/50 px-5 py-4 text-sm text-amber-900">
-          Henüz bağlı bir Instagram veya Facebook hesabın yok. Gelen kutusunun çalışması için önce{" "}
+          Henüz bağlı bir hesabın yok. Gelen kutusunun çalışması için önce{" "}
           <a href="/settings?tab=baglantilar" className="font-semibold underline">
             Bağlantılar
           </a>{" "}

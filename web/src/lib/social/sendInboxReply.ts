@@ -73,6 +73,22 @@ export async function sendInboxReply(messageId: string, replyText: string): Prom
       }
       remoteId = (json.message_id ?? json.id) as string;
     }
+  } else if (message.platform === "telegram") {
+    // Telegram DMs only — there's no "comment" kind for it yet (that would
+    // need a channel's linked discussion group, not built).
+    if (!message.external_thread_id) throw new Error("Bu DM için alıcı bilgisi eksik.");
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: message.external_thread_id, text }),
+    });
+    const json = await res.json();
+    if (!json.ok || !json.result?.message_id) {
+      throw new Error(json?.description ?? "Telegram yanıtı gönderilemedi.");
+    }
+    // Composite, matching the webhook receiver's external_id shape — a
+    // Telegram message_id alone isn't globally unique across chats.
+    remoteId = `${message.external_thread_id}:${json.result.message_id}`;
   } else {
     if (message.kind === "comment") {
       const res = await fetch(`https://graph.facebook.com/v21.0/${message.external_id}/comments`, {

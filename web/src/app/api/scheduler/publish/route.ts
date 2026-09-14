@@ -95,6 +95,11 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
 
   if (accountError || !account || !account.access_token_encrypted) {
+    // "no active account" was masking a real query error behind the exact
+    // same generic message as a genuinely missing/inactive account,
+    // impossible to tell apart after the fact — this at least gets the
+    // real reason into the logs when there is one.
+    if (accountError) console.error("social_accounts sorgusu başarısız:", accountError.message);
     await recordFailure(supabase, cp.id, cp.content_id, cp.attempt_count ?? 0, {
       failureCode: "TOKEN_EXPIRED",
       message: `Bağlı, aktif bir ${cp.platform} hesabı bulunamadı.`,

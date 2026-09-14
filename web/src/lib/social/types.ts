@@ -9,7 +9,7 @@
   actually needs them, per the doc's explicit YAGNI note.
 */
 
-export type SocialPlatform = "instagram" | "facebook" | "linkedin" | "threads" | "tiktok";
+export type SocialPlatform = "instagram" | "facebook" | "linkedin" | "threads" | "tiktok" | "pinterest" | "telegram";
 
 export type SocialAccountRecord = {
   id: string;
@@ -19,6 +19,11 @@ export type SocialAccountRecord = {
   access_token_encrypted: string;
   refresh_token_encrypted: string | null;
   token_expires_at: string | null;
+  // Free-form per-platform extras. Currently only Pinterest uses this — a
+  // Pin has no "post to my profile" concept like Instagram, every Pin
+  // requires a board_id, so the board picked/created at connect time
+  // (see connections/pinterest/callback) lives here as { defaultBoardId }.
+  metadata?: Record<string, unknown> | null;
 };
 
 // permalinkUrl is best-effort — cheap for Facebook (derivable from the post
@@ -28,6 +33,12 @@ export type SocialAccountRecord = {
 export type PublishResult = { remoteId: string; permalinkUrl?: string };
 export type ConnectionHealth = { healthy: boolean; reason?: string };
 export type MediaValidation = { valid: boolean; reason?: string };
+
+// Ordered — position in this array is the carousel/album order for
+// providers that support more than one item (currently Instagram and
+// Facebook). Providers without carousel capability just read media[0] and
+// ignore the rest.
+export type PublishMediaItem = { url: string; type: "image" | "video" };
 
 export interface SocialProvider {
   readonly platform: SocialPlatform;
@@ -43,18 +54,17 @@ export interface SocialProvider {
 
   /** Publisher never stores tokens itself — the caller passes the freshly
    *  decrypted token in on every call (OpenPost's pattern, §12.7).
-   *  mediaUrl is optional because not every platform needs it (Threads and
-   *  Facebook both accept text-only), but Instagram requires one — its
-   *  provider throws if it's missing rather than silently posting nothing.
-   *  mediaType disambiguates image vs video for providers that accept
-   *  either (Threads, Facebook) — sourced from media.file_type, not guessed
-   *  from the URL, since the caller already has the real mimetype on hand. */
+   *  media is optional/empty because not every platform needs it (Threads
+   *  and Facebook both accept text-only), but Instagram requires at least
+   *  one item — its provider throws if the array is empty rather than
+   *  silently posting nothing. Order matters: it's the carousel/album order
+   *  for providers that declare capabilities.carousel; other providers use
+   *  only media[0] and ignore the rest. */
   publish(args: {
     account: SocialAccountRecord;
     freshToken: string;
     caption: string;
-    mediaUrl?: string;
-    mediaType?: "image" | "video";
+    media?: PublishMediaItem[];
   }): Promise<PublishResult>;
 
   verifyConnection(args: { account: SocialAccountRecord; freshToken: string }): Promise<ConnectionHealth>;

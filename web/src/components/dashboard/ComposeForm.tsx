@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useBrand } from "@/components/dashboard/BrandProvider";
 import { createClient } from "@/lib/supabase/client";
@@ -10,6 +10,7 @@ import { analyzePostHookAndVirality, type HookAnalysisResult } from "@/lib/ai/an
 import { ALL_PLATFORMS } from "@/lib/ai/platforms";
 import PlatformIcon, { platformLabel, type PlatformName } from "@/components/PlatformIcon";
 import MediaLibraryModal, { type MediaLibraryItem } from "@/components/dashboard/MediaLibraryModal";
+import ComposePreviewCard from "@/components/dashboard/ComposePreviewCard";
 
 const CHAR_LIMIT: Record<PlatformName, number> = {
   instagram: 2200,
@@ -20,6 +21,7 @@ const CHAR_LIMIT: Record<PlatformName, number> = {
   x: 280,
   pinterest: 500,
   threads: 500,
+  telegram: 1024,
 };
 
 const IDEA_CHIPS = [
@@ -65,6 +67,34 @@ function dataUrlToBlob(dataUrl: string): { blob: Blob; contentType: string } {
 type Mode = "ai" | "manual";
 type GenState = "idle" | "generating" | "ready" | "submitted";
 
+// Ordered — index is carousel position for Instagram/Facebook (see
+// ComposePreviewCard and metaProvider/instagramProvider's real carousel
+// support). Always images: video only ever flows through the separate
+// TikTok single-video path below (requiresVideo), never through this list.
+type ComposeMediaItem =
+  | { kind: "existing"; media: MediaLibraryItem }
+  | { kind: "upload"; file: File; previewUrl: string }
+  | { kind: "generated"; dataUrl: string };
+
+// Instagram's real carousel cap (Meta Graph API) — used as the shared limit
+// since Facebook's album flow comfortably fits under it too.
+const MAX_MEDIA_ITEMS = 10;
+
+function mediaItemPreviewUrl(item: ComposeMediaItem): string {
+  if (item.kind === "existing") return item.media.file_url;
+  if (item.kind === "generated") return item.dataUrl;
+  return item.previewUrl;
+}
+
+// Always false today — the !requiresVideo add flow (file input, library
+// multi-select) is locked to images only — but kept real instead of
+// hardcoded so this doesn't quietly lie if that ever changes.
+function mediaItemIsVideo(item: ComposeMediaItem): boolean {
+  if (item.kind === "existing") return item.media.file_type.startsWith("video/");
+  if (item.kind === "upload") return item.file.type.startsWith("video/");
+  return false;
+}
+
 /*
   The one real content studio in the app — reachable exclusively through
   ComposeModal.tsx (see useComposeModal() in ComposeModalProvider.tsx). Used
@@ -77,6 +107,7 @@ type GenState = "idle" | "generating" | "ready" | "submitted";
 export default function ComposeForm({
   onSubmitted,
   onNavigate,
+  onDirtyChange,
   initialCampaignId,
   initialDate,
   initialHour,
@@ -89,6 +120,11 @@ export default function ComposeForm({
   // without this, clicking "Takvimi Gör" would navigate to Calendar with the
   // modal still floating on top of it.
   onNavigate?: () => void;
+  // Lets ComposeModal ask before discarding real in-progress work — a
+  // stray click on the modal's backdrop (real, clickable space either side
+  // of the max-w-6xl form on any wider screen) used to close instantly with
+  // no confirmation and no way to get a typed idea or generated drafts back.
+  onDirtyChange?: (dirty: boolean) => void;
   // Pre-fills from whoever opened the modal (a campaign card's "+ İçerik
   // Üret", a Calendar day cell's "+") — passed as props now, not read from
   // the URL, since every caller opens this as a modal via useComposeModal()
@@ -96,9 +132,9 @@ export default function ComposeForm({
   initialCampaignId?: string;
   initialDate?: string;
   initialHour?: number;
-  // Set when opened by dragging a Medya panel thumbnail onto a calendar day
-  // — skips the manual attach step entirely.
-  initialMedia?: MediaLibraryItem;
+  // Set when opened by dragging one or more Medya panel thumbnails onto a
+  // calendar day — skips the manual attach step entirely, in publish order.
+  initialMedia?: MediaLibraryItem[];
 } = {}) {
   const brand = useBrand();
   const supabase = useMemo(() => createClient(), []);
@@ -148,10 +184,13 @@ export default function ComposeForm({
   const [drafts, setDrafts] = useState<GeneratedDrafts | null>(null);
   const [activePlatformTab, setActivePlatformTab] = useState<LaunchPlatform>("instagram");
 
-  // Image generation state
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [mediaFile, setMediaFile] = useState<File | null>(null);
-  const [existingMedia, setExistingMedia] = useState<MediaLibraryItem | null>(initialMedia ?? null);
+  // Media state — an ordered list for the (image-only) Instagram/Facebook
+  // carousel case, plus a completely separate single-video slot for TikTok
+  // (requiresVideo below), which never shares state with the carousel list.
+  const [mediaItems, setMediaItems] = useState<ComposeMediaItem[]>(
+    (initialMedia ?? []).map((media) => ({ kind: "existing" as const, media }))
+  );
+  const [tiktokVideoFile, setTiktokVideoFile] = useState<File | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
@@ -174,22 +213,69 @@ export default function ComposeForm({
   // switches the media picker from photo to video mode.
   const requiresVideo = selectedPlatforms.includes("tiktok");
 
-  // Local media preview
-  const mediaPreview = useMemo(() => {
-    if (existingMedia) return existingMedia.file_url;
-    if (imageUrl) return imageUrl;
-    if (mediaFile) return URL.createObjectURL(mediaFile);
-    return null;
-  }, [existingMedia, imageUrl, mediaFile]);
-  const mediaPreviewIsVideo = existingMedia
-    ? existingMedia.file_type.startsWith("video/")
-    : !imageUrl && Boolean(mediaFile?.type.startsWith("video/"));
-
+  // TikTok's own single-video preview — kept on its own useMemo/cleanup pair
+  // since, unlike mediaItems' upload entries, this object URL is created on
+  // every re-derivation rather than stored once on the item.
+  const tiktokVideoPreviewUrl = useMemo(
+    () => (tiktokVideoFile ? URL.createObjectURL(tiktokVideoFile) : null),
+    [tiktokVideoFile]
+  );
   useEffect(() => {
     return () => {
-      if (mediaFile && mediaPreview && !imageUrl && !existingMedia) URL.revokeObjectURL(mediaPreview);
+      if (tiktokVideoPreviewUrl) URL.revokeObjectURL(tiktokVideoPreviewUrl);
     };
-  }, [mediaFile, mediaPreview, imageUrl, existingMedia]);
+  }, [tiktokVideoPreviewUrl]);
+
+  // Local media preview — first carousel item, or the TikTok video.
+  const mediaPreview = requiresVideo
+    ? tiktokVideoPreviewUrl
+    : mediaItems.length > 0
+      ? mediaItemPreviewUrl(mediaItems[0])
+      : null;
+  const mediaPreviewIsVideo = requiresVideo && Boolean(tiktokVideoFile);
+
+  // Revokes every still-attached upload's object URL on unmount (removal
+  // itself revokes eagerly — see removeMediaItem) via a ref so this doesn't
+  // need to re-run, and doesn't revoke, on every mediaItems change.
+  const mediaItemsRef = useRef(mediaItems);
+  useEffect(() => {
+    mediaItemsRef.current = mediaItems;
+  }, [mediaItems]);
+  useEffect(() => {
+    return () => {
+      mediaItemsRef.current.forEach((item) => {
+        if (item.kind === "upload") URL.revokeObjectURL(item.previewUrl);
+      });
+    };
+  }, []);
+
+  function removeMediaItem(index: number) {
+    setMediaItems((prev) => {
+      const target = prev[index];
+      if (target?.kind === "upload") URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
+  function moveMediaItem(from: number, to: number) {
+    setMediaItems((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  }
+
+  // Anything worth confirming before a click on ComposeModal's backdrop (or
+  // Escape) throws it away. Once actually submitted there's nothing left to
+  // lose, so "submitted" is deliberately excluded even though drafts/idea
+  // are still technically populated at that point.
+  const hasUnsavedChanges =
+    state !== "submitted" && Boolean(idea.trim() || drafts || mediaItems.length > 0 || tiktokVideoFile);
+
+  useEffect(() => {
+    onDirtyChange?.(hasUnsavedChanges);
+  }, [hasUnsavedChanges, onDirtyChange]);
 
   useEffect(() => {
     let ignore = false;
@@ -220,7 +306,16 @@ export default function ComposeForm({
       setConnectedPlatforms(connected);
       // Default to selecting every connected platform — the user narrows
       // down from there, same as before this only offered the full list.
-      setSelectedPlatforms(connected);
+      // Exception: a drag-and-drop from Calendar's Medya panel that
+      // pre-attached photos (initialMedia) shouldn't silently auto-select
+      // TikTok too. All platforms on one piece of content share the same
+      // content_media set, so TikTok requiring a real video would force the
+      // whole media picker into video-only mode — making the photos the
+      // user just dragged in disappear from view with zero explanation.
+      const droppedOnlyPhotos =
+        initialMedia !== undefined && initialMedia.length > 0 && initialMedia.every((m) => !m.file_type.startsWith("video/"));
+      const defaultPlatforms = droppedOnlyPhotos ? connected.filter((p) => p !== "tiktok") : connected;
+      setSelectedPlatforms(defaultPlatforms);
       // Functional-updater form (reads the latest value from React state,
       // not a closure) so this effect doesn't need activePlatformTab as a
       // dependency — adding it would re-run this fetch on every tab switch.
@@ -232,7 +327,7 @@ export default function ComposeForm({
     return () => {
       ignore = true;
     };
-  }, [supabase, brand.id]);
+  }, [supabase, brand.id, initialMedia]);
 
   // Fires once per mount — proposing a fresh idea on every keystroke would
   // be noise, not help. Inlined directly (not a call to an outer named
@@ -338,11 +433,39 @@ export default function ComposeForm({
       if (!next.includes(activePlatformTab) && next.length > 0) {
         setActivePlatformTab(next[0]);
       }
+      // The preview switcher only ever offers currently-selected platforms
+      // (see previewablePlatforms) — without this, unchecking the platform
+      // that happened to be previewed left previewPlatform pointing at
+      // something no longer in the switcher at all.
+      if (!next.includes(previewPlatform as LaunchPlatform) && next.length > 0) {
+        setPreviewPlatform(next[0]);
+      }
       return next;
     });
   }
 
   // AI Text & Multi-platform generation
+  // Resolves whatever media is currently attached into something the vision
+  // model can actually fetch — a real URL for a library pick or an
+  // AI-generated image, or a base64 data URI for a freshly-picked local
+  // file that hasn't been uploaded anywhere yet (Server Actions can carry
+  // that inline — see next.config.ts's bumped bodySizeLimit). Video is
+  // skipped; this is caption generation from an image, not frame analysis.
+  async function resolveMediaForVision(): Promise<string | undefined> {
+    if (requiresVideo || mediaItems.length === 0) return undefined;
+    const first = mediaItems[0];
+    if (first.kind === "existing") {
+      return first.media.file_type.startsWith("video/") ? undefined : first.media.file_url;
+    }
+    if (first.kind === "generated") return first.dataUrl;
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(first.file);
+    });
+  }
+
   async function generate() {
     if (!idea.trim() || selectedPlatforms.length === 0) return;
     setState("generating");
@@ -351,7 +474,8 @@ export default function ComposeForm({
       const toneObj = TONE_OPTIONS.find((t) => t.id === selectedTone);
       const enhancedPrompt = `${idea}\n(Marka Tonu: ${toneObj?.label || "Doğal"}, Hedef: Yüksek Etkileşim ve 2 saniyelik güçlü kanca)`;
 
-      const result = await generateDrafts(brand.id, enhancedPrompt, selectedPlatforms, format);
+      const visionMediaUrl = await resolveMediaForVision();
+      const result = await generateDrafts(brand.id, enhancedPrompt, selectedPlatforms, format, visionMediaUrl);
       setDrafts(result);
 
       // Auto-extract or suggest hook from the first draft
@@ -367,10 +491,13 @@ export default function ComposeForm({
     }
   }
 
-  // AI Image generation call
+  // AI Image generation call — appends to the carousel list rather than
+  // replacing it, consistent with file upload and library picks (all three
+  // are just different ways to add another item), correctable via each
+  // thumbnail's remove button.
   async function triggerImageGeneration() {
     const concept = visualPrompt.trim() || hook.trim() || idea.trim();
-    if (!concept) return;
+    if (!concept || mediaItems.length >= MAX_MEDIA_ITEMS) return;
 
     setGeneratingImage(true);
     setImageError(null);
@@ -392,9 +519,7 @@ export default function ComposeForm({
         throw new Error(data.error || "Görsel üretilemedi.");
       }
 
-      setImageUrl(data.dataUrl);
-      setMediaFile(null);
-      setExistingMedia(null);
+      setMediaItems((prev) => (prev.length >= MAX_MEDIA_ITEMS ? prev : [...prev, { kind: "generated", dataUrl: data.dataUrl }]));
     } catch (err) {
       setImageError(err instanceof Error ? err.message : "Görsel üretilirken bir hata oluştu.");
     } finally {
@@ -411,7 +536,7 @@ export default function ComposeForm({
   // Submit to Supabase
   async function submit(targetStatus: "DRAFT" | "NEEDS_REVIEW") {
     if (!drafts || !scheduledAt) return;
-    if (requiresVideo && !mediaFile?.type.startsWith("video/")) {
+    if (requiresVideo && !tiktokVideoFile?.type.startsWith("video/")) {
       setSubmitError("TikTok seçiliyken bir video dosyası yüklemen gerekiyor — TikTok metin veya fotoğrafla paylaşım yapamıyor.");
       return;
     }
@@ -423,56 +548,86 @@ export default function ComposeForm({
         data: { user },
       } = await supabase.auth.getUser();
 
-      let mediaId: string | null = null;
+      // Resolve every attached item into a real `media` row id, in order —
+      // that order becomes content_media.position, which is the carousel
+      // order Instagram/Facebook publish in (see metaProvider/
+      // instagramProvider). TikTok's single video is a completely separate
+      // slot (tiktokVideoFile), never mixed into mediaItems.
+      const mediaIds: string[] = [];
 
-      // Handle a library reuse, an AI generated base64 image, or an uploaded file
-      if (existingMedia) {
-        mediaId = existingMedia.id;
-      } else if (imageUrl && imageUrl.startsWith("data:")) {
-        const { blob, contentType } = dataUrlToBlob(imageUrl);
-        const ext = contentType === "image/png" ? "png" : "jpg";
-        const path = `${brand.id}/${crypto.randomUUID()}-ai-compose.${ext}`;
+      if (requiresVideo) {
+        if (tiktokVideoFile) {
+          const path = `${brand.id}/${crypto.randomUUID()}-${tiktokVideoFile.name}`;
+          const { error: uploadError } = await supabase.storage.from("media").upload(path, tiktokVideoFile);
+          if (uploadError) throw new Error(`Dosya yüklenemedi: ${uploadError.message}`);
 
-        const { error: uploadError } = await supabase.storage.from("media").upload(path, blob, { contentType });
-        if (uploadError) throw new Error(`Görsel yüklenemedi: ${uploadError.message}`);
+          const { data: publicUrl } = supabase.storage.from("media").getPublicUrl(path);
+          const { data: mediaRow, error: mediaError } = await supabase
+            .from("media")
+            .insert({
+              brand_id: brand.id,
+              file_name: tiktokVideoFile.name,
+              file_url: publicUrl.publicUrl,
+              file_type: tiktokVideoFile.type,
+              file_size: tiktokVideoFile.size,
+            })
+            .select("id")
+            .single();
+          if (mediaError || !mediaRow) throw new Error(mediaError?.message ?? "Medya kaydı oluşturulamadı.");
+          mediaIds.push(mediaRow.id);
+        }
+      } else {
+        for (const item of mediaItems) {
+          if (item.kind === "existing") {
+            mediaIds.push(item.media.id);
+            continue;
+          }
 
-        const { data: publicUrl } = supabase.storage.from("media").getPublicUrl(path);
+          if (item.kind === "generated") {
+            const { blob, contentType } = dataUrlToBlob(item.dataUrl);
+            const ext = contentType === "image/png" ? "png" : "jpg";
+            const path = `${brand.id}/${crypto.randomUUID()}-ai-compose.${ext}`;
 
-        const { data: mediaRow, error: mediaError } = await supabase
-          .from("media")
-          .insert({
-            brand_id: brand.id,
-            file_name: `ai-post-${Date.now()}.${ext}`,
-            file_url: publicUrl.publicUrl,
-            file_type: contentType,
-            file_size: blob.size,
-          })
-          .select("id")
-          .single();
+            const { error: uploadError } = await supabase.storage.from("media").upload(path, blob, { contentType });
+            if (uploadError) throw new Error(`Görsel yüklenemedi: ${uploadError.message}`);
 
-        if (mediaError || !mediaRow) throw new Error(mediaError?.message ?? "Medya kaydı oluşturulamadı.");
-        mediaId = mediaRow.id;
-      } else if (mediaFile) {
-        const path = `${brand.id}/${crypto.randomUUID()}-${mediaFile.name}`;
-        const { error: uploadError } = await supabase.storage.from("media").upload(path, mediaFile);
-        if (uploadError) throw new Error(`Dosya yüklenemedi: ${uploadError.message}`);
+            const { data: publicUrl } = supabase.storage.from("media").getPublicUrl(path);
+            const { data: mediaRow, error: mediaError } = await supabase
+              .from("media")
+              .insert({
+                brand_id: brand.id,
+                file_name: `ai-post-${Date.now()}.${ext}`,
+                file_url: publicUrl.publicUrl,
+                file_type: contentType,
+                file_size: blob.size,
+              })
+              .select("id")
+              .single();
+            if (mediaError || !mediaRow) throw new Error(mediaError?.message ?? "Medya kaydı oluşturulamadı.");
+            mediaIds.push(mediaRow.id);
+            continue;
+          }
 
-        const { data: publicUrl } = supabase.storage.from("media").getPublicUrl(path);
+          // item.kind === "upload"
+          const path = `${brand.id}/${crypto.randomUUID()}-${item.file.name}`;
+          const { error: uploadError } = await supabase.storage.from("media").upload(path, item.file);
+          if (uploadError) throw new Error(`Dosya yüklenemedi: ${uploadError.message}`);
 
-        const { data: mediaRow, error: mediaError } = await supabase
-          .from("media")
-          .insert({
-            brand_id: brand.id,
-            file_name: mediaFile.name,
-            file_url: publicUrl.publicUrl,
-            file_type: mediaFile.type,
-            file_size: mediaFile.size,
-          })
-          .select("id")
-          .single();
-
-        if (mediaError || !mediaRow) throw new Error(mediaError?.message ?? "Medya kaydı oluşturulamadı.");
-        mediaId = mediaRow.id;
+          const { data: publicUrl } = supabase.storage.from("media").getPublicUrl(path);
+          const { data: mediaRow, error: mediaError } = await supabase
+            .from("media")
+            .insert({
+              brand_id: brand.id,
+              file_name: item.file.name,
+              file_url: publicUrl.publicUrl,
+              file_type: item.file.type,
+              file_size: item.file.size,
+            })
+            .select("id")
+            .single();
+          if (mediaError || !mediaRow) throw new Error(mediaError?.message ?? "Medya kaydı oluşturulamadı.");
+          mediaIds.push(mediaRow.id);
+        }
       }
 
       const scheduledIso = new Date(scheduledAt).toISOString();
@@ -503,8 +658,11 @@ export default function ComposeForm({
 
       if (contentError || !contentRow) throw new Error(contentError?.message ?? "İçerik kaydedilemedi.");
 
-      if (mediaId) {
-        await supabase.from("content_media").insert({ content_id: contentRow.id, media_id: mediaId, position: 0 });
+      if (mediaIds.length > 0) {
+        const { error: mediaLinkError } = await supabase
+          .from("content_media")
+          .insert(mediaIds.map((id, position) => ({ content_id: contentRow.id, media_id: id, position })));
+        if (mediaLinkError) throw new Error(mediaLinkError.message);
       }
 
       // Insert platform versions
@@ -539,15 +697,26 @@ export default function ComposeForm({
     setIdea("");
     setHook("");
     setVisualPrompt("");
-    setImageUrl(null);
-    setMediaFile(null);
-    setExistingMedia(null);
+    mediaItems.forEach((item) => {
+      if (item.kind === "upload") URL.revokeObjectURL(item.previewUrl);
+    });
+    setMediaItems([]);
+    setTiktokVideoFile(null);
     setScheduledAt(defaultScheduleValue());
     setCampaignId("");
     setTags([]);
     setTagInput("");
     setFormat("post");
   }
+
+  // What the preview switcher actually offers — the platforms this post
+  // targets once any are picked, or every connected platform before that
+  // (never LinkedIn/X, which this app can't publish to at all — the switcher
+  // used to hardcode those in regardless of what was actually selected).
+  const previewablePlatforms = useMemo<PlatformName[]>(() => {
+    if (selectedPlatforms.length > 0) return selectedPlatforms as PlatformName[];
+    return (connectedPlatforms ?? []) as PlatformName[];
+  }, [selectedPlatforms, connectedPlatforms]);
 
   // Live active preview text
   const currentPreviewText = useMemo(() => {
@@ -563,6 +732,17 @@ export default function ComposeForm({
       "Burada yayınlanacak harika bir içerik metni yer alacak. Soldaki alana bir konu yazıp 'AI ile Üret' butonuna tıklayarak metin ve görselinizi oluşturabilirsiniz. ✨"
     );
   }, [drafts, previewPlatform, idea]);
+
+  // Every attached item, in order — ComposePreviewCard decides for itself
+  // whether the active preview platform actually publishes more than the
+  // first one (Instagram/Facebook do, Threads/TikTok don't), so it gets the
+  // real list rather than a pre-collapsed single URL.
+  const previewMedia = useMemo(() => {
+    if (requiresVideo) {
+      return tiktokVideoPreviewUrl ? [{ url: tiktokVideoPreviewUrl, isVideo: true }] : [];
+    }
+    return mediaItems.map((item) => ({ url: mediaItemPreviewUrl(item), isVideo: mediaItemIsVideo(item) }));
+  }, [requiresVideo, tiktokVideoPreviewUrl, mediaItems]);
 
   return (
     <div className="space-y-6">
@@ -911,19 +1091,35 @@ export default function ComposeForm({
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                     <span>{requiresVideo ? "🎬" : "🎨"}</span>
-                    <span>{requiresVideo ? "Video Yükleme" : "AI Görsel Üretim Motoru"}</span>
+                    <span>{requiresVideo ? "Video Yükleme" : "Medya"}</span>
                   </span>
-                  {imageUrl && (
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
-                      Görsel Bağlandı ✓
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    {!requiresVideo && mediaItems.length > 1 && (
+                      <span className="text-[10px] font-bold text-slate-600 bg-slate-200/70 px-2 py-0.5 rounded-md">
+                        {mediaItems.length} / {MAX_MEDIA_ITEMS}
+                      </span>
+                    )}
+                    {mediaPreview && !mediaPreviewIsVideo && (
+                      <span
+                        title="AI, metni üretirken ilk görseli gerçekten inceleyip içeriğine göre yazacak."
+                        className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md"
+                      >
+                        ✨ AI görseli görüyor
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {requiresVideo && (
                   <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2">
                     TikTok metin veya fotoğrafla paylaşım yapamıyor — Direct Post için gerçek bir video dosyası
                     yüklemen gerekiyor (AI görsel üretimi burada kullanılamaz).
+                  </p>
+                )}
+
+                {!requiresVideo && mediaItems.length > 1 && selectedPlatforms.includes("threads") && (
+                  <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2">
+                    Threads carousel&apos;i desteklemiyor — bu platformda yalnızca ilk görsel paylaşılacak.
                   </p>
                 )}
 
@@ -940,7 +1136,7 @@ export default function ComposeForm({
                     <button
                       type="button"
                       onClick={triggerImageGeneration}
-                      disabled={generatingImage || (!visualPrompt.trim() && !idea.trim())}
+                      disabled={generatingImage || (!visualPrompt.trim() && !idea.trim()) || mediaItems.length >= MAX_MEDIA_ITEMS}
                       className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition disabled:opacity-50 shrink-0"
                     >
                       {generatingImage ? (
@@ -965,61 +1161,142 @@ export default function ComposeForm({
                   <p className="text-[11px] text-red-600 bg-red-50 p-2 rounded-lg">{imageError}</p>
                 )}
 
-                {/* Media Preview / File Upload Option */}
-                <div className="flex items-center gap-3">
-                  {mediaPreview ? (
-                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-200 shadow-xs">
-                      {mediaPreviewIsVideo ? (
+                {requiresVideo ? (
+                  <div className="flex items-center gap-3">
+                    {mediaPreview && (
+                      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-200 shadow-xs">
                         <video src={mediaPreview} muted className="h-full w-full object-cover" />
-                      ) : (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={mediaPreview} alt="Preview" className="h-full w-full object-cover" />
-                      )}
-                    </div>
-                  ) : null}
-
-                  <label
-                    htmlFor="compose_media"
-                    className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-2 px-3 text-xs font-medium text-slate-600 hover:border-rose-300 hover:text-rose-600 transition"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
-                    <span>
-                      {mediaFile
-                        ? mediaFile.name
-                        : existingMedia
-                          ? existingMedia.file_name
-                          : requiresVideo
-                            ? "Video Yükle (TikTok için zorunlu)"
-                            : "veya Bilgisayardan Fotoğraf Yükle"}
-                    </span>
-                    <input
-                      id="compose_media"
-                      type="file"
-                      accept={requiresVideo ? "video/mp4,video/webm" : "image/*"}
-                      className="sr-only"
-                      onChange={(e) => {
-                        setMediaFile(e.target.files?.[0] ?? null);
-                        setImageUrl(null);
-                        setExistingMedia(null);
-                      }}
-                    />
-                  </label>
-
-                  {!requiresVideo && (
-                    <button
-                      type="button"
-                      onClick={() => setLibraryOpen(true)}
-                      className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 transition cursor-pointer"
+                      </div>
+                    )}
+                    <label
+                      htmlFor="compose_media_video"
+                      className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-2 px-3 text-xs font-medium text-slate-600 hover:border-rose-300 hover:text-rose-600 transition"
                     >
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                       </svg>
-                      <span>Kütüphaneden Seç</span>
-                    </button>
-                  )}
-                </div>
+                      <span>{tiktokVideoFile ? tiktokVideoFile.name : "Video Yükle (TikTok için zorunlu)"}</span>
+                      <input
+                        id="compose_media_video"
+                        type="file"
+                        accept="video/mp4,video/webm"
+                        className="sr-only"
+                        onChange={(e) => setTiktokVideoFile(e.target.files?.[0] ?? null)}
+                      />
+                    </label>
+                  </div>
+                ) : (
+                  <>
+                    {/* Carousel thumbnail strip — order here is publish order
+                        for Instagram/Facebook. Each tile is individually
+                        removable; ‹ › nudge it earlier/later. */}
+                    {mediaItems.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {mediaItems.map((item, index) => (
+                          <div
+                            key={index}
+                            className="group relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-200 shadow-xs bg-slate-100"
+                          >
+                            {mediaItemIsVideo(item) ? (
+                              <video src={mediaItemPreviewUrl(item)} muted className="h-full w-full object-cover" />
+                            ) : (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={mediaItemPreviewUrl(item)} alt="" className="h-full w-full object-cover" />
+                            )}
+                            {mediaItems.length > 1 && (
+                              <span className="absolute left-1 top-1 rounded bg-black/60 px-1 text-[9px] font-bold text-white">
+                                {index + 1}
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => removeMediaItem(index)}
+                              aria-label="Görseli kaldır"
+                              className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-[10px] leading-none text-white opacity-0 transition group-hover:opacity-100 cursor-pointer"
+                            >
+                              ✕
+                            </button>
+                            {mediaItems.length > 1 && (
+                              <div className="absolute inset-x-0 bottom-0 flex justify-between px-0.5 pb-0.5 opacity-0 transition group-hover:opacity-100">
+                                <button
+                                  type="button"
+                                  onClick={() => moveMediaItem(index, index - 1)}
+                                  disabled={index === 0}
+                                  aria-label="Öne al"
+                                  className="flex h-4 w-4 items-center justify-center rounded bg-black/60 text-[10px] leading-none text-white disabled:opacity-0 cursor-pointer"
+                                >
+                                  ‹
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => moveMediaItem(index, index + 1)}
+                                  disabled={index === mediaItems.length - 1}
+                                  aria-label="Sona al"
+                                  className="flex h-4 w-4 items-center justify-center rounded bg-black/60 text-[10px] leading-none text-white disabled:opacity-0 cursor-pointer"
+                                >
+                                  ›
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-3">
+                      <label
+                        htmlFor="compose_media"
+                        aria-disabled={mediaItems.length >= MAX_MEDIA_ITEMS}
+                        className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-2 px-3 text-xs font-medium text-slate-600 hover:border-rose-300 hover:text-rose-600 transition aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:border-slate-300 aria-disabled:hover:text-slate-600"
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        <span>
+                          {mediaItems.length >= MAX_MEDIA_ITEMS
+                            ? `En fazla ${MAX_MEDIA_ITEMS} görsel`
+                            : mediaItems.length > 0
+                              ? "Daha fazla fotoğraf ekle"
+                              : "Bilgisayardan Fotoğraf Yükle"}
+                        </span>
+                        <input
+                          id="compose_media"
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          disabled={mediaItems.length >= MAX_MEDIA_ITEMS}
+                          className="sr-only"
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files ?? []);
+                            e.target.value = "";
+                            if (files.length === 0) return;
+                            setMediaItems((prev) => {
+                              const remaining = MAX_MEDIA_ITEMS - prev.length;
+                              const toAdd = files.slice(0, remaining).map((file) => ({
+                                kind: "upload" as const,
+                                file,
+                                previewUrl: URL.createObjectURL(file),
+                              }));
+                              return [...prev, ...toAdd];
+                            });
+                          }}
+                        />
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={() => setLibraryOpen(true)}
+                        disabled={mediaItems.length >= MAX_MEDIA_ITEMS}
+                        className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-rose-50"
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span>Kütüphaneden Seç</span>
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Generate Drafts Trigger */}
@@ -1277,123 +1554,36 @@ export default function ComposeForm({
                 Canlı Önizleme Simülatörü
               </span>
 
-              {/* Preview Platform Switcher */}
-              <div className="flex items-center rounded-xl border border-slate-200 bg-white p-1 shadow-xs">
-                {(["instagram", "linkedin", "facebook", "x"] as PlatformName[]).map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setPreviewPlatform(p)}
-                    className={`flex h-7 w-7 items-center justify-center rounded-lg transition ${
-                      previewPlatform === p ? "bg-slate-900 text-white shadow-xs" : "text-slate-500 hover:text-slate-900"
-                    }`}
-                    title={platformLabel(p)}
-                  >
-                    <PlatformIcon name={p} className="h-3.5 w-3.5" />
-                  </button>
-                ))}
-              </div>
+              {/* Preview Platform Switcher — the platforms this post will
+                  actually go out to, not a fixed unrelated list (it used to
+                  offer LinkedIn/X, neither of which this app can even
+                  publish to). Falls back to every connected platform before
+                  any are selected, so the switcher is never empty. */}
+              {previewablePlatforms.length > 0 && (
+                <div className="flex items-center rounded-xl border border-slate-200 bg-white p-1 shadow-xs">
+                  {previewablePlatforms.map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPreviewPlatform(p)}
+                      className={`flex h-7 w-7 items-center justify-center rounded-lg transition ${
+                        previewPlatform === p ? "bg-slate-900 text-white shadow-xs" : "text-slate-500 hover:text-slate-900"
+                      }`}
+                      title={platformLabel(p)}
+                    >
+                      <PlatformIcon name={p} className="h-3.5 w-3.5" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Realistic Social Phone / Card Mockup */}
-            <div className="overflow-hidden rounded-[26px] border border-slate-200/90 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
-              {/* Device Header Bar */}
-              <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 bg-slate-50/50">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-rose-500 to-[#FA5252] font-bold text-xs text-white shadow-2xs">
-                    {brand.name[0]?.toUpperCase() || "A"}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1">
-                      <span className="font-display text-xs font-bold text-slate-900">{brand.name}</span>
-                      <svg className="h-3.5 w-3.5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <p className="text-[10px] text-slate-400">Sponsorlu · Şimdi</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1.5 text-slate-400">
-                  <span className="text-xs">•••</span>
-                </div>
-              </div>
-
-              {/* Mockup Media Image */}
-              <div className="relative aspect-[4/3] w-full bg-slate-100 overflow-hidden">
-                {mediaPreview ? (
-                  mediaPreviewIsVideo ? (
-                    <video src={mediaPreview} muted loop autoPlay className="h-full w-full object-cover" />
-                  ) : (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={mediaPreview} alt="" className="h-full w-full object-cover" />
-                  )
-                ) : (
-                  <div className="flex h-full w-full flex-col items-center justify-center p-6 text-center bg-slate-50">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-rose-500 shadow-sm mb-2">
-                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <span className="text-xs font-bold text-slate-700">Canlı Görsel Alanı</span>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Görsel ürettiğinizde veya yüklediğinizde anında burada canlanacak.
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Engagement Icons Row */}
-              <div className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4 text-slate-800">
-                    {/* Heart */}
-                    <button type="button" className="hover:text-red-500 transition">
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                      </svg>
-                    </button>
-                    {/* Comment */}
-                    <button type="button" className="hover:text-rose-600 transition">
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
-                    </button>
-                    {/* Share */}
-                    <button type="button" className="hover:text-rose-600 transition">
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  {/* Bookmark */}
-                  <button type="button" className="text-slate-800 hover:text-rose-600 transition">
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                    </svg>
-                  </button>
-                </div>
-
-                <div className="text-[11px] font-bold text-slate-900">
-                  1,428 beğenme
-                </div>
-
-                {/* Caption in Simulator */}
-                <div className="text-xs text-slate-800 leading-relaxed space-y-1">
-                  <p className="whitespace-pre-line">
-                    <span className="font-bold text-slate-900 mr-1.5">{brand.name}</span>
-                    {currentPreviewText}
-                  </p>
-                </div>
-
-                {/* Comment Bar Mockup */}
-                <div className="border-t border-slate-100 pt-2.5 flex items-center justify-between text-[11px] text-slate-400">
-                  <span>Yorum ekle...</span>
-                  <span className="text-rose-600 font-bold cursor-pointer">Paylaş</span>
-                </div>
-              </div>
-            </div>
+            <ComposePreviewCard
+              platform={previewPlatform}
+              brandName={brand.name}
+              caption={currentPreviewText}
+              media={previewMedia}
+            />
 
             {/* Quick Helper Note */}
             <div className="rounded-xl border border-slate-100 bg-white p-3.5 text-xs text-slate-500 shadow-2xs">
@@ -1407,11 +1597,11 @@ export default function ComposeForm({
       {libraryOpen && (
         <MediaLibraryModal
           brandId={brand.id}
+          multiple
+          maxSelectable={MAX_MEDIA_ITEMS - mediaItems.length}
           onClose={() => setLibraryOpen(false)}
-          onSelect={(media) => {
-            setExistingMedia(media);
-            setImageUrl(null);
-            setMediaFile(null);
+          onSelectMultiple={(selected) => {
+            setMediaItems((prev) => [...prev, ...selected.map((media) => ({ kind: "existing" as const, media }))]);
             setLibraryOpen(false);
           }}
         />

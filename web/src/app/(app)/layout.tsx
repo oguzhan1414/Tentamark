@@ -37,6 +37,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .maybeSingle();
   const userName = profile?.full_name || user.email?.split("@")[0] || "Kullanıcı";
 
+  const userEmail = user.email || "";
+
   if (!brand) {
     // Signed in but no org/brand yet — shouldn't happen once handle_new_user
     // runs on every signup, but fail safely rather than crash the panel on
@@ -86,7 +88,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             unreadInboxCount={unreadInboxCount ?? 0}
           />
           <div className="flex min-w-0 flex-1 flex-col">
-            <DashboardTopbar userName={userName} systemHealthy={systemHealthy} />
+            <DashboardTopbar
+              userName={userName}
+              userEmail={userEmail}
+              brandName={brand.name}
+              systemHealthy={systemHealthy}
+            />
             <DashboardMobileNav />
             <main className="flex-1 overflow-y-auto">{children}</main>
           </div>

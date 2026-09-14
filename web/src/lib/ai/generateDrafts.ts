@@ -1,13 +1,13 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { MODEL, callGroq } from "./groqModel";
+import { MODEL, VISION_MODEL, callGroq, callGroqVision } from "./groqModel";
 import { PLATFORM_LABEL, PLATFORM_RULE, type LaunchPlatform } from "./platforms";
 
 export type { LaunchPlatform };
 export type GeneratedDrafts = Partial<Record<LaunchPlatform, string>>;
 
-const PROMPT_VERSION = "draft-v3-platform-subset";
+const PROMPT_VERSION = "draft-v4-vision-aware";
 
 function parseDrafts(raw: string, platforms: LaunchPlatform[]): GeneratedDrafts & { needsRewrite: boolean } {
   const parsed = JSON.parse(raw);
@@ -77,7 +77,13 @@ export async function generateDrafts(
   brandId: string,
   idea: string,
   platforms: LaunchPlatform[],
-  format: ContentFormat = "post"
+  format: ContentFormat = "post",
+  // A real https:// URL or a base64 data URI of the attached image — set
+  // whenever ComposeForm has a photo attached, so the model actually
+  // describes what's in it instead of writing generic text next to media
+  // it never saw. Omitted (or a video) falls back to the original
+  // text-only call exactly as before.
+  mediaUrl?: string
 ): Promise<GeneratedDrafts> {
   if (platforms.length === 0) {
     throw new Error("En az bir platform seçilmeli.");
@@ -90,6 +96,10 @@ export async function generateDrafts(
   const platformList = platforms.map((p) => PLATFORM_LABEL[p]).join(", ");
   const platformRules = platforms.map((p) => `- ${PLATFORM_RULE[p]}`).join("\n");
 
+  const visionInstruction = mediaUrl
+    ? `\n\nEkli bir görsel/fotoğraf var — önce onu dikkatle incele (ürün, ortam, renkler, kompozisyon, görünen yazılar, genel ruh hali) ve gönderi metinlerinde görselde GERÇEKTEN görülenlere somut şekilde değin. Görseli görmezden gelip fikir metnine dayalı genel geçer bir şey yazma; görsel neyi gösteriyorsa metin ona atıfta bulunmalı.`
+    : "";
+
   const systemPrompt = `Sen Tentamark için çalışan bir sosyal medya metin yazarısın. Verilen marka bağlamını ve fikri kullanarak ${platformList} için ayrı, birbirinden farklı gönderi metinleri yaz.
 
 İçerik Formatı: ${FORMAT_RULE[format]}
@@ -98,7 +108,7 @@ Kurallar:
 - Türkçe yaz, doğal ve akıcı, çeviri gibi durmasın.
 ${platformRules}
 - Klişe AI ifadelerinden kaçın ("harika bir fırsat", "hayatınızı değiştirecek" gibi).
-- Marka kimliğine (varsa yasaklı konular, ton) sadık kal.
+- Marka kimliğine (varsa yasaklı konular, ton) sadık kal.${visionInstruction}
 
 Marka bağlamı: ${brandContext}
 
@@ -111,7 +121,9 @@ needsRewrite: kendi ürettiğin metinler klişe, tekrar eden veya zayıfsa true,
 
   const firstStart = Date.now();
   try {
-    const result = await callGroq(systemPrompt, idea);
+    const result = mediaUrl
+      ? await callGroqVision(systemPrompt, idea, [mediaUrl])
+      : await callGroq(systemPrompt, idea);
     const parsed = parseDrafts(result.content, platforms);
     drafts = Object.fromEntries(platforms.map((p) => [p, parsed[p]]));
 
@@ -119,7 +131,7 @@ needsRewrite: kendi ürettiğin metinler klişe, tekrar eden veya zayıfsa true,
       brand_id: brandId,
       stage: "idea_and_platform_adapt",
       prompt_version: PROMPT_VERSION,
-      model: MODEL,
+      model: mediaUrl ? VISION_MODEL : MODEL,
       input_tokens: result.inputTokens,
       output_tokens: result.outputTokens,
       cost_estimate_usd: 0,

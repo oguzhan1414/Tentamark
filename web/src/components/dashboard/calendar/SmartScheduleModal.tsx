@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { fillCalendarDateWithAi, type CalendarSmartDraft } from "@/lib/ai/fillCalendarDateWithAi";
 import { PLATFORM_LABEL, type LaunchPlatform } from "@/lib/ai/platforms";
+import ConfirmDiscardDialog from "@/components/dashboard/ConfirmDiscardDialog";
 
 type Props = {
   brandId: string;
@@ -45,6 +46,31 @@ export default function SmartScheduleModal({
   // other, so the one that finished last silently overwrote just its own
   // half of the picture.
   const latestRequestId = useRef(0);
+  const [confirmingClose, setConfirmingClose] = useState(false);
+
+  // A freshly AI-generated, not-yet-added-to-calendar draft used to vanish
+  // silently on a backdrop click — same "stray dismiss eats real work" bug
+  // as ComposeModal, worse here since regenerating costs a real AI call.
+  // Doesn't guard the explicit "Vazgeç" button — clicking a button labeled
+  // "give up" already is the confirmation.
+  const isDirty = Boolean(draft) && !savedSuccess;
+
+  const requestClose = useCallback(() => {
+    if (isDirty) {
+      setConfirmingClose(true);
+      return;
+    }
+    onClose();
+  }, [isDirty, onClose]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") requestClose();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, requestClose]);
 
   const formattedDate = useMemo(() => {
     try {
@@ -148,7 +174,7 @@ export default function SmartScheduleModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-      <div className="absolute inset-0" onClick={onClose} />
+      <div className="absolute inset-0" onClick={requestClose} />
 
       <div className="relative z-10 flex max-h-[85vh] w-full max-w-xl flex-col rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Modal Header */}
@@ -167,7 +193,7 @@ export default function SmartScheduleModal({
 
           <button
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
           >
             ✕
@@ -309,6 +335,14 @@ export default function SmartScheduleModal({
           </div>
         )}
       </div>
+
+      <ConfirmDiscardDialog
+        isOpen={confirmingClose}
+        onCancel={() => setConfirmingClose(false)}
+        onConfirm={onClose}
+        title="Oluşturulan taslak henüz eklenmedi"
+        message="Şu an çıkarsanız bu taslak kaybolur. Yine de çıkmak istiyor musunuz?"
+      />
     </div>
   );
 }

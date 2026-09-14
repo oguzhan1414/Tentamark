@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import PlatformIcon from "@/components/PlatformIcon";
 import { useBrand } from "@/components/dashboard/BrandProvider";
 import { createClient } from "@/lib/supabase/client";
 import { suggestPostImprovement, type PostSuggestion } from "@/lib/ai/suggestPostImprovement";
 import { STATUS_LABEL } from "@/lib/contentStatus";
+import ConfirmDiscardDialog from "@/components/dashboard/ConfirmDiscardDialog";
 import type { ApprovalItem, TeamMemberOption } from "./types";
 
 type Props = {
@@ -56,17 +57,30 @@ export default function ApprovalDetailModal({
   const [shareCopied, setShareCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [tagInput, setTagInput] = useState("");
+  const [confirmingClose, setConfirmingClose] = useState(false);
+
+  // A typed-but-unsent comment or tag used to vanish silently on Escape or
+  // the X button — same "stray dismiss eats real input" bug as ComposeModal.
+  const isDirty = Boolean(commentInput.trim() || tagInput.trim());
+
+  const requestClose = useCallback(() => {
+    if (isDirty) {
+      setConfirmingClose(true);
+      return;
+    }
+    onClose();
+  }, [isDirty, onClose]);
 
   // Keyboard navigation
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") requestClose();
       if (e.key === "ArrowLeft") onPrev();
       if (e.key === "ArrowRight") onNext();
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, onPrev, onNext]);
+  }, [requestClose, onPrev, onNext]);
 
   const isApproved = item.status === "APPROVED";
   // Gönderiler's merged view can open this modal for content in ANY state
@@ -249,7 +263,7 @@ export default function ApprovalDetailModal({
           {/* Close button */}
           <button
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             aria-label="Kapat"
             className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition ml-1 cursor-pointer"
           >
@@ -688,6 +702,14 @@ export default function ApprovalDetailModal({
           </aside>
         )}
       </div>
+
+      <ConfirmDiscardDialog
+        isOpen={confirmingClose}
+        onCancel={() => setConfirmingClose(false)}
+        onConfirm={onClose}
+        title="Gönderilmemiş bir yorumunuz var"
+        message="Şu an çıkarsanız yazdığınız yorum kaybolur. Yine de çıkmak istiyor musunuz?"
+      />
     </div>
   );
 }

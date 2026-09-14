@@ -42,13 +42,13 @@ export type PlatformName =
   | "youtube"
   | "x"
   | "pinterest"
-  | "threads";
+  | "threads"
+  | "telegram";
 
 export type RoadmapPlatformName =
   | PlatformName
   | "shopify"
   | "google-business"
-  | "telegram"
   | "discord"
   | "whatsapp";
 

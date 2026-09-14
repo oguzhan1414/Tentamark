@@ -20,6 +20,7 @@ const CHAR_LIMIT: Record<PlatformName, number> = {
   x: 280,
   pinterest: 500,
   threads: 500,
+  telegram: 1024,
 };
 
 const DAY_NAMES = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
@@ -94,11 +95,17 @@ export default function WeeklyPackForm({
   campaignName,
   campaignObjective,
   campaignRange,
+  onDirtyChange,
 }: {
   campaignId?: string;
   campaignName?: string;
   campaignObjective?: string | null;
   campaignRange?: CampaignRange | null;
+  // Only meaningful when embedded in CampaignPlannerModal — lets it ask
+  // before a stray backdrop click/Escape discards a generated-but-unsubmitted
+  // pack. The standalone /dashboard/compose/weekly page has no modal to
+  // guard and simply won't pass this.
+  onDirtyChange?: (dirty: boolean) => void;
 } = {}) {
   const brand = useBrand();
   const supabase = useMemo(() => createClient(), []);
@@ -126,8 +133,9 @@ export default function WeeklyPackForm({
   // leaves orphaned DB rows — still worth a native warning. Doesn't catch
   // in-app navigation (sidebar links) — Next.js App Router has no built-in
   // route-change guard equivalent to this.
+  const hasUnsaved = step === "ready" && cards.length > 0;
+
   useEffect(() => {
-    const hasUnsaved = step === "ready" && cards.length > 0;
     function handleBeforeUnload(e: BeforeUnloadEvent) {
       if (!hasUnsaved) return;
       e.preventDefault();
@@ -135,7 +143,14 @@ export default function WeeklyPackForm({
     }
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [step, cards.length]);
+  }, [hasUnsaved]);
+
+  // Same signal, surfaced to CampaignPlannerModal — a generated pack used to
+  // vanish just as silently on the modal's backdrop click/Escape/X as on a
+  // tab close, and beforeunload can't catch any of those.
+  useEffect(() => {
+    onDirtyChange?.(hasUnsaved);
+  }, [hasUnsaved, onDirtyChange]);
 
   useEffect(() => {
     let ignore = false;

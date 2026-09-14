@@ -8,11 +8,12 @@ type ComposeModalOptions = {
   campaignId?: string;
   date?: string;
   hour?: number;
-  // Set when opened by dragging a Medya panel thumbnail onto a calendar day
-  // — pre-attaches that photo/video instead of leaving Compose's media step
-  // empty (the whole point of drag-to-schedule being faster than the normal
-  // flow).
-  initialMedia?: MediaLibraryItem;
+  // Set when opened by dragging one or more Medya panel thumbnails onto a
+  // calendar day — pre-attaches them instead of leaving Compose's media
+  // step empty (the whole point of drag-to-schedule being faster than the
+  // normal flow). A checkbox-selected group drags together as a real
+  // carousel; a lone thumbnail is just a one-item array.
+  initialMedia?: MediaLibraryItem[];
   // Fires right after a successful save — lets the calling page (e.g.
   // Calendar) refetch its own list without the modal needing to know
   // anything about who opened it.

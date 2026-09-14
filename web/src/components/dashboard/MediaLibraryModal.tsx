@@ -11,6 +11,16 @@ type Props = {
   // hand back to a caller. (Calendar now uses the docked CalendarMediaPanel
   // instead, but this stays the picker ComposeForm opens mid-form.)
   onSelect?: (media: MediaLibraryItem) => void;
+  // Checkbox multi-select mode (for building an Instagram/Facebook
+  // carousel) — mutually exclusive with onSelect. Locked to images only:
+  // a carousel that mixes in video needs a different Graph API shape per
+  // child (media_type=VIDEO vs image_url) that ComposeForm doesn't build,
+  // so video stays single-select-only via onSelect.
+  multiple?: boolean;
+  onSelectMultiple?: (media: MediaLibraryItem[]) => void;
+  // Remaining carousel slots (10 - already attached) — once reached,
+  // unselected items are disabled rather than silently ignored on submit.
+  maxSelectable?: number;
   onClose: () => void;
 };
 
@@ -31,20 +41,55 @@ type MediaFilter = "all" | "image" | "video";
   able to tell the AI "use the one labeled X" later, not just recognize
   thumbnails by eye.
 */
-export default function MediaLibraryModal({ brandId, onSelect, onClose }: Props) {
+export default function MediaLibraryModal({
+  brandId,
+  onSelect,
+  multiple = false,
+  onSelectMultiple,
+  maxSelectable,
+  onClose,
+}: Props) {
   const { items, loading, uploading, error, upload, rename } = useMediaLibrary(brandId);
   const [filter, setFilter] = useState<MediaFilter>("all");
+  const [checked, setChecked] = useState<Set<string>>(new Set());
 
-  const filteredItems = items.filter((m) =>
-    filter === "all" ? true : filter === "video" ? m.file_type.startsWith("video/") : !m.file_type.startsWith("video/")
-  );
+  // Carousel building has no video story yet (see the `multiple` prop
+  // comment) — the filter toggle would just let someone check a video that
+  // silently never makes it into the post, so it's hidden entirely instead.
+  const filteredItems = multiple
+    ? items.filter((m) => !m.file_type.startsWith("video/"))
+    : items.filter((m) =>
+        filter === "all" ? true : filter === "video" ? m.file_type.startsWith("video/") : !m.file_type.startsWith("video/")
+      );
+
+  const atLimit = maxSelectable !== undefined && checked.size >= maxSelectable;
+
+  function toggleChecked(id: string) {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        if (maxSelectable !== undefined && next.size >= maxSelectable) return prev;
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function confirmSelection() {
+    const selected = filteredItems.filter((m) => checked.has(m.id));
+    if (selected.length > 0) onSelectMultiple?.(selected);
+  }
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
       <div className="absolute inset-0" onClick={onClose} />
       <div className="relative z-10 flex max-h-[80vh] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
         <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-3.5">
-          <span className="text-sm font-bold text-slate-900">Medya Kütüphanesi</span>
+          <span className="text-sm font-bold text-slate-900">
+            {multiple ? "Medyadan Seç" : "Medya Kütüphanesi"}
+          </span>
           <button
             type="button"
             onClick={onClose}
@@ -63,7 +108,7 @@ export default function MediaLibraryModal({ brandId, onSelect, onClose }: Props)
             <input
               id="media_library_upload"
               type="file"
-              accept="image/*,video/mp4,video/webm"
+              accept={multiple ? "image/*" : "image/*,video/mp4,video/webm"}
               className="sr-only"
               disabled={uploading}
               onChange={(e) => {
@@ -75,24 +120,31 @@ export default function MediaLibraryModal({ brandId, onSelect, onClose }: Props)
           </label>
           {error && <p className="text-xs text-red-600">{error}</p>}
 
-          <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50/80 p-0.5 text-xs font-semibold w-fit">
-            {([
-              { key: "all", label: "Tümü" },
-              { key: "image", label: "Fotoğraf" },
-              { key: "video", label: "Video" },
-            ] as const).map((f) => (
-              <button
-                key={f.key}
-                type="button"
-                onClick={() => setFilter(f.key)}
-                className={`rounded-md px-3 py-1 transition cursor-pointer ${
-                  filter === f.key ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
+          {multiple ? (
+            <p className="text-[11px] text-slate-500">
+              Sadece fotoğraf seçilebilir — video, carousel gönderilerde henüz desteklenmiyor.
+              {maxSelectable !== undefined && ` En fazla ${maxSelectable} görsel daha ekleyebilirsin.`}
+            </p>
+          ) : (
+            <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50/80 p-0.5 text-xs font-semibold w-fit">
+              {([
+                { key: "all", label: "Tümü" },
+                { key: "image", label: "Fotoğraf" },
+                { key: "video", label: "Video" },
+              ] as const).map((f) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => setFilter(f.key)}
+                  className={`rounded-md px-3 py-1 transition cursor-pointer ${
+                    filter === f.key ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto p-5">
@@ -104,43 +156,99 @@ export default function MediaLibraryModal({ brandId, onSelect, onClose }: Props)
             </p>
           ) : (
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-              {filteredItems.map((m) => (
-                <div key={m.id} className="space-y-1">
-                  <button
-                    type="button"
-                    onClick={() => onSelect?.(m)}
-                    disabled={!onSelect}
-                    className={`group relative aspect-square w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100 transition ${
-                      onSelect ? "hover:ring-2 hover:ring-rose-400 cursor-pointer" : "cursor-default"
-                    }`}
-                    title={m.alt_text || m.file_name}
-                  >
-                    {m.file_type.startsWith("video/") ? (
-                      <video src={m.file_url} muted className="h-full w-full object-cover" />
-                    ) : (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={m.file_url} alt={m.alt_text || m.file_name} className="h-full w-full object-cover" />
-                    )}
-                    {onSelect && (
-                      <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-[10px] font-bold text-transparent transition group-hover:bg-black/40 group-hover:text-white">
-                        Seç
-                      </span>
-                    )}
-                  </button>
-                  <input
-                    type="text"
-                    defaultValue={m.alt_text ?? ""}
-                    placeholder="Etiket ekle..."
-                    onBlur={(e) => {
-                      if (e.target.value.trim() !== (m.alt_text ?? "")) rename(m.id, e.target.value);
-                    }}
-                    className="w-full rounded-md border border-slate-200 bg-white px-1.5 py-1 text-[10px] text-slate-700 placeholder-slate-400 focus:border-rose-300 focus:outline-none"
-                  />
-                </div>
-              ))}
+              {filteredItems.map((m) => {
+                const isChecked = checked.has(m.id);
+                const disabled = multiple && !isChecked && atLimit;
+                return (
+                  <div key={m.id} className="space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => (multiple ? toggleChecked(m.id) : onSelect?.(m))}
+                      disabled={multiple ? disabled : !onSelect}
+                      className={`group relative aspect-square w-full overflow-hidden rounded-xl border bg-slate-100 transition ${
+                        isChecked
+                          ? "border-rose-400 ring-2 ring-rose-400"
+                          : disabled
+                            ? "border-slate-200 opacity-40 cursor-not-allowed"
+                            : "border-slate-200"
+                      } ${(multiple ? !disabled : Boolean(onSelect)) ? "hover:ring-2 hover:ring-rose-400 cursor-pointer" : "cursor-default"}`}
+                      title={m.alt_text || m.file_name}
+                    >
+                      {m.file_type.startsWith("video/") ? (
+                        <video src={m.file_url} muted className="h-full w-full object-cover" />
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={m.file_url} alt={m.alt_text || m.file_name} className="h-full w-full object-cover" />
+                      )}
+                      {multiple ? (
+                        <span
+                          className={`absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-bold transition ${
+                            isChecked
+                              ? "border-rose-500 bg-rose-500 text-white"
+                              : "border-white/80 bg-black/30 text-transparent group-hover:bg-black/50"
+                          }`}
+                        >
+                          {isChecked ? "✓" : ""}
+                        </span>
+                      ) : (
+                        onSelect && (
+                          <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-[10px] font-bold text-transparent transition group-hover:bg-black/40 group-hover:text-white">
+                            Seç
+                          </span>
+                        )
+                      )}
+                    </button>
+                    <input
+                      type="text"
+                      defaultValue={m.alt_text ?? ""}
+                      placeholder="Etiket ekle..."
+                      onBlur={(e) => {
+                        if (e.target.value.trim() !== (m.alt_text ?? "")) rename(m.id, e.target.value);
+                      }}
+                      className="w-full rounded-md border border-slate-200 bg-white px-1.5 py-1 text-[10px] text-slate-700 placeholder-slate-400 focus:border-rose-300 focus:outline-none"
+                    />
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
+
+        {multiple && (
+          <div className="flex shrink-0 items-center justify-between border-t border-slate-100 bg-slate-50/80 px-5 py-3">
+            <div className="flex items-center gap-3 text-xs">
+              <span className="font-bold text-slate-800">{checked.size} seçildi</span>
+              {filteredItems.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setChecked(new Set(filteredItems.slice(0, maxSelectable ?? filteredItems.length).map((m) => m.id)))
+                  }
+                  className="font-semibold text-slate-500 hover:text-slate-800 transition cursor-pointer"
+                >
+                  Tümünü seç
+                </button>
+              )}
+              {checked.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setChecked(new Set())}
+                  className="font-semibold text-slate-500 hover:text-slate-800 transition cursor-pointer"
+                >
+                  Temizle
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={confirmSelection}
+              disabled={checked.size === 0}
+              className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              Gönderiye Ekle
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

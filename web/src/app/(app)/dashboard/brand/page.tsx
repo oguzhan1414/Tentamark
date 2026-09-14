@@ -1115,7 +1115,7 @@ export default function BrandPage() {
                         Pazar Karşılaştırması & Rekabet Matrisi
                       </h4>
                       <p className="text-[11px] text-slate-400 mb-3">
-                        AI pazar bilgisine dayalı tahmini skorlama göstergesidir.
+                        AI&apos;nın pazar bilgisine dayalı tahmini karşılaştırma — ölçülmüş veri değildir.
                       </p>
                       <table className="w-full text-xs">
                         <thead>

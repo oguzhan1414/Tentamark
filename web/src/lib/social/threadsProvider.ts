@@ -84,11 +84,15 @@ export const threadsProvider: SocialProvider = {
     return { token: json.access_token as string, expiresAt };
   },
 
-  async publish({ account, freshToken, caption, mediaUrl, mediaType }): Promise<PublishResult> {
+  async publish({ account, freshToken, caption, media }): Promise<PublishResult> {
+    // Threads doesn't support carousels yet (capabilities.carousel: false
+    // above) — only the first item is ever used. A multi-image post that
+    // also targets Threads still publishes fine here, just with one image.
+    const first = media?.[0];
     const containerParams: Record<string, string> = { text: caption, access_token: freshToken };
-    if (mediaUrl) {
-      containerParams.media_type = mediaType === "video" ? "VIDEO" : "IMAGE";
-      containerParams[mediaType === "video" ? "video_url" : "image_url"] = mediaUrl;
+    if (first) {
+      containerParams.media_type = first.type === "video" ? "VIDEO" : "IMAGE";
+      containerParams[first.type === "video" ? "video_url" : "image_url"] = first.url;
     } else {
       containerParams.media_type = "TEXT";
     }

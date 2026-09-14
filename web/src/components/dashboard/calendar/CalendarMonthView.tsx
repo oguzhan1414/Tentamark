@@ -147,7 +147,13 @@ function DayCell({
           pushes the row taller than its 1fr share of the grid. */}
       <div className="mt-1 flex min-h-0 flex-1 flex-col justify-start gap-1 overflow-hidden">
         {visiblePosts.map((p) => (
-          <CalendarPostCard key={p.id} post={p} onClick={() => onSelectPost(p)} draggable={!isPast} compact />
+          <CalendarPostCard
+            key={p.id}
+            post={p}
+            onClick={() => onSelectPost(p)}
+            draggable={!isPast && p.postStatus !== "PUBLISHED"}
+            compact
+          />
         ))}
 
         {hasOverflow && (

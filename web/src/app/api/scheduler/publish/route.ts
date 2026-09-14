@@ -3,7 +3,7 @@ import { timingSafeEqual } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptToken, encryptToken } from "@/lib/crypto/tokenCipher";
 import { getProviderFor } from "@/lib/social/registry";
-import type { SocialAccountRecord, SocialPlatform } from "@/lib/social/types";
+import type { PublishMediaItem, SocialAccountRecord, SocialPlatform } from "@/lib/social/types";
 
 /*
   The real publisher — replaces the MOCK PUBLISHER block that used to live
@@ -75,19 +75,17 @@ export async function POST(req: NextRequest) {
     media: { file_url: string; file_type: string } | { file_url: string; file_type: string }[] | null;
   }>;
   const sortedMedia = [...mediaRows].sort((a, b) => a.position - b.position);
-  const firstMediaRaw = sortedMedia[0]?.media;
-  const firstMedia = Array.isArray(firstMediaRaw) ? firstMediaRaw[0] : firstMediaRaw;
-  const mediaUrl = firstMedia?.file_url || undefined;
-  const mediaType: "image" | "video" | undefined = firstMedia
-    ? firstMedia.file_type?.startsWith("video/")
-      ? "video"
-      : "image"
-    : undefined;
+  // Ordered for carousel-capable providers (Instagram, Facebook); providers
+  // without capabilities.carousel just read media[0] and ignore the rest.
+  const media: PublishMediaItem[] = sortedMedia
+    .map((row) => (Array.isArray(row.media) ? row.media[0] : row.media))
+    .filter((m): m is { file_url: string; file_type: string } => Boolean(m?.file_url))
+    .map((m) => ({ url: m.file_url, type: m.file_type?.startsWith("video/") ? "video" : "image" }));
 
   const { data: account, error: accountError } = await supabase
     .from("social_accounts")
     .select(
-      "id, brand_id, platform, external_account_id, access_token_encrypted, refresh_token_encrypted, token_expires_at"
+      "id, brand_id, platform, external_account_id, access_token_encrypted, refresh_token_encrypted, token_expires_at, metadata"
     )
     .eq("brand_id", brandId)
     .eq("platform", cp.platform)
@@ -117,6 +115,7 @@ export async function POST(req: NextRequest) {
       access_token_encrypted: account.access_token_encrypted,
       refresh_token_encrypted: account.refresh_token_encrypted,
       token_expires_at: account.token_expires_at,
+      metadata: account.metadata,
     };
 
     let freshToken = decryptToken(account.access_token_encrypted, account.brand_id);
@@ -147,8 +146,7 @@ export async function POST(req: NextRequest) {
       account: accountRecord,
       freshToken,
       caption: cp.caption,
-      mediaUrl,
-      mediaType,
+      media,
     });
 
     // Deliberately NOT thrown into the catch block below on failure here —

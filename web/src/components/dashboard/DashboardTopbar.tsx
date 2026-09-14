@@ -1,16 +1,16 @@
 import Link from "next/link";
 import TentamarkLogo from "@/components/TentamarkLogo";
-
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/).slice(0, 2);
-  return parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "?";
-}
+import UserProfileDropdown from "@/components/dashboard/UserProfileDropdown";
 
 export default function DashboardTopbar({
   userName,
+  userEmail,
+  brandName,
   systemHealthy,
 }: {
   userName: string;
+  userEmail?: string;
+  brandName?: string;
   systemHealthy: boolean;
 }) {
   return (
@@ -65,16 +65,12 @@ export default function DashboardTopbar({
           </svg>
         </button>
 
-        {/* User Profile Pill — links to the account tab in Settings */}
-        <Link
-          href="/settings"
-          className="flex items-center gap-2.5 rounded-full border border-slate-200/80 bg-white py-1 pl-1.5 pr-3.5 shadow-xs transition hover:border-rose-200 hover:bg-rose-50/30"
-        >
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 font-semibold text-xs text-white shadow-2xs">
-            {initials(userName)}
-          </div>
-          <span className="text-xs font-semibold text-slate-800 leading-tight">{userName}</span>
-        </Link>
+        {/* Interactive User Profile Dropdown with Logout & Settings */}
+        <UserProfileDropdown
+          userName={userName}
+          userEmail={userEmail}
+          brandName={brandName}
+        />
       </div>
     </header>
   );

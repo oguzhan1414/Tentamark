@@ -42,6 +42,19 @@ async function waitForInstagramContainer(id: string, token: string): Promise<voi
   throw new Error("Instagram içeriği 45 saniye içinde hazır olmadı.");
 }
 
+async function createContainer(accountId: string, token: string, params: Record<string, string>): Promise<string> {
+  const res = await fetch(`${GRAPH}/v21.0/${accountId}/media`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ ...params, access_token: token }),
+  });
+  const json = await res.json();
+  if (!res.ok || !json.id) {
+    throw new Error(json?.error?.message ?? `Instagram container oluşturulamadı (HTTP ${res.status})`);
+  }
+  return json.id as string;
+}
+
 async function verifyConnection(freshToken: string): Promise<ConnectionHealth> {
   const res = await fetch(`${GRAPH}/v21.0/me?fields=id&access_token=${encodeURIComponent(freshToken)}`);
   if (!res.ok) {
@@ -80,29 +93,57 @@ export const instagramProvider: SocialProvider = {
     return { token: json.access_token as string, expiresAt };
   },
 
-  async publish({ account, freshToken, caption, mediaUrl }): Promise<PublishResult> {
-    if (!mediaUrl) {
+  async publish({ account, freshToken, caption, media }): Promise<PublishResult> {
+    if (!media || media.length === 0) {
       throw new Error(
         "Instagram bir medya URL'i olmadan paylaşım yapamaz — metin yeterli değil. content_media/Storage hattı henüz yok (12-backend-logic.md §12.8)."
       );
     }
 
-    const createRes = await fetch(`${GRAPH}/v21.0/${account.external_account_id}/media`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ image_url: mediaUrl, caption, access_token: freshToken }),
-    });
-    const createJson = await createRes.json();
-    if (!createRes.ok || !createJson.id) {
-      throw new Error(createJson?.error?.message ?? `Instagram container oluşturulamadı (HTTP ${createRes.status})`);
-    }
+    let creationId: string;
 
-    await waitForInstagramContainer(createJson.id as string, freshToken);
+    if (media.length === 1) {
+      creationId = await createContainer(account.external_account_id, freshToken, {
+        image_url: media[0].url,
+        caption,
+      });
+      await waitForInstagramContainer(creationId, freshToken);
+    } else {
+      // Carousel: Meta requires 2-10 children, each created WITHOUT its own
+      // caption (only the parent CAROUSEL container carries one), then a
+      // parent container referencing all child ids, and that parent needs
+      // its own FINISHED wait too before media_publish will accept it.
+      // ComposeForm only ever builds a carousel out of images (validated
+      // client-side, mixing in a video is blocked before this is reached),
+      // but the video branch below is real Graph API behavior, not a guess,
+      // kept here so a future caller doesn't get a silently-wrong
+      // image_url=<video file> request instead of a clear path.
+      if (media.length > 10) {
+        throw new Error("Instagram carousel en fazla 10 medya öğesi destekliyor.");
+      }
+      const childIds = await Promise.all(
+        media.map(async (item) => {
+          const id = await createContainer(account.external_account_id, freshToken, {
+            is_carousel_item: "true",
+            ...(item.type === "video" ? { media_type: "VIDEO", video_url: item.url } : { image_url: item.url }),
+          });
+          await waitForInstagramContainer(id, freshToken);
+          return id;
+        })
+      );
+
+      creationId = await createContainer(account.external_account_id, freshToken, {
+        media_type: "CAROUSEL",
+        children: childIds.join(","),
+        caption,
+      });
+      await waitForInstagramContainer(creationId, freshToken);
+    }
 
     const publishRes = await fetch(`${GRAPH}/v21.0/${account.external_account_id}/media_publish`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ creation_id: createJson.id, access_token: freshToken }),
+      body: new URLSearchParams({ creation_id: creationId, access_token: freshToken }),
     });
     const publishJson = await publishRes.json();
     if (!publishRes.ok || !publishJson.id) {

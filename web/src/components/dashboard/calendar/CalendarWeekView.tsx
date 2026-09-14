@@ -97,7 +97,12 @@ function DayColumn({
       ))}
 
       {dayPosts.map((p) => (
-        <CalendarPostCard key={p.id} post={p} onClick={() => onSelectPost(p)} draggable={!isPast} />
+        <CalendarPostCard
+          key={p.id}
+          post={p}
+          onClick={() => onSelectPost(p)}
+          draggable={!isPast && p.postStatus !== "PUBLISHED"}
+        />
       ))}
 
       {!isPast && (

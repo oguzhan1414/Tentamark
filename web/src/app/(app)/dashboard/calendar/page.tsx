@@ -462,11 +462,13 @@ export default function CalendarPage() {
   // handleDragEnd which of the two this is).
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   const [activeDragPost, setActiveDragPost] = useState<CalendarPost | null>(null);
-  const [activeDragMedia, setActiveDragMedia] = useState<MediaLibraryItem | null>(null);
+  // A whole checkbox-selected group from CalendarMediaPanel drags together
+  // (see its DraggableThumb) — always an array, even for a lone thumbnail.
+  const [activeDragMedia, setActiveDragMedia] = useState<MediaLibraryItem[] | null>(null);
 
   function handleDragStart(event: DragStartEvent) {
     if (event.active.data.current?.type === "media") {
-      setActiveDragMedia(event.active.data.current.item as MediaLibraryItem);
+      setActiveDragMedia(event.active.data.current.items as MediaLibraryItem[]);
       return;
     }
     const post = posts.find((p) => p.id === String(event.active.id));
@@ -482,7 +484,7 @@ export default function CalendarPage() {
     const newDateKey = String(over.id);
     if (newDateKey < todayKey) return; // dropping onto a past day is a no-op, not an error
 
-    if (draggedMedia) {
+    if (draggedMedia && draggedMedia.length > 0) {
       composeModal.open({ date: newDateKey, initialMedia: draggedMedia, onSaved: () => setRefreshKey((k) => k + 1) });
       return;
     }
@@ -490,6 +492,10 @@ export default function CalendarPage() {
     const postId = String(active.id);
     const post = posts.find((p) => p.id === postId);
     if (!post || post.date === newDateKey) return;
+    // Belt-and-suspenders — CalendarPostCard already refuses to start a drag
+    // for a published post (draggable=false), this just makes sure nothing
+    // can move one even if that ever changes.
+    if (post.postStatus === "PUBLISHED") return;
 
     if (post.isDemo) {
       setDemoPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, date: newDateKey } : p)));
@@ -751,13 +757,20 @@ export default function CalendarPage() {
           <div className="w-56 rotate-2 opacity-95">
             <CalendarPostCard post={activeDragPost} onClick={() => {}} draggable={false} />
           </div>
-        ) : activeDragMedia ? (
-          <div className="h-20 w-20 rotate-3 overflow-hidden rounded-xl border-2 border-white shadow-xl">
-            {activeDragMedia.file_type.startsWith("video/") ? (
-              <video src={activeDragMedia.file_url} muted className="h-full w-full object-cover" />
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={activeDragMedia.file_url} alt="" className="h-full w-full object-cover" />
+        ) : activeDragMedia && activeDragMedia.length > 0 ? (
+          <div className="relative h-20 w-20 rotate-3">
+            <div className="h-20 w-20 overflow-hidden rounded-xl border-2 border-white shadow-xl">
+              {activeDragMedia[0].file_type.startsWith("video/") ? (
+                <video src={activeDragMedia[0].file_url} muted className="h-full w-full object-cover" />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={activeDragMedia[0].file_url} alt="" className="h-full w-full object-cover" />
+              )}
+            </div>
+            {activeDragMedia.length > 1 && (
+              <span className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-rose-500 text-[11px] font-bold text-white shadow-md">
+                +{activeDragMedia.length - 1}
+              </span>
             )}
           </div>
         ) : null}

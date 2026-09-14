@@ -28,7 +28,7 @@ export const facebookProvider: SocialProvider = {
     deletion: true,
     video: true,
     image: true,
-    carousel: false,
+    carousel: true,
   },
 
   async verifyConnection({ freshToken }) {
@@ -49,16 +49,55 @@ export const facebookProvider: SocialProvider = {
     return null;
   },
 
-  async publish({ account, freshToken, caption, mediaUrl, mediaType }): Promise<PublishResult> {
+  async publish({ account, freshToken, caption, media }): Promise<PublishResult> {
+    // Multi-photo album — ComposeForm only ever sends more than one item
+    // when every one is an image (a video forces single-item mode), so this
+    // doesn't need a video branch. Each photo is uploaded unpublished first
+    // (published=false returns a media_fbid with no post created yet), then
+    // /feed ties them together into one real album post via attached_media.
+    if (media && media.length > 1) {
+      const photoIds = await Promise.all(
+        media.map(async (item) => {
+          const res = await fetch(`${GRAPH}/${account.external_account_id}/photos`, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({ url: item.url, published: "false", access_token: freshToken }),
+          });
+          const json = await res.json();
+          if (!res.ok || !json.id) {
+            throw new Error(json?.error?.message ?? `Facebook fotoğrafı yüklenemedi (HTTP ${res.status})`);
+          }
+          return json.id as string;
+        })
+      );
+
+      const res = await fetch(`${GRAPH}/${account.external_account_id}/feed`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          message: caption,
+          attached_media: JSON.stringify(photoIds.map((id) => ({ media_fbid: id }))),
+          access_token: freshToken,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.id) {
+        throw new Error(json?.error?.message ?? `Facebook albüm publish başarısız (HTTP ${res.status})`);
+      }
+      return { remoteId: json.id as string, permalinkUrl: `https://www.facebook.com/${json.id}` };
+    }
+
+    const single = media?.[0];
+
     // Photos and videos are entirely different endpoints on the Graph API,
     // not a param on /feed — posting mediaUrl there silently gets dropped,
     // which is exactly how this shipped as a text-only publisher despite
     // declaring image/video capability above.
-    if (mediaUrl && mediaType === "video") {
+    if (single && single.type === "video") {
       const res = await fetch(`${GRAPH}/${account.external_account_id}/videos`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ file_url: mediaUrl, description: caption, access_token: freshToken }),
+        body: new URLSearchParams({ file_url: single.url, description: caption, access_token: freshToken }),
       });
       const json = await res.json();
       if (!res.ok || !json.id) {
@@ -70,11 +109,11 @@ export const facebookProvider: SocialProvider = {
       };
     }
 
-    if (mediaUrl) {
+    if (single) {
       const res = await fetch(`${GRAPH}/${account.external_account_id}/photos`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ url: mediaUrl, caption, access_token: freshToken }),
+        body: new URLSearchParams({ url: single.url, caption, access_token: freshToken }),
       });
       const json = await res.json();
       if (!res.ok || !(json.post_id || json.id)) {

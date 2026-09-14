@@ -3,6 +3,15 @@
 // had already been removed by the time this was tested.
 export const MODEL = "openai/gpt-oss-120b";
 
+// Vision-capable — MODEL above is text-only. Checked live against
+// console.groq.com/docs/vision (2026-09): Llama 4 Scout/Maverick, the
+// obvious choices, are both deprecated (Maverick Feb 2026, Scout shut down
+// entirely in July 2026). qwen/qwen3.6-27b and qwen/qwen3.8-27b are what's
+// actually live today. Picked 3.6: 5 images/request vs 3.8's 3, and 3.8's
+// "tunable reasoning effort" pitch reads as tuned for math/code, not
+// descriptive captioning.
+export const VISION_MODEL = "qwen/qwen3.6-27b";
+
 export type GroqCallResult = {
   content: string;
   inputTokens: number;
@@ -64,6 +73,73 @@ export async function callGroq(
   const json = await res.json();
   if (!res.ok) {
     throw new Error(json?.error?.message ?? `Groq API hatası (HTTP ${res.status})`);
+  }
+
+  const fallback = options?.jsonMode === false ? "" : "{}";
+  return {
+    content: json.choices?.[0]?.message?.content ?? fallback,
+    inputTokens: json.usage?.prompt_tokens ?? 0,
+    outputTokens: json.usage?.completion_tokens ?? 0,
+  };
+}
+
+/*
+  Same shape as callGroq, but the user message carries one or more images —
+  OpenAI-compatible multi-part content (text block + image_url block(s)),
+  which is the one thing callGroq's plain-string message can't express.
+  image_url.url accepts either a real https:// URL or a base64 data URI
+  (standard OpenAI vision convention, mirrored by Groq) — callers don't need
+  to have already uploaded the file anywhere.
+
+  reasoning_effort is hardcoded to "none" — verified live that qwen3.6-27b
+  defaults to thinking mode ON, and (unlike MODEL/gpt-oss-120b's hidden
+  reasoning) writes its <think>...</think> block straight into the visible
+  content before the real answer. With jsonMode on, a truncated thinking
+  block IS the whole response and never parses as JSON; "none" skips it
+  outright, which is also just correct for "write a caption for this photo"
+  — no math/code reasoning to do.
+*/
+export async function callGroqVision(
+  systemPrompt: string,
+  userText: string,
+  imageUrls: string[],
+  options?: Pick<GroqCallOptions, "temperature" | "maxTokens" | "jsonMode">
+): Promise<GroqCallResult> {
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error("GROQ_API_KEY tanımlı değil.");
+  }
+  if (imageUrls.length === 0) {
+    throw new Error("callGroqVision en az bir görsel gerektirir.");
+  }
+
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: VISION_MODEL,
+      reasoning_effort: "none",
+      messages: [
+        { role: "system", content: systemPrompt },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: userText },
+            ...imageUrls.map((url) => ({ type: "image_url", image_url: { url } })),
+          ],
+        },
+      ],
+      temperature: options?.temperature ?? 0.8,
+      ...(options?.maxTokens ? { max_tokens: options.maxTokens } : {}),
+      ...(options?.jsonMode === false ? {} : { response_format: { type: "json_object" } }),
+    }),
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json?.error?.message ?? `Groq Vision API hatası (HTTP ${res.status})`);
   }
 
   const fallback = options?.jsonMode === false ? "" : "{}";

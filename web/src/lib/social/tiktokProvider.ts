@@ -62,7 +62,11 @@ export const tiktokProvider: SocialProvider = {
     };
   },
 
-  async publish({ freshToken, caption, mediaUrl }): Promise<PublishResult> {
+  async publish({ freshToken, caption, media }): Promise<PublishResult> {
+    // TikTok has no carousel/album concept for Direct Post video — only the
+    // first item is ever relevant here, and ComposeForm forces single-video
+    // mode whenever TikTok is a selected target anyway.
+    const mediaUrl = media?.[0]?.url;
     if (!mediaUrl) {
       throw new Error("TikTok bir video URL'i olmadan paylaşım yapamaz.");
     }

@@ -211,6 +211,94 @@ async function resolveAndValidateUrl(raw: string): Promise<URL> {
   return url;
 }
 
+const VERIFY_TIMEOUT_MS = 7000;
+const VERIFY_USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+
+// The competitor prompt tells the model it's fine to fill in a well-known
+// brand's website/handles from its own training knowledge (§ below) — which
+// means every one of those is an unverified guess, right or wrong, with no
+// way to tell which from the app's side. A real request is the only honest
+// check: if it doesn't resolve to something real, it doesn't get shown.
+// Best-effort by nature (a genuinely real profile can still fail this if the
+// platform blocks non-browser traffic), but a false "hide it" is the safe
+// failure direction here, not a false "show it".
+async function verifyUrlExists(rawUrl: string): Promise<boolean> {
+  let url: URL;
+  try {
+    url = await resolveAndValidateUrl(rawUrl);
+  } catch {
+    return false;
+  }
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      redirect: "follow",
+      signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS),
+      headers: { "User-Agent": VERIFY_USER_AGENT, Accept: "text/html,*/*;q=0.8" },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+// Checked live against real accounts AND obviously-fake handles before
+// trusting this: Instagram, TikTok and X all serve a generic 200-status SPA
+// shell for literally any handle, real or not (the actual "does this exist"
+// check happens client-side, in JS this fetch never runs) — a byte-for-byte
+// near-identical response either way. A status check there is decoration,
+// not verification, and would let every hallucinated handle straight
+// through while looking like it did something. LinkedIn and YouTube, by
+// contrast, genuinely 404 a nonexistent company/channel — verifiable for
+// real. Platforms in the first group are just never populated below;
+// showing an unverifiable guess and showing a hallucinated one are the same
+// failure from the user's side, and the whole point here was to stop doing
+// that.
+const VERIFIABLE_SOCIAL_PLATFORMS: (keyof CompetitorSocials)[] = ["linkedin", "youtube"];
+
+function socialProfileUrl(platform: keyof CompetitorSocials, handle: string): string | null {
+  const h = handle.replace(/^@/, "").trim();
+  if (!h) return null;
+  switch (platform) {
+    case "linkedin":
+      return `https://www.linkedin.com/company/${h}`;
+    case "youtube":
+      return `https://www.youtube.com/@${h}`;
+    default:
+      return null;
+  }
+}
+
+// Verifies every website + verifiable social handle across all competitors
+// in parallel — sequential would mean dozens of checks at up to 7s each.
+// Unverifiable fields come back blank, not removed from the object, so the
+// rest of a competitor's real analysis (positioning, strength, scores)
+// still shows.
+async function verifyCompetitorLinks(competitors: CompetitorInsight[]): Promise<CompetitorInsight[]> {
+  return Promise.all(
+    competitors.map(async (c) => {
+      const [websiteOk, socialResults] = await Promise.all([
+        c.website ? verifyUrlExists(c.website) : Promise.resolve(false),
+        Promise.all(
+          (Object.entries(c.socials) as [keyof CompetitorSocials, string][]).map(async ([platform, handle]) => {
+            if (!VERIFIABLE_SOCIAL_PLATFORMS.includes(platform)) return [platform, ""] as const;
+            const profileUrl = handle ? socialProfileUrl(platform, handle) : null;
+            const ok = profileUrl ? await verifyUrlExists(profileUrl) : false;
+            return [platform, ok ? handle : ""] as const;
+          })
+        ),
+      ]);
+
+      return {
+        ...c,
+        website: websiteOk ? c.website : "",
+        socials: Object.fromEntries(socialResults) as CompetitorSocials,
+      };
+    })
+  );
+}
+
 function extractTag(html: string, pattern: RegExp): string {
   return pattern.exec(html)?.[1]?.trim() ?? "";
 }
@@ -285,42 +373,82 @@ function isNearGrayOrMonochrome(hex: string): boolean {
   return Math.max(r, g, b) - Math.min(r, g, b) < 12;
 }
 
+// Third-party widget/icon colors that showed up in real output looking like
+// brand colors — #25D366 (WhatsApp's exact green) came from a "Chat on
+// WhatsApp" button's CSS on a site that had nothing to do with WhatsApp,
+// ranked into the top 5 by raw frequency same as any real brand color. Not
+// an exhaustive list, just the confirmed offender plus its obvious siblings
+// (other chat-widget/social-share brand colors that get embedded the same
+// way) — a blocklist can't catch everything frequency-ranking gets wrong,
+// but it catches the specific failure mode that was actually observed.
+const KNOWN_WIDGET_COLORS = new Set([
+  "#25D366", // WhatsApp
+  "#1877F2", // Facebook / Messenger
+  "#1DA1F2", // Twitter/X (legacy blue)
+  "#0A66C2", // LinkedIn
+  "#FF0000", // YouTube
+  "#25D366".toLowerCase(),
+]);
+
 /*
   Deterministic (regex-based) color extraction — deliberately NOT asked of
   the AI, which has no way to actually see the page and would just be
   inventing plausible-sounding hex codes. Pulls from signals already present
-  in the raw HTML we fetch anyway: the theme-color meta tag (the strongest,
-  most deliberate signal a site publishes) plus hex literals inside <style>
-  blocks and inline style="" attributes. Ranked by frequency, capped at 5;
-  returns [] when a site exposes none of these (common for JS-rendered
-  sites whose real stylesheet is a separate, unfetched request) rather than
-  guessing.
+  in the raw HTML we fetch anyway, in priority order:
+  1. theme-color meta tag — the single most deliberate signal a site publishes.
+  2. CSS custom properties whose name suggests an intentional design-system
+     choice (--brand-primary, --color-accent, etc.) — a hex declared ONCE in
+     a :root block is a much stronger brand-color signal than a hex that
+     happens to appear many times, which raw frequency alone can't tell apart
+     from a third-party widget's color repeated across many elements.
+  3. Everything else in <style> blocks / inline style="" attributes, ranked
+     by frequency as a fallback.
+  Known widget colors (WhatsApp green, Facebook blue, ...) are excluded at
+  every tier — confirmed live that #25D366 from a WhatsApp chat button
+  otherwise wins purely on frequency. Returns [] when a site exposes none of
+  these (common for JS-rendered sites whose real stylesheet is a separate,
+  unfetched request) rather than guessing.
 */
 function extractBrandColors(html: string): string[] {
-  const counts = new Map<string, number>();
+  const tiers = [new Map<string, number>(), new Map<string, number>(), new Map<string, number>()];
 
-  const record = (raw: string, weight = 1) => {
+  const record = (tier: number, raw: string, weight = 1) => {
     if (!/^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/.test(raw)) return;
     const hex = normalizeHex(raw);
     if (isNearGrayOrMonochrome(hex)) return;
-    counts.set(hex, (counts.get(hex) ?? 0) + weight);
+    if (KNOWN_WIDGET_COLORS.has(hex)) return;
+    tiers[tier].set(hex, (tiers[tier].get(hex) ?? 0) + weight);
   };
 
   const themeColorMatch = html.match(/<meta[^>]*name=["']theme-color["'][^>]*content=["']([^"']+)["']/i);
   if (themeColorMatch) {
     const hexMatch = themeColorMatch[1].match(/[0-9a-fA-F]{3,6}/);
-    if (hexMatch) record(hexMatch[0], 20);
+    if (hexMatch) record(0, hexMatch[0], 1);
   }
 
   const styleBlocks = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]).join(" ");
   const inlineStyles = [...html.matchAll(/style=["']([^"']+)["']/gi)].map((m) => m[1]).join(" ");
-  for (const source of [styleBlocks, inlineStyles]) {
-    for (const m of source.matchAll(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g)) {
-      record(m[1]);
-    }
+  const allStyle = `${styleBlocks} ${inlineStyles}`;
+
+  // CSS custom properties: --anything-brand-anything, --anything-color-anything,
+  // --anything-primary-anything, --anything-accent-anything: value.
+  for (const m of allStyle.matchAll(
+    /--[\w-]*(?:brand|primary|accent|color)[\w-]*\s*:\s*#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/gi
+  )) {
+    record(1, m[1], 10);
   }
 
-  return [...counts.entries()]
+  for (const m of allStyle.matchAll(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g)) {
+    record(2, m[1]);
+  }
+
+  const merged = new Map<string, number>();
+  tiers.forEach((tier, idx) => {
+    const tierWeight = idx === 0 ? 1000 : idx === 1 ? 100 : 1; // keeps tiers from mixing by raw count
+    for (const [hex, count] of tier) merged.set(hex, (merged.get(hex) ?? 0) + count * tierWeight);
+  });
+
+  return [...merged.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
     .map(([hex]) => hex);
@@ -603,6 +731,11 @@ audience_persona / pain_points / motivations kuralları:
       .trim();
 
     const parsed = JSON.parse(cleanedJson);
+    // The model was told it's fine to fill in a well-known competitor's
+    // website/handles from its own training knowledge — every one of those
+    // is an unverified guess until something actually checks it. Real HTTP
+    // requests, not more AI, decide what's shown (see verifyCompetitorLinks).
+    const verifiedCompetitorAnalysis = await verifyCompetitorLinks(parseCompetitorAnalysis(parsed.competitor_analysis));
     result = {
       brandName: String(parsed.brand_name ?? "").trim(),
       website: url.toString(),
@@ -612,7 +745,7 @@ audience_persona / pain_points / motivations kuralları:
       brandTraits: Array.isArray(parsed.brand_traits) ? parsed.brand_traits.map(String) : [],
       targetAudience: Array.isArray(parsed.target_audience) ? parsed.target_audience.map(String) : [],
       competitors: Array.isArray(parsed.competitors) ? parsed.competitors.map(String) : [],
-      competitorAnalysis: parseCompetitorAnalysis(parsed.competitor_analysis),
+      competitorAnalysis: verifiedCompetitorAnalysis,
       marketComparison: parseMarketComparison(parsed),
       traitScores: parseTraitScores(parsed.trait_scores),
       tonePosition: parseTonePosition(parsed.tone_position),

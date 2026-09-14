@@ -6,6 +6,15 @@ const nextConfig: NextConfig = {
   // like ngrok stands in for localhost during development) — remove or
   // tighten before shipping, this is dev-only.
   allowedDevOrigins: ["*.ngrok-free.dev", "*.ngrok-free.app"],
+  experimental: {
+    // Default is 1MB — too small for a freshly-picked local photo sent to
+    // generateDrafts() as a base64 data URI for vision-aware caption
+    // generation. 12mb covers the app's existing 8MB image ceiling
+    // (validateMedia() elsewhere) plus base64's ~37% size overhead.
+    serverActions: {
+      bodySizeLimit: "12mb",
+    },
+  },
   images: {
     remotePatterns: [
       {

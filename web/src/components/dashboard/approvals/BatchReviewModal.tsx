@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import PlatformIcon from "@/components/PlatformIcon";
+import ConfirmDiscardDialog from "@/components/dashboard/ConfirmDiscardDialog";
 import type { ApprovalItem } from "./types";
 
 type Props = {
@@ -23,20 +24,31 @@ export default function BatchReviewModal({
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [quickComment, setQuickComment] = useState("");
   const [completed, setCompleted] = useState(false);
+  const [confirmingClose, setConfirmingClose] = useState(false);
 
   // If no items
   const total = items.length;
   const currentItem = items[currentIndex] ?? null;
 
+  // A typed-but-unsent quick comment used to vanish silently on Escape or
+  // the X button — same "stray dismiss eats real input" bug as ComposeModal.
+  const requestClose = useCallback(() => {
+    if (quickComment.trim()) {
+      setConfirmingClose(true);
+      return;
+    }
+    onClose();
+  }, [quickComment, onClose]);
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") requestClose();
       if (e.key === "ArrowLeft") handlePrev();
       if (e.key === "ArrowRight") handleNext();
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentIndex, total, onClose]);
+  }, [currentIndex, total, requestClose]);
 
   function handlePrev() {
     if (currentIndex > 0) {
@@ -120,7 +132,7 @@ export default function BatchReviewModal({
         {/* Close button: dark rounded with white X */}
         <button
           type="button"
-          onClick={onClose}
+          onClick={requestClose}
           aria-label="Kapat"
           className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white hover:bg-white/20 transition cursor-pointer backdrop-blur-xs"
         >
@@ -240,6 +252,14 @@ export default function BatchReviewModal({
           <span>Gönderiyi onayla</span>
         </button>
       </footer>
+
+      <ConfirmDiscardDialog
+        isOpen={confirmingClose}
+        onCancel={() => setConfirmingClose(false)}
+        onConfirm={onClose}
+        title="Gönderilmemiş bir yorumunuz var"
+        message="Şu an çıkarsanız yazdığınız yorum kaybolur. Yine de çıkmak istiyor musunuz?"
+      />
     </div>
   );
 }

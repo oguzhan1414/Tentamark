@@ -18,6 +18,26 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// A blind 30s sleep here previously left a real publish stuck mid-flight
+// (content_platforms parked at PUBLISHING forever, no retry path) — almost
+// certainly the serverless function getting killed for running too long.
+// Polling the container's own status is both what Meta's docs actually
+// recommend and finishes early for text/image instead of always waiting
+// the full 30s.
+async function waitForThreadsContainer(id: string, token: string): Promise<void> {
+  const deadline = Date.now() + 45_000;
+  while (Date.now() < deadline) {
+    const res = await fetch(`${GRAPH}/${id}?fields=status,status_code&access_token=${encodeURIComponent(token)}`);
+    const json = await res.json();
+    if (json.status_code === "FINISHED") return;
+    if (json.status_code === "ERROR") {
+      throw new Error(`Threads içeriği işlenirken hata oluştu: ${json.status ?? "bilinmeyen hata"}`);
+    }
+    await sleep(3_000);
+  }
+  throw new Error("Threads içeriği 45 saniye içinde hazır olmadı.");
+}
+
 async function verifyConnection(freshToken: string): Promise<ConnectionHealth> {
   const res = await fetch(`${GRAPH}/me?fields=id&access_token=${encodeURIComponent(freshToken)}`);
   if (!res.ok) {
@@ -75,10 +95,7 @@ export const threadsProvider: SocialProvider = {
       throw new Error(createJson?.error?.message ?? `Threads container oluşturulamadı (HTTP ${createRes.status})`);
     }
 
-    // Meta's own docs recommend ~30s before publishing so the container
-    // finishes server-side processing. Fine here: this runs inside the
-    // scheduler's background job (checklist phase 7), never a live request.
-    await sleep(30_000);
+    await waitForThreadsContainer(createJson.id as string, freshToken);
 
     const publishRes = await fetch(`${GRAPH}/${account.external_account_id}/threads_publish`, {
       method: "POST",

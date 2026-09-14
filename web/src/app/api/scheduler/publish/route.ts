@@ -21,6 +21,12 @@ import type { SocialAccountRecord, SocialPlatform } from "@/lib/social/types";
 
 const MAX_ATTEMPTS = 5;
 
+// Threads' container can take a while to finish processing (polled below,
+// up to 45s) — the previous blind 30s sleep left a real publish stuck
+// mid-flight, almost certainly the function hitting Vercel's default
+// duration limit. Give this route real headroom instead of guessing.
+export const maxDuration = 60;
+
 function isAuthorized(req: NextRequest): boolean {
   const expected = process.env.SCHEDULER_WEBHOOK_SECRET;
   if (!expected) return false;

@@ -65,18 +65,28 @@ export async function GET(request: Request) {
     ? new Date(Date.now() + longJson.expires_in * 1000).toISOString()
     : null;
 
-  // 3) profile, for display in Settings
+  // 3) profile, for display in Settings — and critically the real account id
+  // to publish against. tokenJson.user_id (from the short-lived token
+  // exchange, step 1) turned out NOT reliably equal to what /me actually
+  // resolves to for this token — content_platforms was failing with
+  // "Object with ID ... does not exist" because the stored id was that
+  // mismatched value. /me's own id is what every later publish/lookup call
+  // against this token will use, so it's the only id worth storing.
   const profileRes = await fetch(
     `https://graph.instagram.com/v21.0/me?fields=id,username,profile_picture_url&access_token=${encodeURIComponent(finalToken)}`
   );
   const profile = (await profileRes.json()) as IGProfile;
+  if (!profile.id) {
+    console.error("Instagram /me profile fetch failed:", profile);
+    return fail(origin, "profile");
+  }
 
   const supabase = await createClient();
   const { error: saveError } = await supabase.from("social_accounts").upsert(
     {
       brand_id: brand.id,
       platform: "instagram",
-      external_account_id: tokenJson.user_id,
+      external_account_id: profile.id,
       username: profile.username ?? tokenJson.user_id,
       display_name: profile.username ?? tokenJson.user_id,
       avatar_url: profile.profile_picture_url ?? null,

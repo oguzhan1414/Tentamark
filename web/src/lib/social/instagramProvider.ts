@@ -81,7 +81,23 @@ export const instagramProvider: SocialProvider = {
     if (!publishRes.ok || !publishJson.id) {
       throw new Error(publishJson?.error?.message ?? `Instagram publish başarısız (HTTP ${publishRes.status})`);
     }
-    return { remoteId: publishJson.id as string };
+
+    const remoteId = publishJson.id as string;
+    // Same reasoning as Threads: the numeric media id isn't the shortcode
+    // instagram.com URLs use. Best-effort — a failure here shouldn't fail a
+    // publish that already succeeded.
+    let permalinkUrl: string | undefined;
+    try {
+      const permalinkRes = await fetch(
+        `${GRAPH}/v21.0/${remoteId}?fields=permalink&access_token=${encodeURIComponent(freshToken)}`
+      );
+      const permalinkJson = await permalinkRes.json();
+      if (permalinkRes.ok && permalinkJson.permalink) permalinkUrl = permalinkJson.permalink as string;
+    } catch {
+      // best-effort — publish already succeeded, no permalink is not fatal
+    }
+
+    return { remoteId, permalinkUrl };
   },
 
   async getAnalytics({ freshToken, remoteId }) {

@@ -8,66 +8,26 @@ import { useBrand } from "@/components/dashboard/BrandProvider";
 import { useComposeModal } from "@/components/dashboard/ComposeModalProvider";
 import { createClient } from "@/lib/supabase/client";
 import { STATUS_LABEL, type UIStatus } from "@/lib/contentStatus";
-import PlatformIcon, { type PlatformName } from "@/components/PlatformIcon";
-import type { ApprovalItem, ApprovalComment, TeamMemberOption } from "@/components/dashboard/approvals/types";
+import PlatformIcon from "@/components/PlatformIcon";
 import { INITIAL_APPROVALS } from "@/components/dashboard/approvals/initialApprovalsData";
 import ApprovalCard from "@/components/dashboard/approvals/ApprovalCard";
 import ApprovalDetailModal from "@/components/dashboard/approvals/ApprovalDetailModal";
 import BatchReviewModal from "@/components/dashboard/approvals/BatchReviewModal";
-
-type PlatformRow = {
-  id?: string;
-  platform: PlatformName;
-  status: string;
-  scheduled_at: string | null;
-  caption?: string | null;
-  hashtags?: string[] | null;
-};
-
-type ContentRow = {
-  id: string;
-  title: string;
-  body?: string | null;
-  status: string;
-  created_at: string;
-  imageUrl?: string | null;
-  imageIsVideo?: boolean;
-  metadata?: {
-    hook?: string;
-    visualPrompt?: string;
-    pillar?: string;
-  } | null;
-  tags: string[];
-  format: string;
-  content_platforms: PlatformRow[];
-  campaignName?: string | null;
-  assignedTo?: { id: string; name: string } | null;
-  comments: ApprovalComment[];
-};
+import type { ApprovalComment, ApprovalItem, TeamMemberOption } from "@/components/dashboard/approvals/types";
+import {
+  fetchContentRows,
+  rowToApprovalItem,
+  approveContentRow,
+  rejectContentRow,
+  deleteContentRow,
+  setContentApproval,
+  setContentTags,
+  assignContentRow,
+  insertContentComment,
+  type ContentRow,
+} from "@/lib/content/approvalItems";
 
 const FORMAT_BADGE: Record<string, string> = { post: "📄 Gönderi", story: "⚡ Hikaye", reel: "🎬 Makara" };
-
-function firstMedia(contentMedia: unknown): { url: string; isVideo: boolean } | null {
-  const rows = Array.isArray(contentMedia) ? contentMedia : contentMedia ? [contentMedia] : [];
-  for (const row of rows as { media?: unknown }[]) {
-    const media = Array.isArray(row.media) ? row.media[0] : row.media;
-    const typed = media as { file_url?: string; file_type?: string } | undefined;
-    if (typed?.file_url) {
-      return { url: typed.file_url, isVideo: (typed.file_type ?? "").startsWith("video/") };
-    }
-  }
-  return null;
-}
-
-function parseCoreIdea(coreIdea?: string | null): { hook: string | null; visualPrompt: string | null } {
-  if (!coreIdea) return { hook: null, visualPrompt: null };
-  const hookMatch = coreIdea.match(/Kanca(?:\s*\(Hook\))?:\s*([^\n]+)/i);
-  const visualMatch = coreIdea.match(/Görsel\/Video Konsepti:\s*([\s\S]+)/i);
-  return {
-    hook: hookMatch ? hookMatch[1].trim() : null,
-    visualPrompt: visualMatch ? visualMatch[1].trim() : (!hookMatch ? coreIdea : null),
-  };
-}
 
 const FILTERS: { key: "all" | UIStatus; label: string }[] = [
   { key: "all", label: "Tümü" },
@@ -77,63 +37,6 @@ const FILTERS: { key: "all" | UIStatus; label: string }[] = [
   { key: "published", label: "Yayınlandı" },
   { key: "failed", label: "Hata" },
 ];
-
-function overallStatus(row: ContentRow): UIStatus {
-  const platforms = row.content_platforms ?? [];
-  if (platforms.some((p) => p.status === "NEEDS_USER_ACTION" || p.status === "FAILED")) return "failed";
-  if (row.status === "PUBLISHED" || row.status === "PARTIALLY_PUBLISHED") return "published";
-  if (row.status === "APPROVED" || row.status === "SCHEDULED") return "scheduled";
-  if (row.status === "DRAFT" || row.status === "IDEA" || row.status === "GENERATING") return "draft";
-  return "review";
-}
-
-/*
-  Single mapper from the raw fetched row into the shape both the Kanban
-  board (ApprovalCard/ApprovalDetailModal, ported from the old standalone
-  Onaylarım page) and the shared detail modal need. `status` is the
-  3-way NEEDS_REVIEW/FEEDBACK_GIVEN/APPROVED kanban classification (only
-  meaningful for kanban-eligible rows — see kanbanReal below); `realStatus`
-  is the full 5-way UI status every row gets, which is what
-  ApprovalDetailModal actually uses to decide whether an approve/reject
-  decision even makes sense to offer.
-*/
-function rowToApprovalItem(row: ContentRow, brandName: string): ApprovalItem {
-  const firstPlatform = row.content_platforms[0];
-  const hasComments = row.comments.length > 0;
-  const kanbanStatus: "NEEDS_REVIEW" | "FEEDBACK_GIVEN" | "APPROVED" =
-    row.status === "APPROVED" ? "APPROVED" : hasComments ? "FEEDBACK_GIVEN" : "NEEDS_REVIEW";
-  const createdDate = new Date(row.created_at);
-
-  return {
-    id: row.id,
-    title: row.title,
-    accountName: brandName || "Marka",
-    handle: (brandName || "marka").toLowerCase().replace(/\s+/g, ""),
-    timeLabel: createdDate.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }),
-    fullDateLabel: createdDate.toLocaleDateString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
-    imageUrl: row.imageUrl || "",
-    imageIsVideo: row.imageIsVideo ?? false,
-    caption: firstPlatform?.caption || row.title,
-    status: kanbanStatus,
-    statusLabel: kanbanStatus === "APPROVED" ? "Onaylı" : "Askıda olması",
-    campaignName: row.campaignName ?? null,
-    tags: row.tags,
-    platform: firstPlatform?.platform || "instagram",
-    comments: row.comments,
-    isDemo: false,
-    assignedTo: row.assignedTo ?? null,
-    realStatus: overallStatus(row),
-    platforms: row.content_platforms.map((p) => ({
-      platform: p.platform,
-      caption: p.caption || "",
-      hashtags: p.hashtags ?? undefined,
-      scheduledAt: p.scheduled_at,
-    })),
-    hook: row.metadata?.hook,
-    visualPrompt: row.metadata?.visualPrompt,
-    format: row.format,
-  };
-}
 
 function PostsPageContent() {
   const brand = useBrand();
@@ -193,96 +96,14 @@ function PostsPageContent() {
 
   // Load content — every status now (List used to fetch everything;
   // Onaylarım used to fetch only NEEDS_REVIEW/APPROVED separately). One
-  // fetch, both views derive from it.
+  // fetch, both views derive from it. Shared with Calendar (@/lib/content/
+  // approvalItems) so the two pages can't drift into showing a different
+  // status for the same content again.
   useEffect(() => {
     let ignore = false;
     (async () => {
-      const { data, error } = await supabase
-        .from("content")
-        .select(
-          "id, title, core_idea, category, status, created_at, tags, format, assigned_to, assignee:profiles!assigned_to(full_name, email), campaigns(name), content_media(media(file_url, file_type)), content_platforms(id, platform, caption, hashtags, status, scheduled_at)"
-        )
-        .eq("brand_id", brand.id)
-        .order("created_at", { ascending: false })
-        .limit(200);
-
-      if (ignore) return;
-      if (error) {
-        console.error("Gönderiler yüklenemedi:", error.message);
-        setRows([]);
-        return;
-      }
-
-      const list = data as unknown as Array<Record<string, unknown>>;
-      const ids = list.map((r) => String(r.id));
-      const commentsByContent = new Map<string, ApprovalComment[]>();
-
-      if (ids.length > 0) {
-        const { data: comments } = await supabase
-          .from("content_comments")
-          .select("id, content_id, body, created_at, is_external, author:profiles(full_name, email)")
-          .in("content_id", ids)
-          .order("created_at", { ascending: true });
-
-        for (const c of (comments ?? []) as unknown as Array<{
-          id: string;
-          content_id: string;
-          body: string;
-          created_at: string;
-          is_external?: boolean;
-          author?: { full_name?: string | null; email?: string | null } | { full_name?: string | null; email?: string | null }[];
-        }>) {
-          const authorRow = Array.isArray(c.author) ? c.author[0] : c.author;
-          const authorName = c.is_external ? "Dış Paylaşım" : authorRow?.full_name || authorRow?.email?.split("@")[0] || "Ekip Üyesi";
-          const commList = commentsByContent.get(c.content_id) ?? [];
-          commList.push({
-            id: c.id,
-            authorName,
-            avatarText: c.is_external ? "🔗" : authorName.charAt(0).toUpperCase(),
-            timeAgo: new Date(c.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }),
-            text: c.body,
-            isExternal: c.is_external,
-          });
-          commentsByContent.set(c.content_id, commList);
-        }
-      }
-
-      if (ignore) return;
-      setRows(
-        list.map((r) => {
-          const { hook, visualPrompt } = parseCoreIdea(r.core_idea as string | null);
-          const media = firstMedia(r.content_media);
-          const campaign = r.campaigns as { name?: string } | { name?: string }[] | null;
-          const campaignName = Array.isArray(campaign) ? campaign[0]?.name : campaign?.name;
-          const assigneeRow = r.assignee as { full_name?: string | null; email?: string | null } | { full_name?: string | null; email?: string | null }[] | null;
-          const assignee = Array.isArray(assigneeRow) ? assigneeRow[0] : assigneeRow;
-          const assignedTo =
-            r.assigned_to && assignee
-              ? { id: String(r.assigned_to), name: assignee.full_name || assignee.email?.split("@")[0] || "Üye" }
-              : null;
-
-          return {
-            id: String(r.id),
-            title: String(r.title || "(Başlıksız)"),
-            body: (r.core_idea as string) ?? null,
-            status: String(r.status),
-            created_at: String(r.created_at),
-            imageUrl: media?.url ?? null,
-            imageIsVideo: media?.isVideo ?? false,
-            metadata: {
-              hook: hook ?? undefined,
-              visualPrompt: visualPrompt ?? undefined,
-              pillar: (r.category as string) ?? undefined,
-            },
-            tags: Array.isArray(r.tags) ? (r.tags as string[]) : [],
-            format: String(r.format || "post"),
-            content_platforms: (r.content_platforms ?? []) as PlatformRow[],
-            campaignName: campaignName ?? null,
-            assignedTo,
-            comments: commentsByContent.get(String(r.id)) ?? [],
-          };
-        })
-      );
+      const list = await fetchContentRows(supabase, brand.id);
+      if (!ignore) setRows(list);
     })();
     return () => {
       ignore = true;
@@ -333,7 +154,7 @@ function PostsPageContent() {
 
   async function approve(id: string) {
     setBusyId(id);
-    const { error } = await supabase.from("content").update({ status: "APPROVED" }).eq("id", id);
+    const { error } = await approveContentRow(supabase, id);
     setBusyId(null);
     if (error) {
       console.error("Onaylanamadı:", error.message);
@@ -345,7 +166,7 @@ function PostsPageContent() {
 
   async function reject(id: string) {
     setBusyId(id);
-    const { error } = await supabase.from("content").update({ status: "DRAFT" }).eq("id", id);
+    const { error } = await rejectContentRow(supabase, id);
     setBusyId(null);
     if (error) {
       console.error("Taslağa gönderilemedi:", error.message);
@@ -372,9 +193,23 @@ function PostsPageContent() {
     if (!row) return;
     const nextStatus = row.status === "APPROVED" ? "NEEDS_REVIEW" : "APPROVED";
     setRows((prev) => (prev ? prev.map((r) => (r.id === id ? { ...r, status: nextStatus } : r)) : prev));
-    supabase.from("content").update({ status: nextStatus }).eq("id", id).then(({ error }) => {
+    setContentApproval(supabase, id, nextStatus).then(({ error }) => {
       if (error) console.error("Onay durumu kaydedilemedi:", error.message);
     });
+  }
+
+  async function deleteContent(id: string) {
+    const demoTarget = demoItems.find((i) => i.id === id);
+    if (demoTarget) {
+      setDemoItems((prev) => prev.filter((i) => i.id !== id));
+      return;
+    }
+    const { error } = await deleteContentRow(supabase, id);
+    if (error) {
+      console.error("İçerik silinemedi:", error.message);
+      return;
+    }
+    setRows((prev) => (prev ? prev.filter((r) => r.id !== id) : prev));
   }
 
   async function saveTags(id: string, nextTags: string[]) {
@@ -384,7 +219,7 @@ function PostsPageContent() {
       return;
     }
     setRows((prev) => (prev ? prev.map((r) => (r.id === id ? { ...r, tags: nextTags } : r)) : prev));
-    const { error } = await supabase.from("content").update({ tags: nextTags }).eq("id", id);
+    const { error } = await setContentTags(supabase, id, nextTags);
     if (error) console.error("Etiketler kaydedilemedi:", error.message);
   }
 
@@ -398,7 +233,7 @@ function PostsPageContent() {
     setRows((prev) => (prev ? prev.map((r) => (r.id === itemId ? { ...r, comments: [newComment, ...r.comments] } : r)) : prev));
     supabase
       .auth.getUser()
-      .then(({ data: { user } }) => supabase.from("content_comments").insert({ content_id: itemId, author_id: user?.id ?? null, body: text }))
+      .then(({ data: { user } }) => insertContentComment(supabase, itemId, user?.id ?? null, text))
       .then(({ error }) => {
         if (error) console.error("Yorum kaydedilemedi:", error.message);
       });
@@ -412,7 +247,7 @@ function PostsPageContent() {
       return;
     }
     setRows((prev) => (prev ? prev.map((r) => (r.id === itemId ? { ...r, assignedTo } : r)) : prev));
-    supabase.from("content").update({ assigned_to: userId }).eq("id", itemId).then(({ error }) => {
+    assignContentRow(supabase, itemId, userId).then(({ error }) => {
       if (error) console.error("Atama kaydedilemedi:", error.message);
     });
   }
@@ -954,6 +789,8 @@ function PostsPageContent() {
           teamMembers={teamMembers}
           onAssign={handleAssign}
           onEditTags={saveTags}
+          onReject={reject}
+          onDelete={deleteContent}
         />
       )}
 

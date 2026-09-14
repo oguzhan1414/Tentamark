@@ -13,7 +13,6 @@ import {
 import { useBrand } from "@/components/dashboard/BrandProvider";
 import { useComposeModal } from "@/components/dashboard/ComposeModalProvider";
 import { createClient } from "@/lib/supabase/client";
-import type { PlatformName } from "@/components/PlatformIcon";
 import type {
   CalendarPost,
   CalendarMeeting,
@@ -26,23 +25,26 @@ import CalendarHeader from "@/components/dashboard/calendar/CalendarHeader";
 import CalendarPostCard from "@/components/dashboard/calendar/CalendarPostCard";
 import CalendarMonthView from "@/components/dashboard/calendar/CalendarMonthView";
 import CalendarWeekView from "@/components/dashboard/calendar/CalendarWeekView";
-import CalendarDetailModal from "@/components/dashboard/calendar/CalendarDetailModal";
 import CalendarFilterDrawer from "@/components/dashboard/calendar/CalendarFilterDrawer";
 import CalendarAiTodoDrawer from "@/components/dashboard/calendar/CalendarAiTodoDrawer";
 import SmartScheduleModal from "@/components/dashboard/calendar/SmartScheduleModal";
+import CalendarMediaPanel from "@/components/dashboard/calendar/CalendarMediaPanel";
+import ApprovalDetailModal from "@/components/dashboard/approvals/ApprovalDetailModal";
+import type { MediaLibraryItem } from "@/lib/media/useMediaLibrary";
+import type { ApprovalComment, ApprovalItem, TeamMemberOption } from "@/components/dashboard/approvals/types";
 import { getDashboardBriefing } from "@/lib/ai/getDashboardBriefing";
-
-function firstMedia(contentMedia: unknown): { url: string; isVideo: boolean } | null {
-  const rows = Array.isArray(contentMedia) ? contentMedia : contentMedia ? [contentMedia] : [];
-  for (const row of rows as { media?: unknown }[]) {
-    const media = Array.isArray(row.media) ? row.media[0] : row.media;
-    const typed = media as { file_url?: string; file_type?: string } | undefined;
-    if (typed?.file_url) {
-      return { url: typed.file_url, isVideo: (typed.file_type ?? "").startsWith("video/") };
-    }
-  }
-  return null;
-}
+import { deriveStatus } from "@/lib/contentStatus";
+import {
+  fetchContentRows,
+  rowToApprovalItem,
+  rejectContentRow,
+  deleteContentRow,
+  setContentApproval,
+  setContentTags,
+  assignContentRow,
+  insertContentComment,
+  type ContentRow,
+} from "@/lib/content/approvalItems";
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
@@ -74,15 +76,62 @@ export default function CalendarPage() {
 
   const [viewMode, setViewMode] = useState<"month" | "week">("month");
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  // Real content, fetched once via the same fetchContentRows() Gönderiler
+  // uses — CalendarPost placements AND the ApprovalItem shown in the detail
+  // modal both derive from this single source, so a status/reject/delete
+  // fix can't land in only one of the two pages again.
+  const [contentRows, setContentRows] = useState<ContentRow[]>([]);
   // Kept separate from demo data on purpose — see the same split in
   // approvals/page.tsx. Real posts never get permanently mixed with someone
   // else's brand's sample content; demo only shows while switched on.
-  const [realPosts, setRealPosts] = useState<CalendarPost[]>([]);
   const [demoPosts, setDemoPosts] = useState<CalendarPost[]>(INITIAL_CALENDAR_POSTS);
   const [showDemo, setShowDemo] = useState(false);
   const [notes, setNotes] = useState<CalendarNote[]>([]);
   const [campaigns, setCampaigns] = useState<CalendarCampaign[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMemberOption[]>([]);
+  const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // One CalendarPost per (content, platform) pair — a platform's own
+  // scheduled_at/status decides where it lands and how it looks, not the
+  // content row as a whole (one content item can be PUBLISHED on Threads
+  // and still QUEUED on Instagram).
+  const realPosts = useMemo(() => {
+    const list: CalendarPost[] = [];
+    for (const r of contentRows) {
+      for (const p of r.content_platforms) {
+        const schedDate = p.scheduled_at ? new Date(p.scheduled_at) : new Date(r.created_at);
+        const uiStatus = deriveStatus(r.status, p.status);
+        const apprStatus: "PENDING" | "APPROVED" | "FEEDBACK" =
+          uiStatus === "scheduled" || uiStatus === "published" ? "APPROVED" : "PENDING";
+        const cellPostStatus: "DRAFT" | "SCHEDULED" | "PUBLISHED" =
+          uiStatus === "draft" ? "DRAFT" : uiStatus === "published" ? "PUBLISHED" : "SCHEDULED";
+
+        list.push({
+          id: `real-${r.id}-${p.platform}`,
+          contentPlatformId: p.id,
+          scheduledAtIso: schedDate.toISOString(),
+          title: r.title,
+          accountName: brand.name || "Marka",
+          handle: (brand.name || "marka").toLowerCase().replace(/\s+/g, ""),
+          timeLabel: schedDate.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }),
+          date: dateKey(schedDate),
+          imageUrl: r.imageUrl || "/images/no-image-placeholder.png",
+          imageIsVideo: r.imageIsVideo ?? false,
+          caption: p.caption || r.title,
+          tags: r.campaignName ? [r.campaignName] : ["Post"],
+          category: r.metadata?.pillar || null,
+          campaignName: r.campaignName ?? null,
+          platform: p.platform || "instagram",
+          approvalStatus: apprStatus,
+          postStatus: cellPostStatus,
+          commentCount: r.comments.length,
+          isDemo: false,
+        });
+      }
+    }
+    return list;
+  }, [contentRows, brand.name]);
 
   const posts = useMemo(
     () => (showDemo ? [...realPosts, ...demoPosts] : realPosts),
@@ -138,81 +187,43 @@ export default function CalendarPage() {
     };
   }, [brand.id]);
 
-  // Fetch real content from Supabase
+  // Fetch real content — same fetchContentRows() Gönderiler uses (see
+  // @/lib/content/approvalItems), so Calendar's placements and its detail
+  // modal both read from one real dataset instead of two divergent fetches.
   useEffect(() => {
     let ignore = false;
     (async () => {
-      try {
-        const { data, error } = await supabase
-          .from("content")
-          .select(
-            "id, title, status, category, created_at, campaigns(name), content_media(media(file_url, file_type)), content_platforms(id, platform, caption, status, scheduled_at)"
-          )
-          .eq("brand_id", brand.id)
-          .order("created_at", { ascending: false });
-
-        if (ignore) return;
-        if (error) {
-          console.error("Takvim verileri yüklenirken hata:", error.message);
-          return;
-        }
-
-        const list = (data ?? []) as unknown as Array<Record<string, unknown>>;
-        const nextRealPosts: CalendarPost[] = [];
-
-        for (const r of list) {
-          const platforms = (r.content_platforms ?? []) as Array<{
-            id: string;
-            platform: PlatformName;
-            caption: string | null;
-            scheduled_at: string | null;
-            status: string;
-          }>;
-          const media = firstMedia(r.content_media);
-          const campaign = r.campaigns as { name?: string } | { name?: string }[] | null;
-          const campaignName = Array.isArray(campaign) ? campaign[0]?.name : campaign?.name;
-
-          for (const p of platforms) {
-            const schedDate = p.scheduled_at ? new Date(p.scheduled_at) : new Date(String(r.created_at));
-            const dStr = schedDate.toISOString().slice(0, 10);
-            const timeStr = schedDate.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
-
-            const apprStatus: "PENDING" | "APPROVED" | "FEEDBACK" = r.status === "APPROVED" ? "APPROVED" : "PENDING";
-
-            nextRealPosts.push({
-              id: `real-${r.id}-${p.platform}`,
-              contentPlatformId: p.id,
-              scheduledAtIso: schedDate.toISOString(),
-              title: String(r.title || "(Başlıksız)"),
-              accountName: brand.name || "Marka",
-              handle: (brand.name || "marka").toLowerCase().replace(/\s+/g, ""),
-              timeLabel: timeStr,
-              date: dStr,
-              imageUrl: media?.url || "/images/no-image-placeholder.png",
-              imageIsVideo: media?.isVideo ?? false,
-              caption: p.caption || String(r.title || ""),
-              tags: campaignName ? [campaignName] : ["Post"],
-              category: (r.category as string) || null,
-              campaignName: campaignName ?? null,
-              platform: p.platform || "instagram",
-              approvalStatus: apprStatus,
-              postStatus: "SCHEDULED",
-              commentCount: 0,
-              isDemo: false,
-            });
-          }
-        }
-
-        setRealPosts(nextRealPosts);
-      } catch (err) {
-        console.error("Takvim verisi hatası:", err);
-      }
+      const list = await fetchContentRows(supabase, brand.id);
+      if (!ignore) setContentRows(list);
     })();
-
     return () => {
       ignore = true;
     };
-  }, [supabase, brand.id, brand.name, refreshKey]);
+  }, [supabase, brand.id, refreshKey]);
+
+  // Team roster for the detail modal's "Onaya ata" picker — same
+  // brand -> organization_id -> organization_members path as Gönderiler.
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      const { data: brandRow } = await supabase.from("brands").select("organization_id").eq("id", brand.id).maybeSingle();
+      if (ignore || !brandRow) return;
+      const { data: memberRows } = await supabase
+        .from("organization_members")
+        .select("user_id, profiles(full_name, email)")
+        .eq("organization_id", brandRow.organization_id);
+      if (ignore) return;
+      setTeamMembers(
+        (memberRows ?? []).map((m) => {
+          const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+          return { userId: m.user_id, name: p?.full_name || p?.email?.split("@")[0] || "Üye" };
+        })
+      );
+    })();
+    return () => {
+      ignore = true;
+    };
+  }, [supabase, brand.id]);
 
   // Fetch real campaigns (for the real multi-day banner)
   useEffect(() => {
@@ -384,25 +395,94 @@ export default function CalendarPage() {
     if (error) console.error("Not silinemedi:", error.message);
   }
 
-  // Drag and drop — move a post card to a different day. Real posts persist
-  // the new date (keeping the original time-of-day); demo posts just move
-  // locally, same isDemo split used everywhere else on this page.
+  // Detail modal actions — same shared mutations Gönderiler uses
+  // (@/lib/content/approvalItems), so "reject" / "delete" / "approve" mean
+  // exactly the same thing in both places.
+  function toggleApprove(id: string) {
+    const row = contentRows.find((r) => r.id === id);
+    if (!row) return;
+    const nextStatus = row.status === "APPROVED" ? "NEEDS_REVIEW" : "APPROVED";
+    setContentRows((prev) => prev.map((r) => (r.id === id ? { ...r, status: nextStatus } : r)));
+    setContentApproval(supabase, id, nextStatus).then(({ error }) => {
+      if (error) console.error("Onay durumu kaydedilemedi:", error.message);
+    });
+  }
+
+  async function rejectContent(id: string) {
+    const { error } = await rejectContentRow(supabase, id);
+    if (error) {
+      console.error("Taslağa gönderilemedi:", error.message);
+      return;
+    }
+    setContentRows((prev) => prev.map((r) => (r.id === id ? { ...r, status: "DRAFT" } : r)));
+  }
+
+  async function deleteContentItem(id: string) {
+    const { error } = await deleteContentRow(supabase, id);
+    if (error) {
+      console.error("İçerik silinemedi:", error.message);
+      return;
+    }
+    setContentRows((prev) => prev.filter((r) => r.id !== id));
+  }
+
+  async function saveTags(id: string, nextTags: string[]) {
+    setContentRows((prev) => prev.map((r) => (r.id === id ? { ...r, tags: nextTags } : r)));
+    const { error } = await setContentTags(supabase, id, nextTags);
+    if (error) console.error("Etiketler kaydedilemedi:", error.message);
+  }
+
+  function handleAssign(id: string, userId: string | null) {
+    const assignedTo = userId ? { id: userId, name: teamMembers.find((m) => m.userId === userId)?.name ?? "Üye" } : null;
+    setContentRows((prev) => prev.map((r) => (r.id === id ? { ...r, assignedTo } : r)));
+    assignContentRow(supabase, id, userId).then(({ error }) => {
+      if (error) console.error("Atama kaydedilemedi:", error.message);
+    });
+  }
+
+  function addComment(id: string, text: string) {
+    const newComment: ApprovalComment = { id: "c-" + Date.now(), authorName: "Sen", avatarText: "O", timeAgo: "az önce", text, isCurrentUser: true };
+    setContentRows((prev) => prev.map((r) => (r.id === id ? { ...r, comments: [newComment, ...r.comments] } : r)));
+    supabase
+      .auth.getUser()
+      .then(({ data: { user } }) => insertContentComment(supabase, id, user?.id ?? null, text))
+      .then(({ error }) => {
+        if (error) console.error("Yorum kaydedilemedi:", error.message);
+      });
+  }
+
+  // Drag and drop — move a post card to a different day, OR drag a Medya
+  // panel thumbnail onto a day to open Compose pre-filled with that date and
+  // photo/video already attached (dnd-kit's `data` on the draggable tells
+  // handleDragEnd which of the two this is).
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   const [activeDragPost, setActiveDragPost] = useState<CalendarPost | null>(null);
+  const [activeDragMedia, setActiveDragMedia] = useState<MediaLibraryItem | null>(null);
 
   function handleDragStart(event: DragStartEvent) {
+    if (event.active.data.current?.type === "media") {
+      setActiveDragMedia(event.active.data.current.item as MediaLibraryItem);
+      return;
+    }
     const post = posts.find((p) => p.id === String(event.active.id));
     setActiveDragPost(post ?? null);
   }
 
   function handleDragEnd(event: DragEndEvent) {
-    setActiveDragPost(null);
     const { active, over } = event;
+    const draggedMedia = activeDragMedia;
+    setActiveDragPost(null);
+    setActiveDragMedia(null);
     if (!over) return;
-    const postId = String(active.id);
     const newDateKey = String(over.id);
     if (newDateKey < todayKey) return; // dropping onto a past day is a no-op, not an error
 
+    if (draggedMedia) {
+      composeModal.open({ date: newDateKey, initialMedia: draggedMedia, onSaved: () => setRefreshKey((k) => k + 1) });
+      return;
+    }
+
+    const postId = String(active.id);
     const post = posts.find((p) => p.id === postId);
     if (!post || post.date === newDateKey) return;
 
@@ -411,15 +491,25 @@ export default function CalendarPage() {
       return;
     }
 
-    setRealPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, date: newDateKey } : p)));
     if (post.contentPlatformId && post.scheduledAtIso) {
       const original = new Date(post.scheduledAtIso);
       const [y, m, d] = newDateKey.split("-").map(Number);
       const moved = new Date(original);
       moved.setFullYear(y, m - 1, d);
+      const movedIso = moved.toISOString();
+
+      setContentRows((prev) =>
+        prev.map((r) => ({
+          ...r,
+          content_platforms: r.content_platforms.map((p) =>
+            p.id === post.contentPlatformId ? { ...p, scheduled_at: movedIso } : p
+          ),
+        }))
+      );
+
       supabase
         .from("content_platforms")
-        .update({ scheduled_at: moved.toISOString() })
+        .update({ scheduled_at: movedIso })
         .eq("id", post.contentPlatformId)
         .then(({ error }) => {
           if (error) console.error("Tarih güncellenemedi:", error.message);
@@ -437,6 +527,42 @@ export default function CalendarPage() {
 
   // Selected post index in list for modal navigation
   const selectedIndex = selectedPost ? filteredPosts.findIndex((p) => p.id === selectedPost.id) : -1;
+
+  // The clicked chip is one (content, platform) pair; the detail modal
+  // shows the whole content item (every platform's caption at once) with
+  // the clicked platform as its hero card — same shape rowToApprovalItem
+  // already produces for Gönderiler, just with `platform`/`caption`
+  // overridden to match what was actually clicked.
+  const selectedApprovalItem = useMemo<ApprovalItem | null>(() => {
+    if (!selectedPost) return null;
+    if (selectedPost.isDemo) {
+      return {
+        id: selectedPost.id,
+        title: selectedPost.title,
+        accountName: selectedPost.accountName,
+        handle: selectedPost.handle,
+        timeLabel: selectedPost.timeLabel,
+        fullDateLabel: selectedPost.date,
+        imageUrl: selectedPost.imageUrl,
+        imageIsVideo: selectedPost.imageIsVideo,
+        caption: selectedPost.caption,
+        status: "NEEDS_REVIEW",
+        campaignName: selectedPost.campaignName,
+        tags: selectedPost.tags,
+        platform: selectedPost.platform,
+        comments: [],
+        isDemo: true,
+        assignedTo: null,
+        realStatus: "review",
+        platforms: [{ platform: selectedPost.platform, caption: selectedPost.caption }],
+      };
+    }
+    const row = contentRows.find((r) => r.content_platforms.some((p) => p.id === selectedPost.contentPlatformId));
+    if (!row) return null;
+    const item = rowToApprovalItem(row, brand.name);
+    const match = item.platforms?.find((p) => p.platform === selectedPost.platform);
+    return match ? { ...item, platform: selectedPost.platform, caption: match.caption } : item;
+  }, [selectedPost, contentRows, brand.name]);
 
   return (
     <DndContext
@@ -456,6 +582,7 @@ export default function CalendarPage() {
           onToday={handleToday}
           onOpenFilter={() => setFilterDrawerOpen((prev) => !prev)}
           onOpenAiTodo={() => setAiTodoOpen((prev) => !prev)}
+          onOpenMedia={() => setMediaLibraryOpen((v) => !v)}
           aiTodoCount={needsReviewCount}
           onOpenCompose={() => handleOpenComposeAtDate(todayKey)}
           onOpenSmartFill={() => {
@@ -531,12 +658,24 @@ export default function CalendarPage() {
               setSmartFillDate(todayKey);
             }}
           />
+
+          {/* Docked Medya panel — a real flex sibling (not an overlay), so
+              opening it visibly narrows the calendar instead of covering it. */}
+          <CalendarMediaPanel
+            brandId={brand.id}
+            isOpen={mediaLibraryOpen}
+            onClose={() => setMediaLibraryOpen(false)}
+          />
         </div>
 
-        {/* Post Detail & Analytics Modal */}
-        {selectedPost && (
-          <CalendarDetailModal
-            post={selectedPost}
+        {/* Post Detail Modal — same ApprovalDetailModal Gönderiler uses, so
+            status/reject/delete/comments/share all behave identically no
+            matter which page you clicked the post from. */}
+        {selectedApprovalItem && (
+          <ApprovalDetailModal
+            item={selectedApprovalItem}
+            index={selectedIndex}
+            total={filteredPosts.length}
             onClose={() => setSelectedPost(null)}
             onPrev={() => {
               if (selectedIndex > 0) setSelectedPost(filteredPosts[selectedIndex - 1]);
@@ -544,6 +683,13 @@ export default function CalendarPage() {
             onNext={() => {
               if (selectedIndex + 1 < filteredPosts.length) setSelectedPost(filteredPosts[selectedIndex + 1]);
             }}
+            onToggleApprove={toggleApprove}
+            onAddComment={addComment}
+            teamMembers={teamMembers}
+            onAssign={handleAssign}
+            onEditTags={saveTags}
+            onReject={rejectContent}
+            onDelete={deleteContentItem}
           />
         )}
 
@@ -573,6 +719,15 @@ export default function CalendarPage() {
         {activeDragPost ? (
           <div className="w-56 rotate-2 opacity-95">
             <CalendarPostCard post={activeDragPost} onClick={() => {}} draggable={false} />
+          </div>
+        ) : activeDragMedia ? (
+          <div className="h-20 w-20 rotate-3 overflow-hidden rounded-xl border-2 border-white shadow-xl">
+            {activeDragMedia.file_type.startsWith("video/") ? (
+              <video src={activeDragMedia.file_url} muted className="h-full w-full object-cover" />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={activeDragMedia.file_url} alt="" className="h-full w-full object-cover" />
+            )}
           </div>
         ) : null}
       </DragOverlay>

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import ComposeForm from "@/components/dashboard/ComposeForm";
+import type { MediaLibraryItem } from "@/lib/media/useMediaLibrary";
 
 /*
   The one real content studio, as an overlay — reachable from anywhere via
@@ -15,12 +16,14 @@ export default function ComposeModal({
   initialCampaignId,
   initialDate,
   initialHour,
+  initialMedia,
   onSubmitted,
 }: {
   onClose: () => void;
   initialCampaignId?: string;
   initialDate?: string;
   initialHour?: number;
+  initialMedia?: MediaLibraryItem;
   onSubmitted?: () => void;
 }) {
   useEffect(() => {
@@ -54,6 +57,7 @@ export default function ComposeModal({
           initialCampaignId={initialCampaignId}
           initialDate={initialDate}
           initialHour={initialHour}
+          initialMedia={initialMedia}
         />
       </div>
     </div>

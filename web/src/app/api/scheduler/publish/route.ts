@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
   const { data: cp, error: cpError } = await supabase
     .from("content_platforms")
     .select(
-      "id, content_id, platform, caption, attempt_count, content:content!inner(brand_id, content_media(position, media(file_url)))"
+      "id, content_id, platform, caption, attempt_count, content:content!inner(brand_id, content_media(position, media(file_url, file_type)))"
     )
     .eq("id", contentPlatformId)
     .single();
@@ -66,11 +66,17 @@ export async function POST(req: NextRequest) {
 
   const mediaRows = (content?.content_media ?? []) as Array<{
     position: number;
-    media: { file_url: string } | { file_url: string }[] | null;
+    media: { file_url: string; file_type: string } | { file_url: string; file_type: string }[] | null;
   }>;
   const sortedMedia = [...mediaRows].sort((a, b) => a.position - b.position);
-  const firstMedia = sortedMedia[0]?.media;
-  const mediaUrl = (Array.isArray(firstMedia) ? firstMedia[0]?.file_url : firstMedia?.file_url) || undefined;
+  const firstMediaRaw = sortedMedia[0]?.media;
+  const firstMedia = Array.isArray(firstMediaRaw) ? firstMediaRaw[0] : firstMediaRaw;
+  const mediaUrl = firstMedia?.file_url || undefined;
+  const mediaType: "image" | "video" | undefined = firstMedia
+    ? firstMedia.file_type?.startsWith("video/")
+      ? "video"
+      : "image"
+    : undefined;
 
   const { data: account, error: accountError } = await supabase
     .from("social_accounts")
@@ -130,6 +136,7 @@ export async function POST(req: NextRequest) {
       freshToken,
       caption: cp.caption,
       mediaUrl,
+      mediaType,
     });
 
     await supabase
@@ -138,6 +145,7 @@ export async function POST(req: NextRequest) {
         status: "PUBLISHED",
         published_at: new Date().toISOString(),
         platform_post_id: result.remoteId,
+        permalink_url: result.permalinkUrl ?? null,
         last_error: null,
       })
       .eq("id", cp.id);

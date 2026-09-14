@@ -2,11 +2,17 @@
 
 import { createContext, useContext, useState } from "react";
 import ComposeModal from "@/components/dashboard/ComposeModal";
+import type { MediaLibraryItem } from "@/lib/media/useMediaLibrary";
 
 type ComposeModalOptions = {
   campaignId?: string;
   date?: string;
   hour?: number;
+  // Set when opened by dragging a Medya panel thumbnail onto a calendar day
+  // — pre-attaches that photo/video instead of leaving Compose's media step
+  // empty (the whole point of drag-to-schedule being faster than the normal
+  // flow).
+  initialMedia?: MediaLibraryItem;
   // Fires right after a successful save — lets the calling page (e.g.
   // Calendar) refetch its own list without the modal needing to know
   // anything about who opened it.
@@ -39,6 +45,7 @@ export function ComposeModalProvider({ children }: { children: React.ReactNode }
           initialCampaignId={options.campaignId}
           initialDate={options.date}
           initialHour={options.hour}
+          initialMedia={options.initialMedia}
           onSubmitted={options.onSaved}
         />
       )}

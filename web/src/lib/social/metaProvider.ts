@@ -49,7 +49,41 @@ export const facebookProvider: SocialProvider = {
     return null;
   },
 
-  async publish({ account, freshToken, caption }): Promise<PublishResult> {
+  async publish({ account, freshToken, caption, mediaUrl, mediaType }): Promise<PublishResult> {
+    // Photos and videos are entirely different endpoints on the Graph API,
+    // not a param on /feed — posting mediaUrl there silently gets dropped,
+    // which is exactly how this shipped as a text-only publisher despite
+    // declaring image/video capability above.
+    if (mediaUrl && mediaType === "video") {
+      const res = await fetch(`${GRAPH}/${account.external_account_id}/videos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ file_url: mediaUrl, description: caption, access_token: freshToken }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.id) {
+        throw new Error(json?.error?.message ?? `Facebook video publish başarısız (HTTP ${res.status})`);
+      }
+      return {
+        remoteId: json.id as string,
+        permalinkUrl: `https://www.facebook.com/${account.external_account_id}/videos/${json.id}`,
+      };
+    }
+
+    if (mediaUrl) {
+      const res = await fetch(`${GRAPH}/${account.external_account_id}/photos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ url: mediaUrl, caption, access_token: freshToken }),
+      });
+      const json = await res.json();
+      if (!res.ok || !(json.post_id || json.id)) {
+        throw new Error(json?.error?.message ?? `Facebook fotoğraf publish başarısız (HTTP ${res.status})`);
+      }
+      const remoteId = (json.post_id ?? json.id) as string;
+      return { remoteId, permalinkUrl: `https://www.facebook.com/${remoteId}` };
+    }
+
     const res = await fetch(`${GRAPH}/${account.external_account_id}/feed`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -59,7 +93,7 @@ export const facebookProvider: SocialProvider = {
     if (!res.ok || !json.id) {
       throw new Error(json?.error?.message ?? `Facebook publish başarısız (HTTP ${res.status})`);
     }
-    return { remoteId: json.id as string };
+    return { remoteId: json.id as string, permalinkUrl: `https://www.facebook.com/${json.id}` };
   },
 
   async getAnalytics({ freshToken, remoteId }) {

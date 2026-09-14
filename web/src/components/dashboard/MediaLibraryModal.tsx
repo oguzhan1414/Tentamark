@@ -1,20 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useState } from "react";
+import { useMediaLibrary, type MediaLibraryItem } from "@/lib/media/useMediaLibrary";
 
-export type MediaLibraryItem = {
-  id: string;
-  file_name: string;
-  file_url: string;
-  file_type: string;
-};
+export type { MediaLibraryItem };
 
 type Props = {
   brandId: string;
-  onSelect: (media: MediaLibraryItem) => void;
+  // Omitted when opened standalone — browse/upload/label only, nothing to
+  // hand back to a caller. (Calendar now uses the docked CalendarMediaPanel
+  // instead, but this stays the picker ComposeForm opens mid-form.)
+  onSelect?: (media: MediaLibraryItem) => void;
   onClose: () => void;
 };
+
+type MediaFilter = "all" | "image" | "video";
 
 /*
   Browse-and-reuse picker over the existing `media` table — nothing here is
@@ -26,63 +26,18 @@ type Props = {
   No delete here on purpose — `content_media.media_id` cascades on delete,
   so removing a library item would silently blank out the image on any
   existing post that used it. Not worth that risk for a v1 picker.
+
+  Each item's label (media.alt_text) is user-editable — the point is being
+  able to tell the AI "use the one labeled X" later, not just recognize
+  thumbnails by eye.
 */
 export default function MediaLibraryModal({ brandId, onSelect, onClose }: Props) {
-  const supabase = useMemo(() => createClient(), []);
-  const [items, setItems] = useState<MediaLibraryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { items, loading, uploading, error, upload, rename } = useMediaLibrary(brandId);
+  const [filter, setFilter] = useState<MediaFilter>("all");
 
-  useEffect(() => {
-    let ignore = false;
-    (async () => {
-      setLoading(true);
-      const { data, error: fetchError } = await supabase
-        .from("media")
-        .select("id, file_name, file_url, file_type")
-        .eq("brand_id", brandId)
-        .order("created_at", { ascending: false })
-        .limit(60);
-      if (ignore) return;
-      if (fetchError) setError(fetchError.message);
-      setItems((data ?? []) as MediaLibraryItem[]);
-      setLoading(false);
-    })();
-    return () => {
-      ignore = true;
-    };
-  }, [supabase, brandId]);
-
-  async function handleUpload(file: File) {
-    setUploading(true);
-    setError(null);
-    try {
-      const path = `${brandId}/${crypto.randomUUID()}-${file.name}`;
-      const { error: uploadError } = await supabase.storage.from("media").upload(path, file);
-      if (uploadError) throw new Error(uploadError.message);
-
-      const { data: publicUrl } = supabase.storage.from("media").getPublicUrl(path);
-      const { data: mediaRow, error: mediaError } = await supabase
-        .from("media")
-        .insert({
-          brand_id: brandId,
-          file_name: file.name,
-          file_url: publicUrl.publicUrl,
-          file_type: file.type,
-          file_size: file.size,
-        })
-        .select("id, file_name, file_url, file_type")
-        .single();
-      if (mediaError || !mediaRow) throw new Error(mediaError?.message ?? "Medya kaydedilemedi.");
-
-      setItems((prev) => [mediaRow as MediaLibraryItem, ...prev]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Yükleme başarısız.");
-    } finally {
-      setUploading(false);
-    }
-  }
+  const filteredItems = items.filter((m) =>
+    filter === "all" ? true : filter === "video" ? m.file_type.startsWith("video/") : !m.file_type.startsWith("video/")
+  );
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
@@ -99,7 +54,7 @@ export default function MediaLibraryModal({ brandId, onSelect, onClose }: Props)
           </button>
         </div>
 
-        <div className="shrink-0 border-b border-slate-100 px-5 py-3">
+        <div className="shrink-0 border-b border-slate-100 px-5 py-3 space-y-2.5">
           <label
             htmlFor="media_library_upload"
             className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 py-2.5 text-xs font-semibold text-slate-600 hover:border-rose-400 hover:text-rose-600 transition"
@@ -113,39 +68,75 @@ export default function MediaLibraryModal({ brandId, onSelect, onClose }: Props)
               disabled={uploading}
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) handleUpload(file);
+                if (file) upload(file);
                 e.target.value = "";
               }}
             />
           </label>
-          {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+          {error && <p className="text-xs text-red-600">{error}</p>}
+
+          <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50/80 p-0.5 text-xs font-semibold w-fit">
+            {([
+              { key: "all", label: "Tümü" },
+              { key: "image", label: "Fotoğraf" },
+              { key: "video", label: "Video" },
+            ] as const).map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                onClick={() => setFilter(f.key)}
+                className={`rounded-md px-3 py-1 transition cursor-pointer ${
+                  filter === f.key ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5">
           {loading ? (
             <p className="text-center text-xs text-slate-400">Yükleniyor...</p>
-          ) : items.length === 0 ? (
-            <p className="text-center text-xs text-slate-400">Henüz yüklenmiş medya yok — yukarıdan ekleyebilirsin.</p>
+          ) : filteredItems.length === 0 ? (
+            <p className="text-center text-xs text-slate-400">
+              {items.length === 0 ? "Henüz yüklenmiş medya yok — yukarıdan ekleyebilirsin." : "Bu filtrede medya yok."}
+            </p>
           ) : (
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-              {items.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => onSelect(m)}
-                  className="group relative aspect-square overflow-hidden rounded-xl border border-slate-200 bg-slate-100 transition hover:ring-2 hover:ring-rose-400"
-                  title={m.file_name}
-                >
-                  {m.file_type.startsWith("video/") ? (
-                    <video src={m.file_url} muted className="h-full w-full object-cover" />
-                  ) : (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={m.file_url} alt={m.file_name} className="h-full w-full object-cover" />
-                  )}
-                  <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-[10px] font-bold text-transparent transition group-hover:bg-black/40 group-hover:text-white">
-                    Seç
-                  </span>
-                </button>
+              {filteredItems.map((m) => (
+                <div key={m.id} className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => onSelect?.(m)}
+                    disabled={!onSelect}
+                    className={`group relative aspect-square w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100 transition ${
+                      onSelect ? "hover:ring-2 hover:ring-rose-400 cursor-pointer" : "cursor-default"
+                    }`}
+                    title={m.alt_text || m.file_name}
+                  >
+                    {m.file_type.startsWith("video/") ? (
+                      <video src={m.file_url} muted className="h-full w-full object-cover" />
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={m.file_url} alt={m.alt_text || m.file_name} className="h-full w-full object-cover" />
+                    )}
+                    {onSelect && (
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-[10px] font-bold text-transparent transition group-hover:bg-black/40 group-hover:text-white">
+                        Seç
+                      </span>
+                    )}
+                  </button>
+                  <input
+                    type="text"
+                    defaultValue={m.alt_text ?? ""}
+                    placeholder="Etiket ekle..."
+                    onBlur={(e) => {
+                      if (e.target.value.trim() !== (m.alt_text ?? "")) rename(m.id, e.target.value);
+                    }}
+                    className="w-full rounded-md border border-slate-200 bg-white px-1.5 py-1 text-[10px] text-slate-700 placeholder-slate-400 focus:border-rose-300 focus:outline-none"
+                  />
+                </div>
               ))}
             </div>
           )}

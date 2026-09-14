@@ -21,7 +21,11 @@ export type SocialAccountRecord = {
   token_expires_at: string | null;
 };
 
-export type PublishResult = { remoteId: string };
+// permalinkUrl is best-effort — cheap for Facebook (derivable from the post
+// id directly), needs a follow-up API call for Instagram/Threads (real
+// shortcode, not derivable from the numeric media id), and unavailable for
+// TikTok until moderation clears. Absent rather than a guessed/broken link.
+export type PublishResult = { remoteId: string; permalinkUrl?: string };
 export type ConnectionHealth = { healthy: boolean; reason?: string };
 export type MediaValidation = { valid: boolean; reason?: string };
 
@@ -41,12 +45,16 @@ export interface SocialProvider {
    *  decrypted token in on every call (OpenPost's pattern, §12.7).
    *  mediaUrl is optional because not every platform needs it (Threads and
    *  Facebook both accept text-only), but Instagram requires one — its
-   *  provider throws if it's missing rather than silently posting nothing. */
+   *  provider throws if it's missing rather than silently posting nothing.
+   *  mediaType disambiguates image vs video for providers that accept
+   *  either (Threads, Facebook) — sourced from media.file_type, not guessed
+   *  from the URL, since the caller already has the real mimetype on hand. */
   publish(args: {
     account: SocialAccountRecord;
     freshToken: string;
     caption: string;
     mediaUrl?: string;
+    mediaType?: "image" | "video";
   }): Promise<PublishResult>;
 
   verifyConnection(args: { account: SocialAccountRecord; freshToken: string }): Promise<ConnectionHealth>;

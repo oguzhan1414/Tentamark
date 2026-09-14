@@ -40,7 +40,13 @@ export type ApprovalItem = {
   // Full per-platform breakdown — Gönderiler's old inspector drawer showed
   // every platform's caption/hashtags, not just one. Optional because
   // Onaylarım's own fetch never populated this and doesn't need to.
-  platforms?: { platform: PlatformName; caption: string; hashtags?: string[]; scheduledAt?: string | null }[];
+  platforms?: {
+    platform: PlatformName;
+    caption: string;
+    hashtags?: string[];
+    scheduledAt?: string | null;
+    permalinkUrl?: string | null;
+  }[];
   hook?: string;
   visualPrompt?: string;
   format?: string;

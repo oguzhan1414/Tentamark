@@ -9,14 +9,88 @@ type Props = {
   post: CalendarPost;
   onClick: () => void;
   draggable?: boolean;
+  // Month view has ~5-6 rows to fit in one screen, nowhere near enough room
+  // for the full image-thumbnail card below — a single-line chip instead.
+  // Week view and the drag overlay keep the full card.
+  compact?: boolean;
 };
 
-export default function CalendarPostCard({ post, onClick, draggable = true }: Props) {
-  const isApproved = post.approvalStatus === "APPROVED";
+// A rejected/unfinished item (content.status sent back to DRAFT) has to
+// actually look different here — otherwise it sits in the grid identical to
+// a post still on track to publish, which is exactly the confusion "reddet"
+// is supposed to resolve.
+function statusMeta(post: CalendarPost): { dot: string; text: string; label: string } {
+  if (post.postStatus === "DRAFT") return { dot: "bg-slate-400", text: "text-slate-500", label: "Taslak" };
+  if (post.postStatus === "PUBLISHED") return { dot: "bg-blue-500", text: "text-blue-600", label: "Yayınlandı" };
+  return post.approvalStatus === "APPROVED"
+    ? { dot: "bg-emerald-500", text: "text-emerald-600", label: "Onaylandı" }
+    : { dot: "bg-amber-500", text: "text-amber-600", label: "Bekliyor" };
+}
+
+export default function CalendarPostCard({ post, onClick, draggable = true, compact = false }: Props) {
+  const status = statusMeta(post);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: post.id,
     disabled: !draggable,
   });
+
+  if (compact) {
+    const hasRealMedia = Boolean(post.imageUrl) && post.imageUrl !== "/images/no-image-placeholder.png";
+
+    return (
+      <div
+        ref={setNodeRef}
+        {...(draggable ? { ...attributes, ...listeners } : {})}
+        style={
+          transform
+            ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: isDragging ? 30 : undefined }
+            : undefined
+        }
+        onClick={onClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onClick();
+          }
+        }}
+        title={post.caption || post.title}
+        className={`flex items-center gap-2 rounded-lg border border-slate-200/90 bg-white px-1.5 py-1.5 shadow-2xs transition hover:border-slate-300 hover:shadow-sm ${
+          draggable ? "cursor-grab touch-none select-none active:cursor-grabbing" : "cursor-pointer"
+        } ${isDragging ? "opacity-30" : ""}`}
+      >
+        {/* Thumbnail + platform badge — at a glance, "what" and "where",
+            not just a tiny icon that reads the same for every post. */}
+        <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-md bg-slate-100 ring-1 ring-slate-200/80">
+          {hasRealMedia ? (
+            post.imageIsVideo ? (
+              <video src={post.imageUrl} muted className="h-full w-full object-cover" />
+            ) : (
+              <Image src={post.imageUrl} alt="" fill sizes="32px" className="object-cover" />
+            )
+          ) : (
+            <div className="flex h-full w-full items-center justify-center">
+              <PlatformIcon name={post.platform} variant="bare" className="h-4 w-4 text-slate-400" />
+            </div>
+          )}
+          <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-white ring-1 ring-white shadow-2xs">
+            <PlatformIcon name={post.platform} variant="tile" className="h-3 w-3 rounded-full" />
+          </span>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1 font-mono text-[9px] text-slate-400">
+            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${status.dot}`} />
+            <span>{post.timeLabel}</span>
+          </div>
+          <p className="truncate text-[11px] font-medium leading-tight text-slate-800">
+            {post.caption || post.title}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -119,17 +193,10 @@ export default function CalendarPostCard({ post, onClick, draggable = true }: Pr
 
       {/* Footer Status & Comments (matching screenshots 1, 2, 4) */}
       <div className="mt-0.5 flex items-center justify-between border-t border-slate-100 pt-1.5 text-xs">
-        {isApproved ? (
-          <div className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            <span>Approved</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1 text-[10px] font-medium text-amber-600">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-            <span>Pending</span>
-          </div>
-        )}
+        <div className={`flex items-center gap-1 text-[10px] font-semibold ${status.text}`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
+          <span>{status.label}</span>
+        </div>
 
         {post.commentCount > 0 && (
           <div className="flex items-center gap-1 text-[10px] font-medium text-slate-400">

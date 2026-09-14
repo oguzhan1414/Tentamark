@@ -31,7 +31,7 @@ export const threadsProvider: SocialProvider = {
   platform: "threads",
 
   capabilities: {
-    publishing: true, // Threads supports text-only posts — no media pipeline needed, unlike Instagram
+    publishing: true, // Threads supports text-only posts, but also image/video when mediaUrl is given
     analytics: true,
     deletion: false, // no delete-post endpoint in the current Threads API docs
     video: true,
@@ -56,11 +56,19 @@ export const threadsProvider: SocialProvider = {
     return { token: json.access_token as string, expiresAt };
   },
 
-  async publish({ account, freshToken, caption }): Promise<PublishResult> {
+  async publish({ account, freshToken, caption, mediaUrl, mediaType }): Promise<PublishResult> {
+    const containerParams: Record<string, string> = { text: caption, access_token: freshToken };
+    if (mediaUrl) {
+      containerParams.media_type = mediaType === "video" ? "VIDEO" : "IMAGE";
+      containerParams[mediaType === "video" ? "video_url" : "image_url"] = mediaUrl;
+    } else {
+      containerParams.media_type = "TEXT";
+    }
+
     const createRes = await fetch(`${GRAPH}/${account.external_account_id}/threads`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ media_type: "TEXT", text: caption, access_token: freshToken }),
+      body: new URLSearchParams(containerParams),
     });
     const createJson = await createRes.json();
     if (!createRes.ok || !createJson.id) {
@@ -81,7 +89,23 @@ export const threadsProvider: SocialProvider = {
     if (!publishRes.ok || !publishJson.id) {
       throw new Error(publishJson?.error?.message ?? `Threads publish başarısız (HTTP ${publishRes.status})`);
     }
-    return { remoteId: publishJson.id as string };
+
+    const remoteId = publishJson.id as string;
+    // The numeric media id isn't the shortcode threads.net URLs use — a
+    // real permalink needs this follow-up call. Best-effort: a failure here
+    // shouldn't fail a publish that already succeeded.
+    let permalinkUrl: string | undefined;
+    try {
+      const permalinkRes = await fetch(
+        `${GRAPH}/${remoteId}?fields=permalink&access_token=${encodeURIComponent(freshToken)}`
+      );
+      const permalinkJson = await permalinkRes.json();
+      if (permalinkRes.ok && permalinkJson.permalink) permalinkUrl = permalinkJson.permalink as string;
+    } catch {
+      // best-effort — publish already succeeded, no permalink is not fatal
+    }
+
+    return { remoteId, permalinkUrl };
   },
 
   async getAnalytics({ freshToken, remoteId }) {

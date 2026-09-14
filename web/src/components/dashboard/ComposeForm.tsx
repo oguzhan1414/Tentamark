@@ -80,6 +80,7 @@ export default function ComposeForm({
   initialCampaignId,
   initialDate,
   initialHour,
+  initialMedia,
 }: {
   onSubmitted?: () => void;
   // Called when the success screen's "go look at it" links are clicked.
@@ -95,6 +96,9 @@ export default function ComposeForm({
   initialCampaignId?: string;
   initialDate?: string;
   initialHour?: number;
+  // Set when opened by dragging a Medya panel thumbnail onto a calendar day
+  // — skips the manual attach step entirely.
+  initialMedia?: MediaLibraryItem;
 } = {}) {
   const brand = useBrand();
   const supabase = useMemo(() => createClient(), []);
@@ -147,7 +151,7 @@ export default function ComposeForm({
   // Image generation state
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [mediaFile, setMediaFile] = useState<File | null>(null);
-  const [existingMedia, setExistingMedia] = useState<MediaLibraryItem | null>(null);
+  const [existingMedia, setExistingMedia] = useState<MediaLibraryItem | null>(initialMedia ?? null);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
@@ -898,6 +902,126 @@ export default function ComposeForm({
                 )}
               </div>
 
+              {/* Visual Media & AI Image Engine Section — moved ahead of
+                  generation (used to only appear after drafts existed, so
+                  the media picker was invisible on the very first screen
+                  someone saw). Attaching media never actually depended on
+                  having generated text first. */}
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                    <span>{requiresVideo ? "🎬" : "🎨"}</span>
+                    <span>{requiresVideo ? "Video Yükleme" : "AI Görsel Üretim Motoru"}</span>
+                  </span>
+                  {imageUrl && (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
+                      Görsel Bağlandı ✓
+                    </span>
+                  )}
+                </div>
+
+                {requiresVideo && (
+                  <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2">
+                    TikTok metin veya fotoğrafla paylaşım yapamıyor — Direct Post için gerçek bir video dosyası
+                    yüklemen gerekiyor (AI görsel üretimi burada kullanılamaz).
+                  </p>
+                )}
+
+                {!requiresVideo && (
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <input
+                      type="text"
+                      value={visualPrompt}
+                      onChange={(e) => setVisualPrompt(e.target.value)}
+                      placeholder="Görsel konsepti veya fotoğraf sahnesi prompt'u..."
+                      className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 focus:border-slate-400 focus:outline-none"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={triggerImageGeneration}
+                      disabled={generatingImage || (!visualPrompt.trim() && !idea.trim())}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition disabled:opacity-50 shrink-0"
+                    >
+                      {generatingImage ? (
+                        <>
+                          <svg className="h-3.5 w-3.5 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span>Üretiliyor...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Görsel Üret</span>
+                          <span className="rounded bg-rose-500/20 text-rose-700 px-1 text-[10px]">⚡ AI</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+
+                {imageError && (
+                  <p className="text-[11px] text-red-600 bg-red-50 p-2 rounded-lg">{imageError}</p>
+                )}
+
+                {/* Media Preview / File Upload Option */}
+                <div className="flex items-center gap-3">
+                  {mediaPreview ? (
+                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-200 shadow-xs">
+                      {mediaPreviewIsVideo ? (
+                        <video src={mediaPreview} muted className="h-full w-full object-cover" />
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={mediaPreview} alt="Preview" className="h-full w-full object-cover" />
+                      )}
+                    </div>
+                  ) : null}
+
+                  <label
+                    htmlFor="compose_media"
+                    className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-2 px-3 text-xs font-medium text-slate-600 hover:border-rose-300 hover:text-rose-600 transition"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    <span>
+                      {mediaFile
+                        ? mediaFile.name
+                        : existingMedia
+                          ? existingMedia.file_name
+                          : requiresVideo
+                            ? "Video Yükle (TikTok için zorunlu)"
+                            : "veya Bilgisayardan Fotoğraf Yükle"}
+                    </span>
+                    <input
+                      id="compose_media"
+                      type="file"
+                      accept={requiresVideo ? "video/mp4,video/webm" : "image/*"}
+                      className="sr-only"
+                      onChange={(e) => {
+                        setMediaFile(e.target.files?.[0] ?? null);
+                        setImageUrl(null);
+                        setExistingMedia(null);
+                      }}
+                    />
+                  </label>
+
+                  {!requiresVideo && (
+                    <button
+                      type="button"
+                      onClick={() => setLibraryOpen(true)}
+                      className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 transition cursor-pointer"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span>Kütüphaneden Seç</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {/* Generate Drafts Trigger */}
               {mode === "ai" ? (
                 <button
@@ -1087,122 +1211,6 @@ export default function ComposeForm({
                             <span>✓ Tüm Metni Optimize Edilmiş Haliyle Değiştir</span>
                           </button>
                         </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Visual Media & AI Image Engine Section */}
-                  <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 space-y-3.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                        <span>{requiresVideo ? "🎬" : "🎨"}</span>
-                        <span>{requiresVideo ? "Video Yükleme" : "AI Görsel Üretim Motoru"}</span>
-                      </span>
-                      {imageUrl && (
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
-                          Görsel Bağlandı ✓
-                        </span>
-                      )}
-                    </div>
-
-                    {requiresVideo && (
-                      <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2">
-                        TikTok metin veya fotoğrafla paylaşım yapamıyor — Direct Post için gerçek bir video dosyası
-                        yüklemen gerekiyor (AI görsel üretimi burada kullanılamaz).
-                      </p>
-                    )}
-
-                    {!requiresVideo && (
-                      <div className="flex flex-col sm:flex-row gap-3">
-                        <input
-                          type="text"
-                          value={visualPrompt}
-                          onChange={(e) => setVisualPrompt(e.target.value)}
-                          placeholder="Görsel konsepti veya fotoğraf sahnesi prompt'u..."
-                          className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 focus:border-slate-400 focus:outline-none"
-                        />
-
-                        <button
-                          type="button"
-                          onClick={triggerImageGeneration}
-                          disabled={generatingImage || (!visualPrompt.trim() && !idea.trim())}
-                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition disabled:opacity-50 shrink-0"
-                        >
-                          {generatingImage ? (
-                            <>
-                              <svg className="h-3.5 w-3.5 animate-spin text-white" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                              <span>Üretiliyor...</span>
-                            </>
-                          ) : (
-                            <>
-                              <span>Görsel Üret</span>
-                              <span className="rounded bg-rose-500/20 text-rose-700 px-1 text-[10px]">⚡ AI</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    )}
-
-                    {imageError && (
-                      <p className="text-[11px] text-red-600 bg-red-50 p-2 rounded-lg">{imageError}</p>
-                    )}
-
-                    {/* Media Preview / File Upload Option */}
-                    <div className="flex items-center gap-3">
-                      {mediaPreview ? (
-                        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-200 shadow-xs">
-                          {mediaPreviewIsVideo ? (
-                            <video src={mediaPreview} muted className="h-full w-full object-cover" />
-                          ) : (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={mediaPreview} alt="Preview" className="h-full w-full object-cover" />
-                          )}
-                        </div>
-                      ) : null}
-
-                      <label
-                        htmlFor="compose_media"
-                        className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-2 px-3 text-xs font-medium text-slate-600 hover:border-rose-300 hover:text-rose-600 transition"
-                      >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                        </svg>
-                        <span>
-                          {mediaFile
-                            ? mediaFile.name
-                            : existingMedia
-                              ? existingMedia.file_name
-                              : requiresVideo
-                                ? "Video Yükle (TikTok için zorunlu)"
-                                : "veya Bilgisayardan Fotoğraf Yükle"}
-                        </span>
-                        <input
-                          id="compose_media"
-                          type="file"
-                          accept={requiresVideo ? "video/mp4,video/webm" : "image/*"}
-                          className="sr-only"
-                          onChange={(e) => {
-                            setMediaFile(e.target.files?.[0] ?? null);
-                            setImageUrl(null);
-                            setExistingMedia(null);
-                          }}
-                        />
-                      </label>
-
-                      {!requiresVideo && (
-                        <button
-                          type="button"
-                          onClick={() => setLibraryOpen(true)}
-                          className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 transition cursor-pointer"
-                        >
-                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                          <span>Kütüphaneden Seç</span>
-                        </button>
                       )}
                     </div>
                   </div>

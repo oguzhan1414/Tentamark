@@ -63,12 +63,12 @@ function DayCell({
   return (
     <div
       ref={setNodeRef}
-      className={`group relative flex min-h-[140px] flex-col border-b border-r border-slate-200 p-2 transition-colors ${
+      className={`group relative flex min-h-0 flex-col overflow-hidden border-b border-r border-slate-200 p-2 transition-colors ${
         isOver ? "bg-rose-50/50" : cell.inCurrentMonth ? (isPast ? "bg-slate-50/70" : "bg-white") : "bg-slate-50/40"
       } ${isToday ? "ring-2 ring-inset ring-rose-400" : ""}`}
     >
       {/* Day Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex shrink-0 items-center justify-between">
         <span
           className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${
             isToday
@@ -125,7 +125,7 @@ function DayCell({
           hardcoded demo one. */}
       {campaign && (
         <div
-          className={`mt-1.5 mb-1 flex items-center gap-1 overflow-hidden text-[10px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 ${
+          className={`mt-1.5 mb-1 flex shrink-0 items-center gap-1 overflow-hidden text-[10px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 ${
             hasCampaignStart ? "rounded-l-md" : ""
           } ${hasCampaignEnd ? "rounded-r-md" : ""}`}
         >
@@ -134,28 +134,31 @@ function DayCell({
         </div>
       )}
 
-      {/* Notes */}
-      {dayNotes.length > 0 && (
-        <div className="mt-1 flex flex-col gap-1.5">
-          {dayNotes.map((n) => (
-            <NoteCard
-              key={n.id}
-              id={n.id}
-              initialText={n.text}
-              color={n.color}
-              onSaveText={onSaveNoteText}
-              onColorChange={onNoteColorChange}
-              onDelete={onDeleteNote}
-            />
+      {/* Notes + Scheduled Posts — scrolls locally within its own cell when
+          a day has more than fits, instead of forcing the whole row (and
+          therefore the whole month grid) to grow past the viewport. */}
+      <div className="mt-1 min-h-0 flex-1 space-y-1.5 overflow-y-auto">
+        {dayNotes.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            {dayNotes.map((n) => (
+              <NoteCard
+                key={n.id}
+                id={n.id}
+                initialText={n.text}
+                color={n.color}
+                onSaveText={onSaveNoteText}
+                onColorChange={onNoteColorChange}
+                onDelete={onDeleteNote}
+              />
+            ))}
+          </div>
+        )}
+
+        <div className="flex flex-col gap-1">
+          {dayPosts.map((p) => (
+            <CalendarPostCard key={p.id} post={p} onClick={() => onSelectPost(p)} draggable={!isPast} compact />
           ))}
         </div>
-      )}
-
-      {/* Scheduled Posts in Cell */}
-      <div className="mt-1 flex flex-col gap-2">
-        {dayPosts.map((p) => (
-          <CalendarPostCard key={p.id} post={p} onClick={() => onSelectPost(p)} draggable={!isPast} />
-        ))}
       </div>
     </div>
   );
@@ -203,10 +206,15 @@ export default function CalendarMonthView({
     cells.push({ day: i, dateKey: nextDateKey, inCurrentMonth: false });
   }
 
+  // Fixed row count (5 or 6 depending on the month) sized in CSS below —
+  // month view's whole point is seeing every week at once, so it fills the
+  // available height instead of scrolling the page to reveal later weeks.
+  const numRows = cells.length / 7;
+
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto bg-white">
+    <div className="flex h-full flex-1 flex-col overflow-hidden bg-white">
       {/* Weekday Header Row */}
-      <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50/50 text-center text-xs font-semibold text-slate-500">
+      <div className="grid shrink-0 grid-cols-7 border-b border-slate-200 bg-slate-50/50 text-center text-xs font-semibold text-slate-500">
         {WEEKDAYS.map((day) => (
           <div key={day} className="py-2">
             {day}
@@ -214,8 +222,14 @@ export default function CalendarMonthView({
         ))}
       </div>
 
-      {/* Grid Rows */}
-      <div className="grid grid-cols-7 flex-1 auto-rows-fr border-l border-t border-slate-200">
+      {/* Grid Rows — grid-template-rows set inline since numRows (5 or 6)
+          varies by month and Tailwind's auto-rows-fr doesn't respect a
+          min-h-0 child's need to shrink, which is what caused the old
+          forced-scroll bug. */}
+      <div
+        className="grid flex-1 grid-cols-7 border-l border-t border-slate-200"
+        style={{ gridTemplateRows: `repeat(${numRows}, minmax(0, 1fr))` }}
+      >
         {cells.map((cell, idx) => {
           const dayPosts = posts.filter((p) => p.date === cell.dateKey);
           const dayNotes = notes.filter((n) => n.date === cell.dateKey);

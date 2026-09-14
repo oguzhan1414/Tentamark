@@ -18,6 +18,7 @@ type Props = {
   onToday: () => void;
   onOpenFilter: () => void;
   onOpenAiTodo: () => void;
+  onOpenMedia: () => void;
   aiTodoCount: number;
   onOpenCompose: () => void;
   onOpenSmartFill?: () => void;
@@ -33,6 +34,7 @@ export default function CalendarHeader({
   onToday,
   onOpenFilter,
   onOpenAiTodo,
+  onOpenMedia,
   aiTodoCount,
   onOpenCompose,
   onOpenSmartFill,
@@ -163,6 +165,18 @@ export default function CalendarHeader({
             </svg>
             <span className="hidden sm:inline">Taslaklar</span>
           </Link>
+
+          <button
+            type="button"
+            onClick={onOpenMedia}
+            title="Medya kütüphanesi — daha önce yüklenmiş fotoğraf/videoları görüntüle, yeni dosya yükle"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+          >
+            <svg className="h-3.5 w-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span className="hidden sm:inline">Medya</span>
+          </button>
 
           <button
             type="button"

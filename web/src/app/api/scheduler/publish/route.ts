@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
       const refreshed = await provider.refreshToken({ account: accountRecord, freshToken });
       if (refreshed) {
         freshToken = refreshed.token;
-        await supabase
+        const { error: refreshUpdateError } = await supabase
           .from("social_accounts")
           .update({
             access_token_encrypted: encryptToken(refreshed.token, account.brand_id),
@@ -139,6 +139,7 @@ export async function POST(req: NextRequest) {
             token_expires_at: refreshed.expiresAt ? refreshed.expiresAt.toISOString() : null,
           })
           .eq("id", account.id);
+        if (refreshUpdateError) console.error("Token yenileme kaydedilemedi:", refreshUpdateError.message);
       }
     }
 
@@ -150,7 +151,14 @@ export async function POST(req: NextRequest) {
       mediaType,
     });
 
-    await supabase
+    // Deliberately NOT thrown into the catch block below on failure here —
+    // the platform-side publish already happened and can't be undone; a
+    // caught "failure" here would call recordFailure() believing the
+    // publish itself failed and let a retry post the same content twice.
+    // Found live: this exact update failed silently once (unchecked error,
+    // real Facebook post created, content_platforms never left PUBLISHING)
+    // with no reproducible cause — logging is what actually matters here.
+    const { error: publishedUpdateError } = await supabase
       .from("content_platforms")
       .update({
         status: "PUBLISHED",
@@ -160,8 +168,18 @@ export async function POST(req: NextRequest) {
         last_error: null,
       })
       .eq("id", cp.id);
+    if (publishedUpdateError) {
+      console.error(
+        `PUBLISHED durumu kaydedilemedi (cp.id=${cp.id}, remoteId=${result.remoteId}):`,
+        publishedUpdateError.message
+      );
+    }
 
-    await supabase.from("publish_attempts").insert({ content_platform_id: cp.id, status: "SUCCESS" });
+    const { error: attemptInsertError } = await supabase
+      .from("publish_attempts")
+      .insert({ content_platform_id: cp.id, status: "SUCCESS" });
+    if (attemptInsertError) console.error("publish_attempts kaydı eklenemedi:", attemptInsertError.message);
+
     await recomputeContentStatus(supabase, cp.content_id);
 
     return NextResponse.json({ ok: true, remoteId: result.remoteId });
@@ -188,7 +206,7 @@ async function recordFailure(
   const newAttemptCount = currentAttemptCount + 1;
 
   if (newAttemptCount >= MAX_ATTEMPTS) {
-    await supabase
+    const { error } = await supabase
       .from("content_platforms")
       .update({
         status: "NEEDS_USER_ACTION",
@@ -197,9 +215,10 @@ async function recordFailure(
         last_error: `${info.message} (deneme sayısı ${MAX_ATTEMPTS} aşıldı)`,
       })
       .eq("id", contentPlatformId);
+    if (error) console.error(`NEEDS_USER_ACTION kaydedilemedi (cp.id=${contentPlatformId}):`, error.message);
   } else {
     const backoffMinutes = 2 ** newAttemptCount;
-    await supabase
+    const { error } = await supabase
       .from("content_platforms")
       .update({
         status: "QUEUED",
@@ -209,14 +228,16 @@ async function recordFailure(
         last_error: `${info.message} (deneme ${newAttemptCount}/${MAX_ATTEMPTS})`,
       })
       .eq("id", contentPlatformId);
+    if (error) console.error(`Yeniden deneme kaydedilemedi (cp.id=${contentPlatformId}):`, error.message);
   }
 
-  await supabase.from("publish_attempts").insert({
+  const { error: attemptInsertError } = await supabase.from("publish_attempts").insert({
     content_platform_id: contentPlatformId,
     status: "FAILED",
     failure_code: info.failureCode,
     error_detail: info.message,
   });
+  if (attemptInsertError) console.error("publish_attempts (FAILED) kaydı eklenemedi:", attemptInsertError.message);
 
   await recomputeContentStatus(supabase, contentId);
 }

@@ -3,7 +3,15 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-const SCOPES = ["https://www.googleapis.com/auth/youtube.upload"].join(" ");
+// youtube.upload alone only covers managing videos — reading the account's
+// own channel via channels.list?mine=true (see callback/route.ts) needs
+// youtube.readonly too. Missing it doesn't surface as a clean permission
+// error: Google just returns an empty items array, which is exactly why
+// this looked like "no channel exists" for a real, channel-having account.
+const SCOPES = [
+  "https://www.googleapis.com/auth/youtube.upload",
+  "https://www.googleapis.com/auth/youtube.readonly",
+].join(" ");
 
 /*
   Standard Google OAuth2 — confidential server-side client, no PKCE

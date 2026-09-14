@@ -25,6 +25,7 @@ import CalendarHeader from "@/components/dashboard/calendar/CalendarHeader";
 import CalendarPostCard from "@/components/dashboard/calendar/CalendarPostCard";
 import CalendarMonthView from "@/components/dashboard/calendar/CalendarMonthView";
 import CalendarWeekView from "@/components/dashboard/calendar/CalendarWeekView";
+import CalendarDayModal from "@/components/dashboard/calendar/CalendarDayModal";
 import CalendarFilterDrawer from "@/components/dashboard/calendar/CalendarFilterDrawer";
 import CalendarAiTodoDrawer from "@/components/dashboard/calendar/CalendarAiTodoDrawer";
 import SmartScheduleModal from "@/components/dashboard/calendar/SmartScheduleModal";
@@ -144,6 +145,10 @@ export default function CalendarPage() {
 
   // Modals & Drawers state
   const [selectedPost, setSelectedPost] = useState<CalendarPost | null>(null);
+  // Month view caps how many posts a day cell shows inline — this opens the
+  // full day (CalendarDayModal) for everything past that, or just to browse
+  // a day without cramming its whole agenda into a small grid cell.
+  const [dayModalDate, setDayModalDate] = useState<string | null>(null);
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [filterState, setFilterState] = useState<CalendarFilterState>(DEFAULT_FILTER);
   const [aiTodoOpen, setAiTodoOpen] = useState(false);
@@ -612,9 +617,7 @@ export default function CalendarPage() {
                 setSmartFillDate(dateStr);
               }}
               onAddNote={addNote}
-              onSaveNoteText={saveNoteText}
-              onNoteColorChange={changeNoteColor}
-              onDeleteNote={deleteNote}
+              onOpenDay={setDayModalDate}
             />
           ) : (
             <CalendarWeekView
@@ -706,6 +709,34 @@ export default function CalendarPage() {
               setSmartFillCategory(undefined);
             }}
             onSaved={() => setRefreshKey((k) => k + 1)}
+          />
+        )}
+
+        {dayModalDate && (
+          <CalendarDayModal
+            dateKey={dayModalDate}
+            posts={posts.filter((p) => p.date === dayModalDate)}
+            notes={notes.filter((n) => n.date === dayModalDate)}
+            campaign={campaigns.find((c) => dayModalDate >= c.start_date && dayModalDate <= c.end_date)}
+            isPast={dayModalDate < todayKey}
+            onClose={() => setDayModalDate(null)}
+            onSelectPost={(post) => {
+              setDayModalDate(null);
+              setSelectedPost(post);
+            }}
+            onAddPostAtDate={(dateStr) => {
+              setDayModalDate(null);
+              handleOpenComposeAtDate(dateStr);
+            }}
+            onSmartFillDate={(dateStr) => {
+              setDayModalDate(null);
+              setSmartFillCategory(undefined);
+              setSmartFillDate(dateStr);
+            }}
+            onAddNote={addNote}
+            onSaveNoteText={saveNoteText}
+            onNoteColorChange={changeNoteColor}
+            onDeleteNote={deleteNote}
           />
         )}
 

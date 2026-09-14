@@ -2,7 +2,6 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import CalendarPostCard from "./CalendarPostCard";
-import NoteCard from "./NoteCard";
 import type { CalendarPost, CalendarNote, CalendarCampaign } from "./types";
 
 type Props = {
@@ -15,12 +14,19 @@ type Props = {
   onAddPostAtDate: (dateStr: string) => void;
   onSmartFillDate?: (dateStr: string) => void;
   onAddNote: (dateStr: string) => void;
-  onSaveNoteText: (id: string, text: string) => void;
-  onNoteColorChange: (id: string, color: string) => void;
-  onDeleteNote: (id: string) => void;
+  onOpenDay: (dateKey: string) => void;
 };
 
 const WEEKDAYS = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+
+// A day cell's height is a fixed share of the grid (see numRows below) — it
+// can never grow with content, so how many posts it shows inline has to be
+// a hard cap, not "however many fit" (an internal scrollbar used to do that
+// job and broke down visually once a day actually had a handful of real
+// posts on it). Anything past this shows behind "+N daha" instead, opening
+// the full day in CalendarDayModal — which the day number itself also opens,
+// so there's always a way to see everything regardless of count.
+const MAX_INLINE_POSTS = 2;
 
 function formatDateKey(year: number, month: number, day: number) {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -37,9 +43,7 @@ function DayCell({
   onAddPostAtDate,
   onSmartFillDate,
   onAddNote,
-  onSaveNoteText,
-  onNoteColorChange,
-  onDeleteNote,
+  onOpenDay,
 }: {
   cell: { day: number; dateKey: string; inCurrentMonth: boolean };
   todayKey: string;
@@ -50,15 +54,16 @@ function DayCell({
   onAddPostAtDate: (dateStr: string) => void;
   onSmartFillDate?: (dateStr: string) => void;
   onAddNote: (dateStr: string) => void;
-  onSaveNoteText: (id: string, text: string) => void;
-  onNoteColorChange: (id: string, color: string) => void;
-  onDeleteNote: (id: string) => void;
+  onOpenDay: (dateKey: string) => void;
 }) {
   const isToday = cell.dateKey === todayKey;
   const isPast = cell.dateKey < todayKey;
   const { setNodeRef, isOver } = useDroppable({ id: cell.dateKey, disabled: isPast });
   const hasCampaignStart = campaign?.start_date === cell.dateKey;
   const hasCampaignEnd = campaign?.end_date === cell.dateKey;
+  const visiblePosts = dayPosts.slice(0, MAX_INLINE_POSTS);
+  const hiddenPostCount = dayPosts.length - visiblePosts.length;
+  const hasOverflow = hiddenPostCount > 0 || dayNotes.length > 0;
 
   return (
     <div
@@ -67,10 +72,14 @@ function DayCell({
         isOver ? "bg-rose-50/50" : cell.inCurrentMonth ? (isPast ? "bg-slate-50/70" : "bg-white") : "bg-slate-50/40"
       } ${isToday ? "ring-2 ring-inset ring-rose-400" : ""}`}
     >
-      {/* Day Header */}
+      {/* Day Header — the number itself opens the full day (CalendarDayModal),
+          the same entry point whether or not anything overflowed inline. */}
       <div className="flex shrink-0 items-center justify-between">
-        <span
-          className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${
+        <button
+          type="button"
+          onClick={() => onOpenDay(cell.dateKey)}
+          title="Günü aç"
+          className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold transition hover:ring-2 hover:ring-rose-300 ${
             isToday
               ? "bg-[#FA5252] text-white font-bold"
               : cell.inCurrentMonth
@@ -81,7 +90,7 @@ function DayCell({
           }`}
         >
           {cell.day}
-        </span>
+        </button>
 
         {/* Quick add + menu on hover — never shown for past dates: nothing
             gets scheduled or freshly noted on a day that's already gone. */}
@@ -134,31 +143,26 @@ function DayCell({
         </div>
       )}
 
-      {/* Notes + Scheduled Posts — scrolls locally within its own cell when
-          a day has more than fits, instead of forcing the whole row (and
-          therefore the whole month grid) to grow past the viewport. */}
-      <div className="mt-1 min-h-0 flex-1 space-y-1.5 overflow-y-auto">
-        {dayNotes.length > 0 && (
-          <div className="flex flex-col gap-1.5">
-            {dayNotes.map((n) => (
-              <NoteCard
-                key={n.id}
-                id={n.id}
-                initialText={n.text}
-                color={n.color}
-                onSaveText={onSaveNoteText}
-                onColorChange={onNoteColorChange}
-                onDelete={onDeleteNote}
-              />
-            ))}
-          </div>
-        )}
+      {/* At most MAX_INLINE_POSTS chips — fixed height, never scrolls, never
+          pushes the row taller than its 1fr share of the grid. */}
+      <div className="mt-1 flex min-h-0 flex-1 flex-col justify-start gap-1 overflow-hidden">
+        {visiblePosts.map((p) => (
+          <CalendarPostCard key={p.id} post={p} onClick={() => onSelectPost(p)} draggable={!isPast} compact />
+        ))}
 
-        <div className="flex flex-col gap-1">
-          {dayPosts.map((p) => (
-            <CalendarPostCard key={p.id} post={p} onClick={() => onSelectPost(p)} draggable={!isPast} compact />
-          ))}
-        </div>
+        {hasOverflow && (
+          <button
+            type="button"
+            onClick={() => onOpenDay(cell.dateKey)}
+            className="mt-auto shrink-0 rounded-md bg-slate-100 px-1.5 py-1 text-left text-[10px] font-bold text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition"
+          >
+            {hiddenPostCount > 0 && dayNotes.length > 0
+              ? `+${hiddenPostCount} gönderi, ${dayNotes.length} not`
+              : hiddenPostCount > 0
+                ? `+${hiddenPostCount} gönderi daha`
+                : `${dayNotes.length} not`}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -174,9 +178,7 @@ export default function CalendarMonthView({
   onAddPostAtDate,
   onSmartFillDate,
   onAddNote,
-  onSaveNoteText,
-  onNoteColorChange,
-  onDeleteNote,
+  onOpenDay,
 }: Props) {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -247,9 +249,7 @@ export default function CalendarMonthView({
               onAddPostAtDate={onAddPostAtDate}
               onSmartFillDate={onSmartFillDate}
               onAddNote={onAddNote}
-              onSaveNoteText={onSaveNoteText}
-              onNoteColorChange={onNoteColorChange}
-              onDeleteNote={onDeleteNote}
+              onOpenDay={onOpenDay}
             />
           );
         })}

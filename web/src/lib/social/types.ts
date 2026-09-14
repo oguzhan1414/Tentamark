@@ -9,7 +9,15 @@
   actually needs them, per the doc's explicit YAGNI note.
 */
 
-export type SocialPlatform = "instagram" | "facebook" | "linkedin" | "threads" | "tiktok" | "pinterest" | "telegram";
+export type SocialPlatform =
+  | "instagram"
+  | "facebook"
+  | "linkedin"
+  | "threads"
+  | "tiktok"
+  | "pinterest"
+  | "telegram"
+  | "youtube";
 
 export type SocialAccountRecord = {
   id: string;

@@ -95,6 +95,14 @@ const AVAILABLE_INTEGRATIONS: {
     href: "/api/connections/pinterest/start",
     available: true,
   },
+  {
+    id: "youtube",
+    name: "YouTube",
+    desc: "Videolarınızı doğrudan kanalınıza yükleyin. Yalnızca video — fotoğraf veya metinle paylaşım yapılamıyor.",
+    icon: "youtube",
+    href: "/api/connections/youtube/start",
+    available: true,
+  },
 ];
 
 function accountStatusLabel(status: string): { text: string; className: string } {
@@ -119,8 +127,10 @@ function connectErrorMessage(code: string) {
         ? "TikTok"
         : code.startsWith("pinterest_")
           ? "Pinterest"
-          : "Facebook";
-  const reason = code.replace(/^(threads|instagram|tiktok|pinterest)_/, "");
+          : code.startsWith("youtube_")
+            ? "YouTube"
+            : "Facebook";
+  const reason = code.replace(/^(threads|instagram|tiktok|pinterest|youtube)_/, "");
 
   switch (reason) {
     case "denied":
@@ -135,6 +145,10 @@ function connectErrorMessage(code: string) {
       return "Hesabınıza bağlı bir Facebook Sayfası bulunamadı — önce bir Sayfa oluşturmanız gerekiyor.";
     case "no-board":
       return "Pinterest hesabınızda bir pano bulunamadı ve otomatik oluşturulamadı.";
+    case "no-channel":
+      return "Bu Google hesabına bağlı bir YouTube kanalı bulunamadı.";
+    case "no-refresh-token":
+      return "Google bağlantı için gerekli izni vermedi — lütfen tekrar dene ve izin ekranında hesabı yeniden onayla.";
     case "config":
       return `${provider} bağlantısı henüz yapılandırılmadı.`;
     case "save":

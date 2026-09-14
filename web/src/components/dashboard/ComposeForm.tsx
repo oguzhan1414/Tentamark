@@ -185,8 +185,13 @@ export default function ComposeForm({
   const [activePlatformTab, setActivePlatformTab] = useState<LaunchPlatform>("instagram");
 
   // Media state — an ordered list for the (image-only) Instagram/Facebook
-  // carousel case, plus a completely separate single-video slot for TikTok
-  // (requiresVideo below), which never shares state with the carousel list.
+  // carousel case, plus a completely separate single-video slot for the
+  // video-only platforms (TikTok and YouTube — see requiresVideo below),
+  // which never shares state with the carousel list. Named after TikTok
+  // since it was the only video-only platform when this was written; it
+  // now also carries YouTube's video whenever YouTube is selected instead
+  // of (or alongside) TikTok — same one shared upload either way, since
+  // content_media is one set per post regardless of which platforms use it.
   const [mediaItems, setMediaItems] = useState<ComposeMediaItem[]>(
     (initialMedia ?? []).map((media) => ({ kind: "existing" as const, media }))
   );
@@ -208,10 +213,10 @@ export default function ComposeForm({
   // Preview simulator platform
   const [previewPlatform, setPreviewPlatform] = useState<PlatformName>("instagram");
 
-  // TikTok's Direct Post has no text/image-only path — a real video is
-  // mandatory (tiktokProvider.publish() throws without one), so selecting it
-  // switches the media picker from photo to video mode.
-  const requiresVideo = selectedPlatforms.includes("tiktok");
+  // TikTok's Direct Post and YouTube both have no text/image-only path — a
+  // real video is mandatory (their providers throw without one), so
+  // selecting either switches the media picker from photo to video mode.
+  const requiresVideo = selectedPlatforms.includes("tiktok") || selectedPlatforms.includes("youtube");
 
   // TikTok's own single-video preview — kept on its own useMemo/cleanup pair
   // since, unlike mediaItems' upload entries, this object URL is created on
@@ -537,7 +542,7 @@ export default function ComposeForm({
   async function submit(targetStatus: "DRAFT" | "NEEDS_REVIEW") {
     if (!drafts || !scheduledAt) return;
     if (requiresVideo && !tiktokVideoFile?.type.startsWith("video/")) {
-      setSubmitError("TikTok seçiliyken bir video dosyası yüklemen gerekiyor — TikTok metin veya fotoğrafla paylaşım yapamıyor.");
+      setSubmitError("TikTok veya YouTube seçiliyken bir video dosyası yüklemen gerekiyor — ikisi de metin veya fotoğrafla paylaşım yapamıyor.");
       return;
     }
     setSubmitting(true);
@@ -1112,8 +1117,8 @@ export default function ComposeForm({
 
                 {requiresVideo && (
                   <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2">
-                    TikTok metin veya fotoğrafla paylaşım yapamıyor — Direct Post için gerçek bir video dosyası
-                    yüklemen gerekiyor (AI görsel üretimi burada kullanılamaz).
+                    TikTok ve YouTube metin veya fotoğrafla paylaşım yapamıyor — gerçek bir video dosyası yüklemen
+                    gerekiyor (AI görsel üretimi burada kullanılamaz).
                   </p>
                 )}
 
@@ -1175,7 +1180,7 @@ export default function ComposeForm({
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                       </svg>
-                      <span>{tiktokVideoFile ? tiktokVideoFile.name : "Video Yükle (TikTok için zorunlu)"}</span>
+                      <span>{tiktokVideoFile ? tiktokVideoFile.name : "Video Yükle (TikTok/YouTube için zorunlu)"}</span>
                       <input
                         id="compose_media_video"
                         type="file"

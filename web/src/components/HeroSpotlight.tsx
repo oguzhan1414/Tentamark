@@ -112,8 +112,12 @@ export default function HeroSpotlight() {
               href="#urun-vitrini"
               className="inline-flex items-center gap-1.5 font-body text-sm font-semibold text-accent-text transition-colors hover:text-accent-hover"
             >
+              <span className="flex h-5 w-5 items-center justify-center rounded-full border border-current">
+                <svg viewBox="0 0 24 24" className="h-2.5 w-2.5 translate-x-px fill-current" aria-hidden="true">
+                  <path d="M6 4l14 8-14 8V4z" />
+                </svg>
+              </span>
               {t.hero.watchDemo}
-              <span aria-hidden="true">→</span>
             </a>
           </div>
 

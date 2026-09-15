@@ -1,17 +1,20 @@
 import Link from "next/link";
 import TentamarkLogo from "@/components/TentamarkLogo";
 import UserProfileDropdown from "@/components/dashboard/UserProfileDropdown";
+import type { PlatformName } from "@/components/PlatformIcon";
 
 export default function DashboardTopbar({
   userName,
   userEmail,
   brandName,
   systemHealthy,
+  connectedPlatforms,
 }: {
   userName: string;
   userEmail?: string;
   brandName?: string;
   systemHealthy: boolean;
+  connectedPlatforms: PlatformName[];
 }) {
   return (
     <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-slate-200/70 bg-white/80 px-4 backdrop-blur-md sm:px-6 lg:px-8 print:hidden">
@@ -70,6 +73,7 @@ export default function DashboardTopbar({
           userName={userName}
           userEmail={userEmail}
           brandName={brandName}
+          connectedPlatforms={connectedPlatforms}
         />
       </div>
     </header>

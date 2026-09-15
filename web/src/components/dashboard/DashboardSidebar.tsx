@@ -141,7 +141,10 @@ export default function DashboardSidebar({
         ))}
       </nav>
 
-      {/* Bottom Connected Accounts Card */}
+      {/* Bottom Connected Accounts Card — kept as-is per explicit request:
+          the same connected-platform icons also show larger and roomier in
+          the profile dropdown (top right) now, but this small-icon version
+          stays here too rather than being replaced. */}
       <div className="mt-auto flex shrink-0 flex-col items-center gap-1.5 rounded-xl border border-slate-200/80 bg-slate-50/70 p-2 text-center">
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
         {connectedPlatforms.length === 0 ? (

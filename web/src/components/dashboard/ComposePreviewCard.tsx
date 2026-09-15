@@ -279,6 +279,114 @@ export default function ComposePreviewCard({ platform, brandName, caption, media
     );
   }
 
+  if (platform === "pinterest") {
+    return (
+      <div className="overflow-hidden rounded-[26px] border border-slate-200/90 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
+        <div className="relative aspect-[2/3] w-full bg-slate-100 overflow-hidden">
+          {mediaUrl ? mediaNode : emptyMedia}
+          {mediaUrl && (
+            <button
+              type="button"
+              className="absolute right-3 top-3 rounded-full bg-[#E60023] px-4 py-2 text-xs font-bold text-white shadow-md"
+            >
+              Kaydet
+            </button>
+          )}
+        </div>
+        <div className="p-4 space-y-2.5">
+          <p className="text-sm font-bold text-slate-900 leading-snug line-clamp-2">
+            {caption || <span className="font-normal text-slate-400">Açıklamanız burada görünecek…</span>}
+          </p>
+          <div className="flex items-center gap-2 pt-1">
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#E60023] text-[10px] font-bold text-white">
+              {initial}
+            </div>
+            <span className="text-xs font-semibold text-slate-700">{brandName}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (platform === "telegram") {
+    return (
+      <div className="overflow-hidden rounded-[26px] border border-slate-200/90 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
+        <div className="flex items-center gap-2.5 px-4 py-3 border-b border-slate-100">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#26A5E4] text-xs font-bold text-white shadow-2xs">
+            {initial}
+          </div>
+          <div>
+            <span className="font-display text-xs font-bold text-slate-900">{brandName}</span>
+            <p className="text-[10px] text-slate-400">Kanal · Şimdi</p>
+          </div>
+        </div>
+
+        {mediaUrl && <div className="relative aspect-[4/3] w-full bg-slate-100 overflow-hidden">{mediaNode}</div>}
+
+        <div className="px-4 py-3 text-xs leading-relaxed text-slate-800 whitespace-pre-line">
+          {caption || <span className="text-slate-400">Metniniz burada görünecek…</span>}
+        </div>
+
+        <div className="px-4 pb-3 flex items-center gap-1.5 text-[11px] text-slate-400">
+          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+          </svg>
+          <span>Görüntülenme sayısı yayınlandıktan sonra görünür.</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (platform === "youtube") {
+    return (
+      <div className="overflow-hidden rounded-[26px] border border-slate-200/90 bg-slate-950 shadow-[0_12px_40px_rgba(0,0,0,0.15)]">
+        <div className="relative aspect-[9/16] w-full bg-slate-900">
+          {mediaUrl ? (
+            mediaNode
+          ) : (
+            <div className="flex h-full w-full flex-col items-center justify-center p-6 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-white mb-2">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <span className="text-xs font-bold text-white">Video gerekli</span>
+              <p className="text-[11px] text-white/50 mt-0.5">YouTube metin veya fotoğrafla paylaşım yapamıyor.</p>
+            </div>
+          )}
+
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/10" />
+
+          <div className="absolute right-2.5 bottom-16 flex flex-col items-center gap-4 text-white">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[10px] font-bold text-slate-900 ring-2 ring-white">
+              {initial}
+            </div>
+            <button type="button" className="flex flex-col items-center gap-0.5">
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+            </button>
+            <button type="button" className="flex flex-col items-center gap-0.5">
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-md bg-[#FF0000] px-1.5 py-0.5 text-[10px] font-bold text-white">
+            Shorts
+          </div>
+
+          <div className="absolute inset-x-0 bottom-0 p-4 pr-14 text-white">
+            <p className="text-xs font-bold">@{handle}</p>
+            <p className="mt-1 line-clamp-3 whitespace-pre-line text-xs leading-relaxed">{caption}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Instagram — the default/fallback shape.
   return (
     <div className="overflow-hidden rounded-[26px] border border-slate-200/90 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.08)]">

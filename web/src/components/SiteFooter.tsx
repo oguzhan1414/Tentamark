@@ -23,6 +23,12 @@ export default function SiteFooter() {
         </div>
 
         <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-medium text-muted sm:justify-end">
+          <Link href="/nasil-calisir" className="hover:text-ink transition">
+            Nasıl Çalışır?
+          </Link>
+          <Link href="/platformlar" className="hover:text-ink transition">
+            Platformlar
+          </Link>
           <Link href="/gizlilik" className="hover:text-ink transition">
             {t.footer.privacy}
           </Link>

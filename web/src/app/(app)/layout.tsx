@@ -93,6 +93,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               userEmail={userEmail}
               brandName={brand.name}
               systemHealthy={systemHealthy}
+              connectedPlatforms={connectedPlatforms}
             />
             <DashboardMobileNav />
             <main className="flex-1 overflow-y-auto">{children}</main>

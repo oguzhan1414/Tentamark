@@ -86,5 +86,12 @@ export function useMediaLibrary(brandId: string, enabled = true) {
     }
   }
 
-  return { items, loading, uploading, error, upload, rename };
+  // For media created server-side (e.g. /api/canva/design/finalize, which
+  // downloads a Canva export and inserts it into `media` itself) — the row
+  // already exists, this just makes it show up without a refetch.
+  function addItem(item: MediaLibraryItem) {
+    setItems((prev) => [item, ...prev]);
+  }
+
+  return { items, loading, uploading, error, upload, addItem, rename };
 }

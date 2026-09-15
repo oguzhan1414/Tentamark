@@ -21,6 +21,13 @@ const CHAR_LIMIT: Record<PlatformName, number> = {
   pinterest: 500,
   threads: 500,
   telegram: 1024,
+  bluesky: 300,
+  woocommerce: 2000,
+  shopify: 2000,
+  "google-business": 1500,
+  discord: 2000,
+  whatsapp: 1024,
+  canva: 1000,
 };
 
 const DAY_NAMES = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];

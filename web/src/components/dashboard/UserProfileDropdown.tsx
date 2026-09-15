@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import PlatformIcon, { type PlatformName } from "@/components/PlatformIcon";
 import {
   HiOutlineUser,
   HiOutlineCog6Tooth,
@@ -22,12 +23,14 @@ interface UserProfileDropdownProps {
   userName: string;
   userEmail?: string;
   brandName?: string;
+  connectedPlatforms?: PlatformName[];
 }
 
 export default function UserProfileDropdown({
   userName,
   userEmail,
   brandName,
+  connectedPlatforms = [],
 }: UserProfileDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -126,6 +129,28 @@ export default function UserProfileDropdown({
                 <span className="text-[10px] font-bold text-slate-700 truncate">{brandName}</span>
               </div>
             )}
+
+            {/* Connected platforms — moved here from the sidebar's bottom
+                card, which had to cram these into a 96px-wide column as
+                16px icons wrapping across rows once more than a couple of
+                platforms were connected. This dropdown has real width, so
+                every icon gets room to actually be legible. */}
+            <Link
+              href="/settings?tab=baglantilar"
+              onClick={() => setIsOpen(false)}
+              className="mt-2 flex items-center gap-2 pt-2 border-t border-slate-200/60"
+            >
+              <span className="text-[10px] text-slate-400 font-medium shrink-0">Bağlı Kanallar:</span>
+              {connectedPlatforms.length === 0 ? (
+                <span className="text-[10px] font-bold text-rose-600 hover:underline">+ Bağla</span>
+              ) : (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {connectedPlatforms.map((name) => (
+                    <PlatformIcon key={name} name={name} className="h-5 w-5 rounded-md shadow-2xs" />
+                  ))}
+                </div>
+              )}
+            </Link>
           </div>
 
           {/* Nav Links */}

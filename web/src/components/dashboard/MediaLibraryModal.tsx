@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMediaLibrary, type MediaLibraryItem } from "@/lib/media/useMediaLibrary";
+import { useCanvaConnection } from "@/lib/canva/useCanvaConnection";
 
 export type { MediaLibraryItem };
 
@@ -49,9 +50,63 @@ export default function MediaLibraryModal({
   maxSelectable,
   onClose,
 }: Props) {
-  const { items, loading, uploading, error, upload, rename } = useMediaLibrary(brandId);
+  const { items, loading, uploading, error, upload, addItem, rename } = useMediaLibrary(brandId);
+  const { connected: canvaConnected } = useCanvaConnection(brandId);
   const [filter, setFilter] = useState<MediaFilter>("all");
   const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [canvaBusy, setCanvaBusy] = useState(false);
+  const [canvaError, setCanvaError] = useState<string | null>(null);
+  const canvaPopupRef = useRef<Window | null>(null);
+
+  // "Canva ile Tasarla": open a blank design in a popup, wait for
+  // /api/canva/design/return to postMessage the finished design's id back
+  // once the user clicks Done in Canva, then export+import it as a normal
+  // media item. The listener stays mounted for the modal's lifetime so it
+  // still catches the message if the popup finishes after a slow export.
+  useEffect(() => {
+    async function handleMessage(event: MessageEvent) {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== "canva-design-complete") return;
+      const designId = event.data.designId;
+      if (typeof designId !== "string") return;
+
+      setCanvaBusy(true);
+      setCanvaError(null);
+      try {
+        const res = await fetch("/api/canva/design/finalize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ designId }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Tasarım içeri aktarılamadı.");
+        addItem(data.media as MediaLibraryItem);
+      } catch (err) {
+        setCanvaError(err instanceof Error ? err.message : "Tasarım içeri aktarılamadı.");
+      } finally {
+        setCanvaBusy(false);
+      }
+    }
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [addItem]);
+
+  async function handleCanvaClick() {
+    setCanvaError(null);
+    // Open the popup synchronously (before the await) so browsers don't
+    // treat it as an unrequested popup and block it.
+    const popup = window.open("about:blank", "canva-editor", "width=1200,height=850");
+    canvaPopupRef.current = popup;
+    try {
+      const res = await fetch("/api/canva/design/start", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Canva tasarımı başlatılamadı.");
+      if (popup) popup.location.href = data.editUrl;
+    } catch (err) {
+      popup?.close();
+      setCanvaError(err instanceof Error ? err.message : "Canva tasarımı başlatılamadı.");
+    }
+  }
 
   // Carousel building has no video story yet (see the `multiple` prop
   // comment) — the filter toggle would just let someone check a video that
@@ -100,25 +155,49 @@ export default function MediaLibraryModal({
         </div>
 
         <div className="shrink-0 border-b border-slate-100 px-5 py-3 space-y-2.5">
-          <label
-            htmlFor="media_library_upload"
-            className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 py-2.5 text-xs font-semibold text-slate-600 hover:border-rose-400 hover:text-rose-600 transition"
-          >
-            {uploading ? "Yükleniyor..." : "+ Yeni Dosya Yükle"}
-            <input
-              id="media_library_upload"
-              type="file"
-              accept={multiple ? "image/*" : "image/*,video/mp4,video/webm"}
-              className="sr-only"
-              disabled={uploading}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) upload(file);
-                e.target.value = "";
-              }}
-            />
-          </label>
+          <div className="flex gap-2">
+            <label
+              htmlFor="media_library_upload"
+              className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 py-2.5 text-xs font-semibold text-slate-600 hover:border-rose-400 hover:text-rose-600 transition"
+            >
+              {uploading ? "Yükleniyor..." : "+ Yeni Dosya Yükle"}
+              <input
+                id="media_library_upload"
+                type="file"
+                accept={multiple ? "image/*" : "image/*,video/mp4,video/webm"}
+                className="sr-only"
+                disabled={uploading}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) upload(file);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+
+            {canvaConnected ? (
+              <button
+                type="button"
+                onClick={handleCanvaClick}
+                disabled={canvaBusy}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-dashed border-violet-300 bg-violet-50 py-2.5 text-xs font-semibold text-violet-700 hover:border-violet-400 hover:bg-violet-100 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {canvaBusy ? "Tasarım alınıyor..." : "🎨 Canva ile Tasarla"}
+              </button>
+            ) : (
+              <a
+                href="/settings?tab=baglantilar"
+                target="_blank"
+                rel="noreferrer"
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50 py-2.5 text-xs font-semibold text-slate-400 hover:border-violet-300 hover:text-violet-600 transition"
+                title="Canva ile tasarlamak için önce Ayarlar'dan bağlayın"
+              >
+                🎨 Canva&apos;yı Bağla
+              </a>
+            )}
+          </div>
           {error && <p className="text-xs text-red-600">{error}</p>}
+          {canvaError && <p className="text-xs text-red-600">{canvaError}</p>}
 
           {multiple ? (
             <p className="text-[11px] text-slate-500">

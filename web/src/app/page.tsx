@@ -9,7 +9,6 @@ import FeaturesGrid from "@/components/FeaturesGrid";
 import HeroSpotlight from "@/components/HeroSpotlight";
 import FinalCta from "@/components/FinalCta";
 import LoopSection from "@/components/LoopSection";
-import PlatformsSection from "@/components/PlatformsSection";
 import PositioningStrip from "@/components/PositioningStrip";
 import PricingTeaser from "@/components/PricingTeaser";
 import ProductShowcase from "@/components/ProductShowcase";
@@ -18,6 +17,9 @@ import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
 import UseCasesSection from "@/components/UseCasesSection";
 import WhoUsesSection from "@/components/WhoUsesSection";
+
+import InteractiveDemoWidget from "@/components/InteractiveDemoWidget";
+import WhyUsInteractiveSection from "@/components/WhyUsInteractiveSection";
 
 function LandingPageContent() {
   const { locale } = useLanguage();
@@ -28,12 +30,12 @@ function LandingPageContent() {
       <SiteHeader />
       <main key={`main-${locale}`} className="flex-1 overflow-x-clip">
         <HeroSpotlight />
+        <InteractiveDemoWidget />
         <AdShowcaseSection />
         <ConnectStrip />
-        <PositioningStrip />
+        <WhyUsInteractiveSection />
         <ProductShowcase />
         <LoopSection />
-        <PlatformsSection />
         <UseCasesSection />
         <WhoUsesSection />
         <FeaturesGrid />

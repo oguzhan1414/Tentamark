@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useBrand } from "@/components/dashboard/BrandProvider";
 import { createClient } from "@/lib/supabase/client";
 import PlatformIcon, { platformLabel, type PlatformName } from "@/components/PlatformIcon";
+import { useCanvaConnection } from "@/lib/canva/useCanvaConnection";
 import { HiOutlineShieldCheck, HiOutlineArrowRightOnRectangle } from "react-icons/hi2";
 
 type SettingsTab = "genel" | "plan" | "ekip" | "bildirimler" | "baglantilar";
@@ -129,8 +130,10 @@ function connectErrorMessage(code: string) {
           ? "Pinterest"
           : code.startsWith("youtube_")
             ? "YouTube"
-            : "Facebook";
-  const reason = code.replace(/^(threads|instagram|tiktok|pinterest|youtube)_/, "");
+            : code.startsWith("canva_")
+              ? "Canva"
+              : "Facebook";
+  const reason = code.replace(/^(threads|instagram|tiktok|pinterest|youtube|canva)_/, "");
 
   switch (reason) {
     case "denied":
@@ -266,6 +269,59 @@ function TelegramConnectCard({ isConnected, onConnected }: { isConnected: boolea
               </button>
             </div>
           </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Canva is a design tool, not a publish target, so it isn't in
+// AVAILABLE_INTEGRATIONS/social_accounts at all — its connection lives in
+// its own canva_connections table (see useCanvaConnection). A full-page
+// OAuth redirect (like every card above except Telegram) means this
+// component simply remounts with the right state after connecting; no
+// onConnected plumbing needed the way Telegram's inline form requires.
+function CanvaConnectCard({ brandId }: { brandId: string }) {
+  const { connected, loading } = useCanvaConnection(brandId);
+
+  return (
+    <div className="flex flex-col justify-between rounded-[22px] border border-slate-100 bg-white p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-md transition-all">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-cyan-400 text-sm font-black text-white shadow-xs">
+            C
+          </div>
+          {connected ? (
+            <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
+              Bağlı ✓
+            </span>
+          ) : (
+            <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-100">
+              Hazır
+            </span>
+          )}
+        </div>
+
+        <div>
+          <h4 className="font-display text-sm font-bold text-slate-900">Canva</h4>
+          <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+            Medya kütüphanesinden doğrudan Canva&apos;da tasarım açın, bitirince görsel otomatik gönderinize aktarılır.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 border-t border-slate-100 pt-3.5">
+        {connected ? (
+          <span className="text-xs font-semibold text-slate-400">Aktif ve yetkilendirildi</span>
+        ) : loading ? (
+          <span className="text-xs font-semibold text-slate-300">Kontrol ediliyor...</span>
+        ) : (
+          <a
+            href="/api/canva/connect/start"
+            className="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition"
+          >
+            Canva&apos;yı Bağla →
+          </a>
         )}
       </div>
     </div>
@@ -1089,6 +1145,8 @@ function SettingsPageContent() {
                 isConnected={accounts.some((a) => a.platform === "telegram" && a.status === "active")}
                 onConnected={() => setAccountsRefreshKey((k) => k + 1)}
               />
+
+              <CanvaConnectCard brandId={brand.id} />
             </div>
           </div>
         </div>

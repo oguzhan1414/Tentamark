@@ -40,6 +40,16 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "*.fbcdn.net",
       },
+      {
+        // YouTube channel thumbnails
+        protocol: "https",
+        hostname: "*.ggpht.com",
+      },
+      {
+        // Pinterest profile images
+        protocol: "https",
+        hostname: "*.pinimg.com",
+      },
     ],
   },
 };

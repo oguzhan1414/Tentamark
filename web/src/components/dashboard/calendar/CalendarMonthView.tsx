@@ -2,6 +2,7 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import CalendarPostCard from "./CalendarPostCard";
+import { groupCalendarPosts } from "./groupCalendarPosts";
 import type { CalendarPost, CalendarNote, CalendarCampaign } from "./types";
 
 type Props = {
@@ -61,8 +62,11 @@ function DayCell({
   const { setNodeRef, isOver } = useDroppable({ id: cell.dateKey, disabled: isPast });
   const hasCampaignStart = campaign?.start_date === cell.dateKey;
   const hasCampaignEnd = campaign?.end_date === cell.dateKey;
-  const visiblePosts = dayPosts.slice(0, MAX_INLINE_POSTS);
-  const hiddenPostCount = dayPosts.length - visiblePosts.length;
+  // Grouped by idea, not by (content, platform) row — a post going to 3
+  // platforms is still one card here, same as everywhere else in the app.
+  const dayGroups = groupCalendarPosts(dayPosts);
+  const visibleGroups = dayGroups.slice(0, MAX_INLINE_POSTS);
+  const hiddenPostCount = dayGroups.length - visibleGroups.length;
   const hasOverflow = hiddenPostCount > 0 || dayNotes.length > 0;
 
   return (
@@ -146,12 +150,13 @@ function DayCell({
       {/* At most MAX_INLINE_POSTS chips — fixed height, never scrolls, never
           pushes the row taller than its 1fr share of the grid. */}
       <div className="mt-1 flex min-h-0 flex-1 flex-col justify-start gap-1 overflow-hidden">
-        {visiblePosts.map((p) => (
+        {visibleGroups.map((g) => (
           <CalendarPostCard
-            key={p.id}
-            post={p}
-            onClick={() => onSelectPost(p)}
-            draggable={!isPast && p.postStatus !== "PUBLISHED"}
+            key={g.key}
+            post={g.hero}
+            otherPlatforms={g.members.slice(1).map((m) => m.platform)}
+            onClick={() => onSelectPost(g.hero)}
+            draggable={!isPast && g.hero.postStatus !== "PUBLISHED"}
             compact
           />
         ))}

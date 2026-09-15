@@ -23,9 +23,18 @@ async function fetchOnce(
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
+    // nologo=true above only actually drops the watermark for an
+    // authenticated (registered, free-tier) account — verified live, an
+    // anonymous request keeps the "pollinations.ai" stamp regardless of
+    // that param. Falls back to the old anonymous behavior if the token
+    // isn't configured, rather than failing outright.
+    const token = process.env.POLLINATIONS_API_TOKEN;
     const res = await fetch(url, {
       signal: controller.signal,
-      headers: { Accept: "image/jpeg,image/png,image/*" },
+      headers: {
+        Accept: "image/jpeg,image/png,image/*",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     });
     clearTimeout(timeoutId);
 

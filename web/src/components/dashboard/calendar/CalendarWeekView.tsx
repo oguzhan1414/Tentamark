@@ -3,6 +3,7 @@
 import { useDroppable } from "@dnd-kit/core";
 import CalendarPostCard from "./CalendarPostCard";
 import NoteCard from "./NoteCard";
+import { groupCalendarPosts } from "./groupCalendarPosts";
 import type { CalendarPost, CalendarMeeting, CalendarNote, CalendarCampaign } from "./types";
 
 type Props = {
@@ -96,12 +97,13 @@ function DayColumn({
         />
       ))}
 
-      {dayPosts.map((p) => (
+      {groupCalendarPosts(dayPosts).map((g) => (
         <CalendarPostCard
-          key={p.id}
-          post={p}
-          onClick={() => onSelectPost(p)}
-          draggable={!isPast && p.postStatus !== "PUBLISHED"}
+          key={g.key}
+          post={g.hero}
+          otherPlatforms={g.members.slice(1).map((m) => m.platform)}
+          onClick={() => onSelectPost(g.hero)}
+          draggable={!isPast && g.hero.postStatus !== "PUBLISHED"}
         />
       ))}
 

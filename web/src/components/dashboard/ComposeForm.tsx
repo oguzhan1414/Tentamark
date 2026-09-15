@@ -11,6 +11,11 @@ import { ALL_PLATFORMS } from "@/lib/ai/platforms";
 import PlatformIcon, { platformLabel, type PlatformName } from "@/components/PlatformIcon";
 import MediaLibraryModal, { type MediaLibraryItem } from "@/components/dashboard/MediaLibraryModal";
 import ComposePreviewCard from "@/components/dashboard/ComposePreviewCard";
+import { PLATFORM_IMAGE_RATIO } from "@/lib/media/platformAspectRatio";
+import { createCroppedMediaVariant } from "@/lib/media/createCroppedMediaVariant";
+import { useWooCommerceConnection } from "@/lib/woocommerce/useWooCommerceConnection";
+import { stripHtml, type WooCommerceProduct } from "@/lib/woocommerce/client";
+import WooCommerceProductPicker from "@/components/dashboard/WooCommerceProductPicker";
 
 const CHAR_LIMIT: Record<PlatformName, number> = {
   instagram: 2200,
@@ -145,6 +150,8 @@ export default function ComposeForm({
 } = {}) {
   const brand = useBrand();
   const supabase = useMemo(() => createClient(), []);
+  const { connected: woocommerceConnected } = useWooCommerceConnection(brand.id);
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
 
   const [mode, setMode] = useState<Mode>("ai");
   const [format, setFormat] = useState<ContentFormat>("post");
@@ -382,6 +389,32 @@ export default function ComposeForm({
     if (!suggestedIdea) return;
     setIdea(suggestedIdea);
     setSuggestionDismissed(true);
+  }
+
+  // Turns a real WooCommerce product into a content idea — name/price/
+  // description become the "ana fikir" AI drafts from, and the product
+  // photo (best-effort: the merchant's own WordPress host may not send
+  // permissive CORS headers, unlike Supabase Storage) gets attached the
+  // same way a manually picked file would.
+  async function handleSelectProduct(product: WooCommerceProduct) {
+    const priceLine = product.price ? `Fiyat: ${product.price} TL` : "";
+    const description = stripHtml(product.short_description || product.description || "");
+    setIdea([product.name, description, priceLine].filter(Boolean).join("\n\n"));
+
+    const imageUrl = product.images?.[0]?.src;
+    if (imageUrl && mediaItems.length < MAX_MEDIA_ITEMS) {
+      try {
+        const res = await fetch(imageUrl);
+        if (!res.ok) throw new Error("Ürün görseli indirilemedi.");
+        const blob = await res.blob();
+        const file = new File([blob], `woocommerce-${product.id}.jpg`, { type: blob.type || "image/jpeg" });
+        setMediaItems((prev) =>
+          prev.length >= MAX_MEDIA_ITEMS ? prev : [...prev, { kind: "upload", file, previewUrl: URL.createObjectURL(file) }]
+        );
+      } catch (err) {
+        console.error("WooCommerce ürün görseli eklenemedi:", err instanceof Error ? err.message : err);
+      }
+    }
   }
 
   function addTag() {
@@ -642,6 +675,51 @@ export default function ComposeForm({
         }
       }
 
+      // Format uyarlama: a single attached photo goes out to every platform
+      // as the same file today unless we override it here — Instagram/
+      // Facebook/Threads want 4:5, Pinterest wants 2:3, and whichever
+      // platform's ratio didn't match just got auto-cropped by that
+      // platform itself. Only handles the single-image case on purpose:
+      // cropping just the first photo of a carousel would silently break
+      // the rest, so carousels (or video posts) keep using the shared media
+      // untouched. Never blocks the submit — a failed crop just means that
+      // platform falls back to the original file, exactly like before.
+      const mediaOverrideByPlatform: Partial<Record<PlatformName, string>> = {};
+      if (!requiresVideo && mediaIds.length === 1) {
+        const { data: sourceMedia } = await supabase
+          .from("media")
+          .select("file_url, file_type")
+          .eq("id", mediaIds[0])
+          .single();
+
+        if (sourceMedia && !sourceMedia.file_type.startsWith("video/")) {
+          const ratiosNeeded = new Map<number, PlatformName[]>();
+          for (const platform of selectedPlatforms) {
+            const ratio = PLATFORM_IMAGE_RATIO[platform as PlatformName];
+            if (!ratio) continue;
+            if (!ratiosNeeded.has(ratio)) ratiosNeeded.set(ratio, []);
+            ratiosNeeded.get(ratio)!.push(platform as PlatformName);
+          }
+
+          for (const [ratio, platforms] of ratiosNeeded) {
+            try {
+              const croppedId = await createCroppedMediaVariant({
+                supabase,
+                brandId: brand.id,
+                sourceMediaId: mediaIds[0],
+                sourceUrl: sourceMedia.file_url,
+                targetRatio: ratio,
+              });
+              if (croppedId) {
+                for (const platform of platforms) mediaOverrideByPlatform[platform] = croppedId;
+              }
+            } catch (err) {
+              console.error("Format uyarlama başarısız, orijinal görsel kullanılacak:", err);
+            }
+          }
+        }
+      }
+
       const scheduledIso = new Date(scheduledAt).toISOString();
       const title = hook.trim().slice(0, 80) || idea.trim().slice(0, 80) || "Yeni İçerik";
 
@@ -688,6 +766,7 @@ export default function ComposeForm({
             hashtags: extractHashtags(caption),
             status: "PENDING",
             scheduled_at: scheduledIso,
+            media_override_id: mediaOverrideByPlatform[platform as PlatformName] ?? null,
           };
         })
       );
@@ -1090,6 +1169,15 @@ export default function ComposeForm({
                         {chip}
                       </button>
                     ))}
+                    {woocommerceConnected && (
+                      <button
+                        type="button"
+                        onClick={() => setProductPickerOpen(true)}
+                        className="rounded-lg border border-[#96588A]/30 bg-[#96588A]/5 px-2.5 py-1 text-[11px] font-medium text-[#96588A] hover:bg-[#96588A]/10 transition"
+                      >
+                        🛍️ WooCommerce Ürünü Kullan
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -1616,6 +1704,13 @@ export default function ComposeForm({
             setMediaItems((prev) => [...prev, ...selected.map((media) => ({ kind: "existing" as const, media }))]);
             setLibraryOpen(false);
           }}
+        />
+      )}
+
+      {productPickerOpen && (
+        <WooCommerceProductPicker
+          onSelect={handleSelectProduct}
+          onClose={() => setProductPickerOpen(false)}
         />
       )}
     </div>

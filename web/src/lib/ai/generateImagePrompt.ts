@@ -32,10 +32,20 @@ ${hasColors ? "- A brand color palette is provided — use those exact hex color
     .join("\n");
 
   try {
+    // reasoningEffort was missing here — MODEL (gpt-oss-120b) defaults to a
+    // heavier reasoning mode whose hidden thinking tokens draw from the same
+    // maxTokens budget as the visible output (see groqModel.ts). Verified
+    // live: without this, a real prompt burned all 300 tokens on invisible
+    // reasoning and returned an EMPTY content string, silently falling back
+    // to the raw, un-engineered (often Turkish) concept text below — no
+    // camera/lighting direction, which is almost certainly why generated
+    // images have been coming out wrong. "low" is the lowest value this
+    // model actually accepts (unlike the vision model, "none" 400s here).
     const result = await callGroq(systemPrompt, userMessage, {
       temperature: 0.5,
       maxTokens: 300,
       jsonMode: false,
+      reasoningEffort: "low",
     });
     const prompt = result.content.trim().replace(/^["']|["']$/g, "");
     return prompt || cleanConcept;

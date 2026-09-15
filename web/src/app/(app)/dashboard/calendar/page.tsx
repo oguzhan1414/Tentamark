@@ -96,7 +96,10 @@ export default function CalendarPage() {
   // One CalendarPost per (content, platform) pair — a platform's own
   // scheduled_at/status decides where it lands and how it looks, not the
   // content row as a whole (one content item can be PUBLISHED on Threads
-  // and still QUEUED on Instagram).
+  // and still QUEUED on Instagram). The view components merge same-content
+  // posts back into a single card at render time (see groupCalendarPosts) —
+  // that's a display grouping only, this list stays one entry per platform
+  // so per-platform status/scheduling stays real underneath it.
   const realPosts = useMemo(() => {
     const list: CalendarPost[] = [];
     for (const r of contentRows) {
@@ -110,6 +113,7 @@ export default function CalendarPage() {
 
         list.push({
           id: `real-${r.id}-${p.platform}`,
+          contentId: r.id,
           contentPlatformId: p.id,
           scheduledAtIso: schedDate.toISOString(),
           title: r.title,
@@ -509,11 +513,20 @@ export default function CalendarPage() {
       moved.setFullYear(y, m - 1, d);
       const movedIso = moved.toISOString();
 
+      // The dragged card represents every platform of this content (see
+      // groupCalendarPosts) — moving it moves all of them together, not
+      // just the one platform that happened to render as the card's hero.
+      const siblingIds = post.contentId
+        ? posts
+            .filter((p) => p.contentId === post.contentId && p.contentPlatformId)
+            .map((p) => p.contentPlatformId!)
+        : [post.contentPlatformId];
+
       setContentRows((prev) =>
         prev.map((r) => ({
           ...r,
           content_platforms: r.content_platforms.map((p) =>
-            p.id === post.contentPlatformId ? { ...p, scheduled_at: movedIso } : p
+            p.id && siblingIds.includes(p.id) ? { ...p, scheduled_at: movedIso } : p
           ),
         }))
       );
@@ -521,7 +534,7 @@ export default function CalendarPage() {
       supabase
         .from("content_platforms")
         .update({ scheduled_at: movedIso })
-        .eq("id", post.contentPlatformId)
+        .in("id", siblingIds)
         .then(({ error }) => {
           if (error) console.error("Tarih güncellenemedi:", error.message);
         });

@@ -50,6 +50,11 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "*.pinimg.com",
       },
+      {
+        // Bluesky avatars
+        protocol: "https",
+        hostname: "cdn.bsky.app",
+      },
     ],
   },
 };

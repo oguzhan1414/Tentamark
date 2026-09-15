@@ -18,6 +18,12 @@ export type Message = {
   imageName?: string | null;
   draft?: ContentDraft | null;
   draftStatus?: "pending" | "accepted" | "rejected";
+  // AI-generated (not user-uploaded) — a real Pollinations/Flux image the
+  // assistant produced this turn. dataUrl until saved to the library, at
+  // which point savedMediaId marks it so the save button doesn't re-upload.
+  generatedImageDataUrl?: string | null;
+  generatedImagePrompt?: string | null;
+  savedMediaId?: string | null;
 };
 
 export type ChatSession = {
@@ -59,6 +65,15 @@ const STARTER_PROMPTS = [
     prompt: "Yarın için hazır bir gönderi taslağı üret ve takvime ekleyebileceğim şekilde hazırla.",
   },
 ];
+
+function dataUrlToBlob(dataUrl: string): { blob: Blob; contentType: string } {
+  const [header, base64] = dataUrl.split(",");
+  const mime = header.match(/:(.*?);/)?.[1] || "image/png";
+  const binary = atob(base64);
+  const array = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) array[i] = binary.charCodeAt(i);
+  return { blob: new Blob([array], { type: mime }), contentType: mime };
+}
 
 function nowLabel(): string {
   return new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
@@ -128,6 +143,7 @@ export default function AssistantPage() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [processingDraftId, setProcessingDraftId] = useState<string | null>(null);
+  const [savingImageId, setSavingImageId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -317,6 +333,47 @@ export default function AssistantPage() {
     setShowAttachMenu(false);
   }
 
+  // Saves an assistant-generated image into the real media library — a
+  // dataUrl on its own isn't reusable anywhere else in the app (Compose,
+  // Calendar), so this uploads it exactly the way ComposeForm's own
+  // "generated" media items get persisted at submit time.
+  async function handleSaveGeneratedImage(messageId: string, dataUrl: string) {
+    setSavingImageId(messageId);
+    try {
+      const { blob, contentType } = dataUrlToBlob(dataUrl);
+      const ext = contentType === "image/png" ? "png" : "jpg";
+      const path = `${brand.id}/${crypto.randomUUID()}-ai-chat.${ext}`;
+
+      const { error: uploadError } = await supabase.storage.from("media").upload(path, blob, { contentType });
+      if (uploadError) throw new Error(uploadError.message);
+
+      const { data: publicUrl } = supabase.storage.from("media").getPublicUrl(path);
+      const { data: mediaRow, error: mediaError } = await supabase
+        .from("media")
+        .insert({
+          brand_id: brand.id,
+          file_name: `ai-chat-${Date.now()}.${ext}`,
+          file_url: publicUrl.publicUrl,
+          file_type: contentType,
+          file_size: blob.size,
+        })
+        .select("id")
+        .single();
+      if (mediaError || !mediaRow) throw new Error(mediaError?.message ?? "Medya kaydedilemedi.");
+
+      setSessions((prev) =>
+        prev.map((s) => ({
+          ...s,
+          messages: s.messages.map((m) => (m.id === messageId ? { ...m, savedMediaId: mediaRow.id } : m)),
+        }))
+      );
+    } catch (err) {
+      alert(`Görsel kütüphaneye eklenemedi: ${err instanceof Error ? err.message : "bilinmeyen hata"}`);
+    } finally {
+      setSavingImageId(null);
+    }
+  }
+
   // Copy message to clipboard
   async function handleCopy(id: string, text: string) {
     try {
@@ -430,6 +487,8 @@ export default function AssistantPage() {
         timestamp: nowLabel(),
         draft: reply.draft,
         draftStatus: reply.draft ? "pending" : undefined,
+        generatedImageDataUrl: reply.generatedImage?.dataUrl ?? null,
+        generatedImagePrompt: reply.generatedImage?.prompt ?? null,
       };
 
       setSessions((prev) =>
@@ -883,6 +942,37 @@ export default function AssistantPage() {
                       )}
                     </div>
                   </div>
+
+                  {/* AI-Generated Image Card */}
+                  {m.generatedImageDataUrl && (
+                    <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm">
+                      <div className="relative aspect-square w-full max-w-sm bg-slate-100">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={m.generatedImageDataUrl}
+                          alt={m.generatedImagePrompt || "Üretilen görsel"}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between gap-2 p-3">
+                        <span className="text-[10px] text-slate-400">🎨 AI ile üretildi</span>
+                        {m.savedMediaId ? (
+                          <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
+                            ✓ Kütüphaneye eklendi
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleSaveGeneratedImage(m.id, m.generatedImageDataUrl!)}
+                            disabled={savingImageId === m.id}
+                            className="rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-slate-800 transition disabled:opacity-50 cursor-pointer"
+                          >
+                            {savingImageId === m.id ? "Ekleniyor..." : "Medya Kütüphanesine Ekle"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Post Draft Card (If AI Generated a Post) */}
                   {m.draft && (

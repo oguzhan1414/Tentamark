@@ -13,6 +13,10 @@ export type CalendarPost = {
   // guessing at an id shape or losing the time when the date changes.
   contentPlatformId?: string;
   scheduledAtIso?: string;
+  // The parent content row's id — every platform of the same idea shares
+  // this, which is what groupCalendarPosts uses to merge them back into one
+  // card. Undefined for demo posts, which never group with anything.
+  contentId?: string;
   imageUrl: string;
   imageIsVideo?: boolean;
   isCarousel?: boolean;

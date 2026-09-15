@@ -6,7 +6,8 @@ export type LaunchPlatform =
   | "tiktok"
   | "pinterest"
   | "telegram"
-  | "youtube";
+  | "youtube"
+  | "bluesky";
 
 export const ALL_PLATFORMS: LaunchPlatform[] = [
   "instagram",
@@ -17,6 +18,7 @@ export const ALL_PLATFORMS: LaunchPlatform[] = [
   "pinterest",
   "telegram",
   "youtube",
+  "bluesky",
 ];
 
 export const PLATFORM_LABEL: Record<LaunchPlatform, string> = {
@@ -28,6 +30,7 @@ export const PLATFORM_LABEL: Record<LaunchPlatform, string> = {
   pinterest: "Pinterest",
   telegram: "Telegram",
   youtube: "YouTube",
+  bluesky: "Bluesky",
 };
 
 export const PLATFORM_RULE: Record<LaunchPlatform, string> = {
@@ -42,4 +45,6 @@ export const PLATFORM_RULE: Record<LaunchPlatform, string> = {
     "Telegram: samimi, doğrudan bir kanal duyurusu tonunda — topluluğa konuşur gibi yaz, kısa paragraflar ve gerekirse emoji kullanabilirsin.",
   youtube:
     "YouTube: video başlığı gibi düşün — ilk cümle merak uyandırsın, devamında video içeriğini özetleyen, anahtar kelime içeren bir açıklama yaz.",
+  bluesky:
+    "Bluesky: kısa, samimi ve biraz meraklı/erken-benimseyici bir topluluğa konuşuyorsun — Threads'e yakın ama daha az kurumsal, daha doğrudan bir sohbet tonu. Emoji'den kaçınma ama abartma.",
 };

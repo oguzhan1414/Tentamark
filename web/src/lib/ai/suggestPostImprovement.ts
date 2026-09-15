@@ -52,6 +52,7 @@ ${brandContext}`;
     const res = await callGroq(systemPrompt, caption || "Bu gönderi için genel bir öneri ver.", {
       temperature: 0.6,
       maxTokens: 300,
+      reasoningEffort: "low",
     });
     const parsed = JSON.parse(res.content);
     result = {

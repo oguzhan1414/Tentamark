@@ -51,6 +51,7 @@ Kurallar:
     temperature: 0.5,
     maxTokens: 1500,
     jsonMode: true,
+    reasoningEffort: "low",
   });
 
   const cleaned = groqResult.content

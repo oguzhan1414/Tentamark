@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   const { data: cp, error: cpError } = await supabase
     .from("content_platforms")
     .select(
-      "id, content_id, platform, caption, attempt_count, content:content!inner(brand_id, content_media(position, media(file_url, file_type)))"
+      "id, content_id, platform, caption, attempt_count, media_override:media_override_id(file_url, file_type), content:content!inner(brand_id, content_media(position, media(file_url, file_type)))"
     )
     .eq("id", contentPlatformId)
     .single();
@@ -70,17 +70,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "content row missing brand_id" }, { status: 404 });
   }
 
-  const mediaRows = (content?.content_media ?? []) as Array<{
-    position: number;
-    media: { file_url: string; file_type: string } | { file_url: string; file_type: string }[] | null;
-  }>;
-  const sortedMedia = [...mediaRows].sort((a, b) => a.position - b.position);
-  // Ordered for carousel-capable providers (Instagram, Facebook); providers
-  // without capabilities.carousel just read media[0] and ignore the rest.
-  const media: PublishMediaItem[] = sortedMedia
-    .map((row) => (Array.isArray(row.media) ? row.media[0] : row.media))
-    .filter((m): m is { file_url: string; file_type: string } => Boolean(m?.file_url))
-    .map((m) => ({ url: m.file_url, type: m.file_type?.startsWith("video/") ? "video" : "image" }));
+  // A per-platform cropped variant (Compose's format-adaptation step, see
+  // createCroppedMediaVariant) always wins when present — it only ever gets
+  // set for single-image posts, so there's no carousel to preserve here.
+  const mediaOverride = Array.isArray(cp.media_override) ? cp.media_override[0] : cp.media_override;
+
+  let media: PublishMediaItem[];
+  if (mediaOverride?.file_url) {
+    media = [{ url: mediaOverride.file_url, type: mediaOverride.file_type?.startsWith("video/") ? "video" : "image" }];
+  } else {
+    const mediaRows = (content?.content_media ?? []) as Array<{
+      position: number;
+      media: { file_url: string; file_type: string } | { file_url: string; file_type: string }[] | null;
+    }>;
+    const sortedMedia = [...mediaRows].sort((a, b) => a.position - b.position);
+    // Ordered for carousel-capable providers (Instagram, Facebook); providers
+    // without capabilities.carousel just read media[0] and ignore the rest.
+    media = sortedMedia
+      .map((row) => (Array.isArray(row.media) ? row.media[0] : row.media))
+      .filter((m): m is { file_url: string; file_type: string } => Boolean(m?.file_url))
+      .map((m) => ({ url: m.file_url, type: m.file_type?.startsWith("video/") ? "video" : "image" }));
+  }
 
   const { data: account, error: accountError } = await supabase
     .from("social_accounts")

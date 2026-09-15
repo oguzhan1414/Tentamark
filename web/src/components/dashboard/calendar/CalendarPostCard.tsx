@@ -2,7 +2,7 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import Image from "next/image";
-import PlatformIcon from "@/components/PlatformIcon";
+import PlatformIcon, { type PlatformName } from "@/components/PlatformIcon";
 import type { CalendarPost } from "./types";
 
 type Props = {
@@ -13,6 +13,10 @@ type Props = {
   // for the full image-thumbnail card below — a single-line chip instead.
   // Week view and the drag overlay keep the full card.
   compact?: boolean;
+  // Other platforms this same content is also going out to (see
+  // groupCalendarPosts) — shown as small extra badges next to post.platform
+  // so one merged card still says "this is going to 3 places", not just one.
+  otherPlatforms?: PlatformName[];
 };
 
 // A rejected/unfinished item (content.status sent back to DRAFT) has to
@@ -27,7 +31,7 @@ function statusMeta(post: CalendarPost): { dot: string; text: string; label: str
     : { dot: "bg-amber-500", text: "text-amber-600", label: "Bekliyor" };
 }
 
-export default function CalendarPostCard({ post, onClick, draggable = true, compact = false }: Props) {
+export default function CalendarPostCard({ post, onClick, draggable = true, compact = false, otherPlatforms = [] }: Props) {
   const status = statusMeta(post);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: post.id,
@@ -77,6 +81,14 @@ export default function CalendarPostCard({ post, onClick, draggable = true, comp
           <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-white ring-1 ring-white shadow-2xs">
             <PlatformIcon name={post.platform} variant="tile" className="h-3 w-3 rounded-full" />
           </span>
+          {otherPlatforms.length > 0 && (
+            <span
+              title={`Ayrıca: ${otherPlatforms.length} platform daha`}
+              className="absolute -top-1 -left-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-slate-900 px-0.5 text-[8px] font-bold text-white ring-1 ring-white"
+            >
+              +{otherPlatforms.length}
+            </span>
+          )}
         </div>
 
         <div className="min-w-0 flex-1">
@@ -143,7 +155,15 @@ export default function CalendarPostCard({ post, onClick, draggable = true, comp
       {/* Account Handle & Time Header */}
       <div className="flex items-center justify-between text-xs">
         <div className="flex items-center gap-1.5 min-w-0">
-          <PlatformIcon name={post.platform} variant="tile" className="h-3.5 w-3.5 rounded shrink-0" />
+          <div className="flex items-center -space-x-1 shrink-0">
+            <PlatformIcon name={post.platform} variant="tile" className="h-3.5 w-3.5 rounded-full ring-1 ring-white" />
+            {otherPlatforms.slice(0, 3).map((pf) => (
+              <PlatformIcon key={pf} name={pf} variant="tile" className="h-3.5 w-3.5 rounded-full ring-1 ring-white" />
+            ))}
+          </div>
+          {otherPlatforms.length > 3 && (
+            <span className="text-[9px] font-bold text-slate-400 shrink-0">+{otherPlatforms.length - 3}</span>
+          )}
           <span className="truncate text-[11px] font-semibold text-slate-700">{post.accountName}</span>
         </div>
         <div className="flex items-center gap-1 font-mono text-[10px] text-slate-400 shrink-0">

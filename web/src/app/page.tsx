@@ -30,8 +30,8 @@ function LandingPageContent() {
       <SiteHeader />
       <main key={`main-${locale}`} className="flex-1 overflow-x-clip">
         <HeroSpotlight />
-        <InteractiveDemoWidget />
         <AdShowcaseSection />
+        <InteractiveDemoWidget />
         <ConnectStrip />
         <WhyUsInteractiveSection />
         <ProductShowcase />

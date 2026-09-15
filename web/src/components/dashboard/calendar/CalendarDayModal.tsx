@@ -2,6 +2,7 @@
 
 import CalendarPostCard from "./CalendarPostCard";
 import NoteCard from "./NoteCard";
+import { groupCalendarPosts } from "./groupCalendarPosts";
 import type { CalendarPost, CalendarNote, CalendarCampaign } from "./types";
 
 type Props = {
@@ -121,8 +122,14 @@ export default function CalendarDayModal({
             <p className="py-10 text-center text-xs text-slate-400">Bu tarihte henüz bir gönderi yok.</p>
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              {posts.map((p) => (
-                <CalendarPostCard key={p.id} post={p} onClick={() => onSelectPost(p)} draggable={false} />
+              {groupCalendarPosts(posts).map((g) => (
+                <CalendarPostCard
+                  key={g.key}
+                  post={g.hero}
+                  otherPlatforms={g.members.slice(1).map((m) => m.platform)}
+                  onClick={() => onSelectPost(g.hero)}
+                  draggable={false}
+                />
               ))}
             </div>
           )}

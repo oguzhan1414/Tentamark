@@ -150,6 +150,7 @@ async function callGroqForBriefing(facts: Facts): Promise<string> {
     temperature: 0.3,
     maxTokens: 300,
     jsonMode: false,
+    reasoningEffort: "low",
   });
   return cleanBriefing(result.content);
 }

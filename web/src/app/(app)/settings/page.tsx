@@ -7,6 +7,7 @@ import { useBrand } from "@/components/dashboard/BrandProvider";
 import { createClient } from "@/lib/supabase/client";
 import PlatformIcon, { platformLabel, type PlatformName } from "@/components/PlatformIcon";
 import { useCanvaConnection } from "@/lib/canva/useCanvaConnection";
+import { useWooCommerceConnection } from "@/lib/woocommerce/useWooCommerceConnection";
 import { HiOutlineShieldCheck, HiOutlineArrowRightOnRectangle } from "react-icons/hi2";
 
 type SettingsTab = "genel" | "plan" | "ekip" | "bildirimler" | "baglantilar";
@@ -275,6 +276,119 @@ function TelegramConnectCard({ isConnected, onConnected }: { isConnected: boolea
   );
 }
 
+// Bluesky has no OAuth either — same inline-form shape as Telegram, a
+// credential (app password) instead of a redirect. See
+// /api/connections/bluesky/connect for what gets validated before saving.
+function BlueskyConnectCard({ isConnected, onConnected }: { isConnected: boolean; onConnected: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [handle, setHandle] = useState("");
+  const [appPassword, setAppPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleConnect(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/connections/bluesky/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ handle, appPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Bağlantı kurulamadı.");
+      setHandle("");
+      setAppPassword("");
+      setOpen(false);
+      onConnected();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Bağlantı kurulamadı.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col justify-between rounded-[22px] border border-slate-100 bg-white p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-md transition-all">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <PlatformIcon name="bluesky" className="h-9 w-9 rounded-xl shadow-xs" />
+          {isConnected ? (
+            <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
+              Bağlı ✓
+            </span>
+          ) : (
+            <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-100">
+              Hazır
+            </span>
+          )}
+        </div>
+
+        <div>
+          <h4 className="font-display text-sm font-bold text-slate-900">Bluesky</h4>
+          <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+            OAuth yerine app password ile bağlanır — Bluesky hesap ayarlarından bir app password oluştur (gerçek şifreni asla kullanma).
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 border-t border-slate-100 pt-3.5">
+        {isConnected ? (
+          <span className="text-xs font-semibold text-slate-400">Aktif ve yetkilendirildi</span>
+        ) : !open ? (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition cursor-pointer"
+          >
+            Bluesky&apos;ı Bağla →
+          </button>
+        ) : (
+          <form onSubmit={handleConnect} className="space-y-2">
+            <input
+              type="text"
+              value={handle}
+              onChange={(e) => setHandle(e.target.value)}
+              placeholder="Handle (ör. tentamark.bsky.social)"
+              required
+              className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs text-slate-800 focus:border-slate-400 focus:outline-none"
+            />
+            <input
+              type="password"
+              value={appPassword}
+              onChange={(e) => setAppPassword(e.target.value)}
+              placeholder="App password"
+              required
+              className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs text-slate-800 focus:border-slate-400 focus:outline-none"
+            />
+            {error && <p className="text-[11px] text-red-600">{error}</p>}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  setError(null);
+                }}
+                className="flex-1 rounded-lg border border-slate-200 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+              >
+                Vazgeç
+              </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="flex-1 rounded-lg bg-slate-900 py-2 text-xs font-bold text-white hover:bg-slate-800 transition disabled:opacity-50 cursor-pointer"
+              >
+                {submitting ? "Bağlanıyor..." : "Bağla"}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Canva is a design tool, not a publish target, so it isn't in
 // AVAILABLE_INTEGRATIONS/social_accounts at all — its connection lives in
 // its own canva_connections table (see useCanvaConnection). A full-page
@@ -322,6 +436,143 @@ function CanvaConnectCard({ brandId }: { brandId: string }) {
           >
             Canva&apos;yı Bağla →
           </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// WooCommerce has no OAuth either — a Consumer Key/Secret pair the merchant
+// generates from their own WooCommerce -> Settings -> Advanced -> REST API,
+// same inline-form shape as Telegram/Bluesky. Not a publish target: it's a
+// product data source Compose pulls from, see useWooCommerceConnection.
+function WooCommerceConnectCard({ brandId }: { brandId: string }) {
+  const { connected, storeName, loading } = useWooCommerceConnection(brandId);
+  const [open, setOpen] = useState(false);
+  const [storeUrl, setStoreUrl] = useState("");
+  const [consumerKey, setConsumerKey] = useState("");
+  const [consumerSecret, setConsumerSecret] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [justConnected, setJustConnected] = useState(false);
+
+  async function handleConnect(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/connections/woocommerce/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storeUrl, consumerKey, consumerSecret }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Bağlantı kurulamadı.");
+      setStoreUrl("");
+      setConsumerKey("");
+      setConsumerSecret("");
+      setOpen(false);
+      // useWooCommerceConnection only fetches once on mount — a full-page
+      // OAuth redirect makes the other cards remount for free, but this
+      // form-based flow doesn't navigate anywhere, so it needs its own nudge.
+      setJustConnected(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Bağlantı kurulamadı.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const isConnected = connected || justConnected;
+
+  return (
+    <div className="flex flex-col justify-between rounded-[22px] border border-slate-100 bg-white p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-md transition-all">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#96588A] text-sm font-black text-white shadow-xs">
+            W
+          </div>
+          {isConnected ? (
+            <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
+              Bağlı ✓
+            </span>
+          ) : (
+            <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-100">
+              Hazır
+            </span>
+          )}
+        </div>
+
+        <div>
+          <h4 className="font-display text-sm font-bold text-slate-900">WooCommerce</h4>
+          <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+            Mağazandaki ürünleri Compose&apos;a çekip gerçek ürün verisinden içerik fikri üretmek için bağlan — kendi WooCommerce panelinden bir Consumer Key/Secret oluştur.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 border-t border-slate-100 pt-3.5">
+        {isConnected ? (
+          <span className="text-xs font-semibold text-slate-400">
+            Aktif ve yetkilendirildi{storeName ? ` · ${storeName}` : ""}
+          </span>
+        ) : loading ? (
+          <span className="text-xs font-semibold text-slate-300">Kontrol ediliyor...</span>
+        ) : !open ? (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition cursor-pointer"
+          >
+            WooCommerce&apos;i Bağla →
+          </button>
+        ) : (
+          <form onSubmit={handleConnect} className="space-y-2">
+            <input
+              type="text"
+              value={storeUrl}
+              onChange={(e) => setStoreUrl(e.target.value)}
+              placeholder="Mağaza URL'si (ör. magazam.com)"
+              required
+              className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs text-slate-800 focus:border-slate-400 focus:outline-none"
+            />
+            <input
+              type="text"
+              value={consumerKey}
+              onChange={(e) => setConsumerKey(e.target.value)}
+              placeholder="Consumer Key (ck_...)"
+              required
+              className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs text-slate-800 focus:border-slate-400 focus:outline-none"
+            />
+            <input
+              type="password"
+              value={consumerSecret}
+              onChange={(e) => setConsumerSecret(e.target.value)}
+              placeholder="Consumer Secret (cs_...)"
+              required
+              className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs text-slate-800 focus:border-slate-400 focus:outline-none"
+            />
+            {error && <p className="text-[11px] text-red-600">{error}</p>}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  setError(null);
+                }}
+                className="flex-1 rounded-lg border border-slate-200 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+              >
+                Vazgeç
+              </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="flex-1 rounded-lg bg-slate-900 py-2 text-xs font-bold text-white hover:bg-slate-800 transition disabled:opacity-50 cursor-pointer"
+              >
+                {submitting ? "Bağlanıyor..." : "Bağla"}
+              </button>
+            </div>
+          </form>
         )}
       </div>
     </div>
@@ -1146,7 +1397,14 @@ function SettingsPageContent() {
                 onConnected={() => setAccountsRefreshKey((k) => k + 1)}
               />
 
+              <BlueskyConnectCard
+                isConnected={accounts.some((a) => a.platform === "bluesky" && a.status === "active")}
+                onConnected={() => setAccountsRefreshKey((k) => k + 1)}
+              />
+
               <CanvaConnectCard brandId={brand.id} />
+
+              <WooCommerceConnectCard brandId={brand.id} />
             </div>
           </div>
         </div>

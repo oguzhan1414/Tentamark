@@ -90,6 +90,7 @@ ${jsonCaptionsShapeExample(targetPlatforms)}
     temperature: 0.7,
     maxTokens: 2500,
     jsonMode: true,
+    reasoningEffort: "low",
   });
 
   const cleanedJson = groqResult.content

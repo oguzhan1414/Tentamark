@@ -82,7 +82,12 @@ export async function getAudienceInsight(brandId: string): Promise<AudienceInsig
       `Bu sütun ${direction}.`,
     ].join("\n");
 
-    const result = await callGroq(system, userMsg, { temperature: 0.3, maxTokens: 200, jsonMode: false });
+    const result = await callGroq(system, userMsg, {
+      temperature: 0.3,
+      maxTokens: 200,
+      jsonMode: false,
+      reasoningEffort: "low",
+    });
     inputTokens = result.inputTokens;
     outputTokens = result.outputTokens;
     text = result.content.trim() || fallbackText;

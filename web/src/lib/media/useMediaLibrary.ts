@@ -36,6 +36,10 @@ export function useMediaLibrary(brandId: string, enabled = true) {
         .from("media")
         .select("id, file_name, file_url, file_type, alt_text")
         .eq("brand_id", brandId)
+        // Per-platform crop variants (see createCroppedMediaVariant) aren't
+        // something anyone meant to browse or reuse — only the original
+        // they were cropped from belongs in the picker.
+        .is("derived_from_media_id", null)
         .order("created_at", { ascending: false })
         .limit(60);
       if (ignore) return;

@@ -17,7 +17,8 @@ export type SocialPlatform =
   | "tiktok"
   | "pinterest"
   | "telegram"
-  | "youtube";
+  | "youtube"
+  | "bluesky";
 
 export type SocialAccountRecord = {
   id: string;

@@ -54,6 +54,7 @@ ${brandContext}`;
       temperature: 0.9,
       maxTokens: 200,
       jsonMode: false,
+      reasoningEffort: "low",
     });
     idea = result.content.trim().replace(/^["']|["']$/g, "");
     inputTokens = result.inputTokens;

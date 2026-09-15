@@ -6,11 +6,14 @@ export const MODEL = "openai/gpt-oss-120b";
 // Vision-capable — MODEL above is text-only. Checked live against
 // console.groq.com/docs/vision (2026-09): Llama 4 Scout/Maverick, the
 // obvious choices, are both deprecated (Maverick Feb 2026, Scout shut down
-// entirely in July 2026). qwen/qwen3.6-27b and qwen/qwen3.8-27b are what's
-// actually live today. Picked 3.6: 5 images/request vs 3.8's 3, and 3.8's
-// "tunable reasoning effort" pitch reads as tuned for math/code, not
-// descriptive captioning.
-export const VISION_MODEL = "qwen/qwen3.6-27b";
+// entirely in July 2026). qwen/qwen3.6-27b was the other live option here
+// but Groq has since removed it too (confirmed 2026-09-15 against the real
+// /v1/models list for this key — it 404s now); qwen/qwen3.8-27b is the only
+// vision model left. Its "tunable reasoning effort" pitch reads as tuned
+// for math/code, not descriptive captioning, but forcing reasoning_effort
+// "none" below sidesteps that entirely — verified live it still returns a
+// clean, un-truncated JSON caption with it off.
+export const VISION_MODEL = "qwen/qwen3.8-27b";
 
 export type GroqCallResult = {
   content: string;
@@ -91,7 +94,7 @@ export async function callGroq(
   (standard OpenAI vision convention, mirrored by Groq) — callers don't need
   to have already uploaded the file anywhere.
 
-  reasoning_effort is hardcoded to "none" — verified live that qwen3.6-27b
+  reasoning_effort is hardcoded to "none" — verified live that qwen3.x
   defaults to thinking mode ON, and (unlike MODEL/gpt-oss-120b's hidden
   reasoning) writes its <think>...</think> block straight into the visible
   content before the real answer. With jsonMode on, a truncated thinking

@@ -1,247 +1,318 @@
 "use client";
 
-import { useState } from "react";
+import React from "react";
 import Link from "next/link";
-import {
-  HiOutlineCheck,
-  HiOutlineXMark,
-  HiOutlineSparkles,
-  HiOutlineArrowRight,
-  HiOutlineArrowPath,
-} from "react-icons/hi2";
-
-type ComparisonTab = "scheduler" | "ai_generator" | "tentamark";
-
-interface ComparisonItem {
-  id: ComparisonTab;
-  tabLabel: string;
-  badge: string;
-  badgeColor: string;
-  tagline: string;
-  summary: string;
-  responsibilities: {
-    feature: string;
-    status: "yes" | "no" | "partial";
-    actor: string;
-  }[];
-  finalVerdict: string;
-  colorBorder: string;
-}
-
-const COMPARISONS: Record<ComparisonTab, ComparisonItem> = {
-  scheduler: {
-    id: "scheduler",
-    tabLabel: "Klasik Zamanlayıcılar (Scheduler)",
-    badge: "Eski Nesil",
-    badgeColor: "bg-slate-100 text-slate-600 border-slate-200",
-    tagline: "İçeriği siz hazırlarsınız. Sistem sadece saatinde yayınlar.",
-    summary:
-      "Buffer, Hootsuite veya Later gibi geleneksel araçlar sadece takvime gönderi yerleştirmeye yarar. Strateji, metin yazımı, kanca üretimi ve analiz yükünün tamamı yine sizin üzerinizde kalır.",
-    responsibilities: [
-      { feature: "Marka Kimliği & DNA Tanıma", status: "no", actor: "Siz (Araç bilmez)" },
-      { feature: "Aylık/Haftalık Strateji Kurma", status: "no", actor: "Siz" },
-      { feature: "Kanca & Viralite Metin Üretimi", status: "no", actor: "Siz" },
-      { feature: "Platformlara Özel Formatlama", status: "no", actor: "Siz" },
-      { feature: "Otomatik Takvime Göre Yayınlama", status: "yes", actor: "Araç Yapar" },
-      { feature: "Sonuçlardan Öğrenip Strateji Güncelleme", status: "no", actor: "Desteklenmiyor" },
-    ],
-    finalVerdict: "İş yükünüzün %85'i hala omzunuzdadır.",
-    colorBorder: "border-slate-200",
-  },
-  ai_generator: {
-    id: "ai_generator",
-    tabLabel: "Standart AI Metin Yazıcılar",
-    badge: "Eksik Halka",
-    badgeColor: "bg-amber-50 text-amber-700 border-amber-200",
-    tagline: "İçeriği AI üretir. Strateji ve dağıtım size kalır.",
-    summary:
-      "ChatGPT veya Jasper tek başına bir pazarlama ekibi değildir. Marka bağlamınızdan kopuk, genel metinler üretir. Bu metinleri kopyalayıp görseller bulmanız, revize etmeniz ve sosyal medyada elle paylaşmanız gerekir.",
-    responsibilities: [
-      { feature: "Marka Kimliği & DNA Tanıma", status: "partial", actor: "Her seferinde prompt gerekir" },
-      { feature: "Aylık/Haftalık Strateji Kurma", status: "no", actor: "Siz" },
-      { feature: "Kanca & Viralite Metin Üretimi", status: "partial", actor: "Genel ve ruhsuz kalır" },
-      { feature: "Platformlara Özel Formatlama", status: "partial", actor: "Manuel yönlendirme gerekir" },
-      { feature: "Otomatik Takvime Göre Yayınlama", status: "no", actor: "Kopyala-yapıştır gerekir" },
-      { feature: "Sonuçlardan Öğrenip Strateji Güncelleme", status: "no", actor: "Performansı göremez" },
-    ],
-    finalVerdict: "İyi bir metin asistanı; ama pazarlama yöneticiniz değil.",
-    colorBorder: "border-slate-200",
-  },
-  tentamark: {
-    id: "tentamark",
-    tabLabel: "Tentamark AI Marketing Manager",
-    badge: "Yeni Nesil Otonom Model",
-    badgeColor: "bg-rose-50 text-rose-700 border-rose-200",
-    tagline: "Markanızı öğrenir. Strateji kurar. Üretir, yayınlar ve öğrenir.",
-    summary:
-      "Tentamark web sitenizi tarayarak marka ses tonunuzu ve kurallarınızı hafızasına alır. Hedef kitlenizin saatlerine göre platforma özel kancalı içerikler üretir, takvime dizer ve algoritma performansına göre her hafta stratejinizi geliştirir.",
-    responsibilities: [
-      { feature: "Marka Kimliği & DNA Tanıma", status: "yes", actor: "Otonom Web Tarama & Hafıza" },
-      { feature: "Aylık/Haftalık Strateji Kurma", status: "yes", actor: "İçerik Direkleri & Kitle Analizi" },
-      { feature: "Kanca & Viralite Metin Üretimi", status: "yes", actor: "Platform Algoritmasına Özel" },
-      { feature: "Platformlara Özel Formatlama", status: "yes", actor: "Instagram, LinkedIn, TikTok vb." },
-      { feature: "Otomatik Takvime Göre Yayınlama", status: "yes", actor: "Onay Masası & Zamanlayıcı" },
-      { feature: "Sonuçlardan Öğrenip Strateji Güncelleme", status: "yes", actor: "7/24 Öğrenme & AI Teşhisi" },
-    ],
-    finalVerdict: "Tek bir ekranda tam teşekküllü sosyal medya büyüme departmanı.",
-    colorBorder: "border-[#FA5252]/40 ring-1 ring-[#FA5252]/20",
-  },
-};
-
-const LOOP_STEPS = [
-  { step: "01", title: "Marka DNA", desc: "Web tarama & ses tonu" },
-  { step: "02", title: "Strateji", desc: "Kitle & direk dağılımı" },
-  { step: "03", title: "İçerik", desc: "Kancalar & caption'lar" },
-  { step: "04", title: "Yayınlama", desc: "Takvim & onay masası" },
-  { step: "05", title: "Analiz", desc: "Sağlık skoru & rakipler" },
-  { step: "06", title: "Öğrenme", desc: "Her hafta daha akıllı" },
-];
+import Image from "next/image";
+import { FaShopify, FaFacebook, FaInstagram, FaHeart, FaComment, FaShare, FaBookmark } from "react-icons/fa6";
+import { SiCanva } from "@/components/PlatformIcon";
 
 export default function WhyUsInteractiveSection() {
-  const [activeTab, setActiveTab] = useState<ComparisonTab>("tentamark");
-  const current = COMPARISONS[activeTab];
-
   return (
-    <section id="neden-biz" className="px-4 py-24 sm:px-6 lg:px-8 bg-white border-t border-slate-200/80">
-      <div className="mx-auto max-w-6xl">
-        {/* Header */}
-        <div className="text-center max-w-2xl mx-auto space-y-3">
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-1 text-xs font-bold text-slate-700">
-            <span>Farkımız</span>
-          </div>
-          <h2 className="font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
-            Neden <span className="text-[#FA5252]">Tentamark</span>?
+    <section
+      id="neden-biz"
+      className="relative border-t border-slate-200/80 bg-white py-16 sm:py-20 lg:py-24 overflow-hidden"
+    >
+      {/* Panoramik Geniş Konteyner: Sağ ve solda çok az boşluk, Predis.ai tarzı ferah ve büyük yerleşim */}
+      <div className="mx-auto max-w-[1540px] px-3 sm:px-5 lg:px-8">
+        {/* ================= ANA BAŞLIK ================= */}
+        <div className="text-center max-w-4xl mx-auto">
+          <h2 className="font-display text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl lg:text-[34px] leading-tight">
+            Bir yönlendirme metnini, ürün bağlantısını veya görseli lansmana hazır reklamlara dönüştürün.
           </h2>
-          <p className="text-sm text-slate-600 leading-relaxed">
-            Piyasadaki araçlar genellikle ya sadece yayınlar ya da sadece metin üretir. Tentamark ise tüm süreci birleştiren otonom bir büyüme yöneticisidir.
-          </p>
         </div>
 
-        {/* 3 Interactive Category Tabs */}
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-2.5">
-          {(Object.keys(COMPARISONS) as ComparisonTab[]).map((key) => {
-            const item = COMPARISONS[key];
-            const isSelected = activeTab === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setActiveTab(key)}
-                className={`rounded-2xl px-5 py-3 text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                  isSelected
-                    ? "bg-slate-900 text-white shadow-lg shadow-slate-900/15 scale-[1.02]"
-                    : "border border-slate-200/90 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
-                }`}
-              >
-                {item.tabLabel}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Interactive Comparison Card */}
-        <div className={`mt-8 rounded-3xl border ${current.colorBorder} bg-white p-6 sm:p-8 lg:p-10 shadow-xl shadow-slate-950/5 transition-all`}>
-          {/* Card Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
+        {/* ================= 3 BÜYÜK KART IZGARASI ================= */}
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-7 items-stretch">
+          
+          {/* ================= KART 1: GÖRSELLER, BAŞLIKLAR, METİNLER ================= */}
+          <div className="group rounded-[32px] bg-[#EEF4FE] p-7 sm:p-8 lg:p-9 flex flex-col justify-between transition-all duration-300 hover:shadow-xl hover:shadow-slate-900/5 min-h-[580px] lg:min-h-[620px]">
+            {/* Üst Metin Alanı */}
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${current.badgeColor}`}>
-                  {current.badge}
-                </span>
-                <span className="text-xs font-bold text-slate-900">{current.tabLabel}</span>
-              </div>
-              <h3 className="font-display text-lg sm:text-xl font-bold text-slate-900">
-                &ldquo;{current.tagline}&rdquo;
+              <h3 className="font-display text-lg sm:text-[21px] font-bold text-slate-900 leading-snug">
+                Görseller, başlıklar, metinler ve harekete geçirici mesajlar tek bir akışta.
               </h3>
+              <p className="mt-2.5 text-xs sm:text-sm text-slate-600 leading-relaxed font-body">
+                Görseller, başlıklar, metin, harekete geçirici mesajlar gibi tüm unsurları birlikte oluşturun, böylece reklam baştan sona marka kimliğine uygun kalsın.
+              </p>
             </div>
 
-            <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-2 text-right">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block">Nihai Karar</span>
-              <span className="text-xs font-bold text-slate-800">{current.finalVerdict}</span>
-            </div>
-          </div>
+            {/* Alt Görsel Mockup: Predis.ai 1. Kart Birebir Tasarımı */}
+            <div className="mt-8 flex flex-col items-center justify-center">
+              {/* Reklam Gönderisi Kartı */}
+              <div className="w-full max-w-[310px] rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-md">
+                <div className="relative aspect-[4/3] w-full rounded-xl overflow-hidden bg-stone-100 flex items-center justify-between p-3 border border-stone-200/60">
+                  {/* Sol Reklam Metinleri */}
+                  <div className="z-10 flex flex-col justify-between h-full max-w-[62%] py-0.5">
+                    <div>
+                      <span className="text-[9px] font-mono uppercase tracking-wider text-slate-500 font-semibold block">
+                        NEW LAUNCH
+                      </span>
+                      <h4 className="text-sm font-extrabold text-slate-900 leading-tight mt-0.5">
+                        Skincare Routine
+                      </h4>
+                      <p className="text-[9px] text-slate-500 font-medium">Healthy &amp; Glowing Skin</p>
+                    </div>
 
-          {/* Description */}
-          <p className="mt-4 text-xs sm:text-sm text-slate-600 leading-relaxed max-w-3xl">
-            {current.summary}
-          </p>
-
-          {/* Responsibility Table / Breakdown */}
-          <div className="mt-6 divide-y divide-slate-100 rounded-2xl border border-slate-100 overflow-hidden">
-            {current.responsibilities.map((r, idx) => (
-              <div key={idx} className="flex items-center justify-between p-3.5 text-xs sm:text-sm bg-white hover:bg-slate-50/50 transition">
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${
-                      r.status === "yes"
-                        ? "bg-emerald-100 text-emerald-700"
-                        : r.status === "partial"
-                        ? "bg-amber-100 text-amber-700"
-                        : "bg-rose-100 text-rose-700"
-                    }`}
-                  >
-                    {r.status === "yes" ? "✓" : r.status === "partial" ? "!" : "✕"}
-                  </span>
-                  <span className="font-semibold text-slate-800">{r.feature}</span>
-                </div>
-                <span
-                  className={`text-xs font-bold font-mono ${
-                    r.status === "yes"
-                      ? "text-emerald-700"
-                      : r.status === "partial"
-                      ? "text-amber-700"
-                      : "text-slate-400"
-                  }`}
-                >
-                  {r.actor}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {/* If Tentamark is active, show the 6-step loop graphic */}
-          {activeTab === "tentamark" && (
-            <div className="mt-8 pt-8 border-t border-slate-100">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <HiOutlineArrowPath className="h-4 w-4 text-[#FA5252] animate-spin-slow" />
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                    Sürekli Gelişen 6 Aşamalı Otonom Döngü
-                  </h4>
-                </div>
-                <span className="text-[11px] font-medium text-slate-400 hidden sm:inline">
-                  Her hafta daha iyi içerik üretir
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                {LOOP_STEPS.map((step) => (
-                  <div
-                    key={step.step}
-                    className="rounded-xl border border-slate-100 bg-slate-50/70 p-3 text-center space-y-1 hover:border-rose-200 transition"
-                  >
-                    <span className="font-mono text-[10px] font-bold text-rose-600">{step.step}</span>
-                    <h5 className="font-display text-xs font-bold text-slate-900">{step.title}</h5>
-                    <p className="text-[10px] text-slate-500 leading-tight">{step.desc}</p>
+                    <div className="space-y-1.5 pt-1">
+                      <div className="inline-block rounded-md bg-[#FA5252] px-2 py-0.5 text-[10px] font-extrabold text-white shadow-2xs">
+                        FLAT 45% OFF
+                      </div>
+                      <div>
+                        <span className="inline-block rounded-md bg-slate-900 px-2 py-0.5 text-[8px] font-bold text-white uppercase tracking-wider">
+                          BUY NOW
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                ))}
+
+                  {/* Sağ Ürün Fotoğrafı */}
+                  <div className="relative h-full w-[38%] rounded-lg overflow-hidden shrink-0">
+                    <Image
+                      src="/images/why-us/card1-skincare.jpg"
+                      alt="Skincare Routine Product"
+                      fill
+                      className="object-contain object-center drop-shadow-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Alt İkili Kutu: Captions ve Hashtags */}
+              <div className="mt-3 flex items-center justify-center gap-3 w-full max-w-[310px]">
+                {/* Sol Kutu: Captions */}
+                <div className="flex-1 rounded-xl border border-slate-200/80 bg-white p-3 shadow-xs">
+                  <span className="text-[11px] font-bold text-slate-700 block">Captions</span>
+                  <div className="space-y-1.5 mt-2">
+                    <div className="h-2 w-11/12 rounded-full bg-rose-200" />
+                    <div className="h-2 w-8/12 rounded-full bg-rose-100" />
+                  </div>
+                </div>
+
+                {/* Sağ Kutu: Hashtags */}
+                <div className="flex-1 rounded-xl border border-slate-200/80 bg-white p-3 shadow-xs">
+                  <span className="text-[11px] font-bold text-slate-700 block">Hashtags</span>
+                  <div className="space-y-1.5 mt-2">
+                    <div className="h-2 w-10/12 rounded-full bg-teal-200" />
+                    <div className="h-2 w-7/12 rounded-full bg-teal-100" />
+                  </div>
+                </div>
               </div>
             </div>
-          )}
-
-          {/* CTA Footer */}
-          <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <span className="text-xs text-slate-500 font-medium">
-              Sosyal medya operasyonunuzu otonom ve akıllı bir sisteme emanet etmek ister misiniz?
-            </span>
-            <Link
-              href="/kayit"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white hover:bg-slate-800 transition shadow-sm shrink-0"
-            >
-              <span>Tentamark ile Başla</span>
-              <HiOutlineArrowRight className="h-3.5 w-3.5" />
-            </Link>
           </div>
+
+          {/* ================= KART 2: ÜRÜN URL'Sİ VEYA RESİMDEN BAŞLAYIN ================= */}
+          <div className="group rounded-[32px] bg-[#EEF4FE] p-7 sm:p-8 lg:p-9 flex flex-col justify-between transition-all duration-300 hover:shadow-xl hover:shadow-slate-900/5 min-h-[580px] lg:min-h-[620px]">
+            {/* Üst Metin Alanı */}
+            <div>
+              <h3 className="font-display text-lg sm:text-[21px] font-bold text-slate-900 leading-snug">
+                Bir komut isteminden, ürün URL&apos;sinden veya bir resimden başlayın.
+              </h3>
+              <p className="mt-2.5 text-xs sm:text-sm text-slate-600 leading-relaxed font-body">
+                Ne varsa getirin. Tek satırlık bir metin, bir ürün bağlantısı veya bir resim. Tentamark bunları reklamlara, videolara ve metinlere dönüştürüyor.
+              </p>
+            </div>
+
+            {/* Alt Görsel Mockup: Predis.ai 2. Kart Çok Kanallı Kolaj Birebir Tasarımı */}
+            <div className="relative mt-8 flex items-center justify-center min-h-[290px]">
+              {/* Arka Mavi Zemin Bloğu */}
+              <div className="absolute h-52 w-52 rounded-3xl bg-[#3B82F6]/90 shadow-md transform -rotate-1" />
+
+              {/* Sol Platform Rozeti: Shopify */}
+              <div className="absolute left-3 top-10 z-30 flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-[#95BF47] shadow-lg border border-slate-100 transition-transform hover:scale-110">
+                <FaShopify className="h-5 w-5" />
+              </div>
+
+              {/* Sağ Platform Rozeti: Facebook */}
+              <div className="absolute right-3 top-16 z-30 flex h-8 w-8 items-center justify-center rounded-full bg-[#1877F2] text-white shadow-md transition-transform hover:scale-110">
+                <FaFacebook className="h-4 w-4" />
+              </div>
+
+              {/* Alt Sol Platform Rozeti: Instagram */}
+              <div className="absolute left-8 bottom-3 z-30 flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#FD1D1D] via-[#E1306C] to-[#833AB4] text-white shadow-md transition-transform hover:scale-110">
+                <FaInstagram className="h-4 w-4" />
+              </div>
+
+              {/* Üst Sağ Rozet: Canva */}
+              <div className="absolute right-5 -top-2 z-30 flex h-8 w-8 items-center justify-center rounded-2xl bg-[#00C4CC] text-white shadow-md transition-transform hover:scale-110">
+                <SiCanva className="h-4 w-4" />
+              </div>
+
+              {/* ================= KOLAJ KARTLARI ================= */}
+              {/* 1. Üst Sol Pembe Kart */}
+              <div className="absolute left-6 top-3 z-10 w-28 rounded-xl border border-rose-100 bg-[#FFE4E6] p-2 shadow-sm">
+                <p className="text-[7px] font-bold text-rose-800 uppercase tracking-wider">New Launch</p>
+                <p className="text-[8px] font-extrabold text-slate-800">Makeup Glow</p>
+              </div>
+
+              {/* 2. Üst Sağ Nane Yeşili Krem Kartı */}
+              <div className="absolute right-4 top-1 z-10 w-32 rounded-xl border border-emerald-100 bg-[#E6F4EA] p-2 shadow-sm text-center">
+                <p className="text-[7px] font-bold text-emerald-800">Special Discount</p>
+                <p className="text-[8px] font-extrabold text-slate-800">Beauty Products</p>
+              </div>
+
+              {/* 3. MERKEZ ANA KART: Black Watch */}
+              <div className="relative z-20 w-44 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl space-y-2 text-center">
+                <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-slate-900">
+                  <Image
+                    src="/images/why-us/card2-watch.jpg"
+                    alt="Best Men's Black Watches On Sale"
+                    fill
+                    className="object-cover"
+                  />
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-1.5 text-left">
+                    <span className="text-[8px] font-mono uppercase text-white/70 block">COLLECTION</span>
+                    <p className="text-[10px] font-extrabold text-white leading-tight">Best Men&apos;s Black Watch</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[9px] font-bold text-slate-800">On Sale!</span>
+                  <span className="rounded bg-rose-500 px-1.5 py-0.5 text-[8px] font-bold text-white">40% OFF</span>
+                </div>
+              </div>
+
+              {/* 4. Alt Sağ Kart: Kulaklık Fırsatları */}
+              <div className="absolute right-5 bottom-4 z-20 w-36 rounded-xl border border-amber-100 bg-[#FFF7ED] p-2 shadow-md">
+                <p className="text-[7px] font-bold text-amber-800 uppercase">Special Offers</p>
+                <p className="text-[8px] font-extrabold text-slate-800">Wireless Audio</p>
+              </div>
+
+              {/* 5. Alt Sol Sarı Kart: İç Mekan / Mobilya */}
+              <div className="absolute left-14 bottom-0 z-20 w-28 rounded-xl border border-yellow-200 bg-[#FEF08A] p-2 shadow-sm">
+                <p className="text-[7px] font-bold text-yellow-900">Living Room</p>
+                <p className="text-[8px] font-extrabold text-slate-900">30% OFF</p>
+              </div>
+            </div>
+          </div>
+
+          {/* ================= KART 3: MARKA KİMLİĞİ VE VİDEO REELS ================= */}
+          <div className="group rounded-[32px] bg-[#EEF4FE] p-7 sm:p-8 lg:p-9 flex flex-col justify-between transition-all duration-300 hover:shadow-xl hover:shadow-slate-900/5 min-h-[580px] lg:min-h-[620px]">
+            {/* Üst Metin Alanı */}
+            <div>
+              <h3 className="font-display text-lg sm:text-[21px] font-bold text-slate-900 leading-snug">
+                Her reklam ve video otomatik olarak marka kimliğine uygun kalır.
+              </h3>
+              <p className="mt-2.5 text-xs sm:text-sm text-slate-600 leading-relaxed font-body">
+                Marka renklerini, tonunu ve logosunu bir kez ayarlayın. Tentamark bunları her formatta, her kampanyada uygular.
+              </p>
+            </div>
+
+            {/* Alt Görsel Mockup: Predis.ai 3. Kart Avatar -> Ok -> Akıllı Telefon Reels Birebir Tasarımı */}
+            <div className="relative mt-8 flex items-center justify-center gap-2 sm:gap-4 min-h-[290px]">
+              
+              {/* Sol Taraf: Creator Avatarı & Fare İmleci */}
+              <div className="flex flex-col items-center">
+                <div className="relative rounded-2xl border-2 border-white bg-white p-1 shadow-lg">
+                  <div className="relative h-16 w-16 sm:h-20 sm:w-20 rounded-xl overflow-hidden bg-slate-100">
+                    <Image
+                      src="/images/why-us/card3-avatar.jpg"
+                      alt="Creator Avatar"
+                      fill
+                      className="object-cover object-top"
+                    />
+                  </div>
+                  {/* Minik Fare İmleci İkonu */}
+                  <div className="absolute -bottom-2.5 -right-2.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-md border border-slate-200">
+                    <svg
+                      className="h-3.5 w-3.5 text-slate-800"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      stroke="white"
+                      strokeWidth="1.5"
+                    >
+                      <path d="M4 2l16 11-7.5 1.5L9 22z" />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Kavisli Çizim Oku */}
+                <div className="mt-2">
+                  <svg className="w-12 h-10 text-slate-400" viewBox="0 0 60 50" fill="none">
+                    <path
+                      d="M 15 10 C 15 35, 30 45, 52 38"
+                      stroke="#94A3B8"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeDasharray="4 3"
+                    />
+                    <path
+                      d="M 45 32 L 53 38 L 47 45"
+                      fill="none"
+                      stroke="#94A3B8"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Sağ Taraf: Akıllı Telefon Çerçevesi (iPhone Style Video Reels) */}
+              <div className="relative w-36 sm:w-44 rounded-[30px] border-[4px] border-slate-900 bg-slate-950 p-1 shadow-2xl overflow-hidden aspect-[9/18]">
+                {/* Üst Dinamik Ada / Hoparlör */}
+                <div className="absolute top-2 inset-x-0 z-30 flex justify-center">
+                  <div className="h-3 w-14 rounded-full bg-black/80 backdrop-blur-xs" />
+                </div>
+
+                {/* Video İçeriği */}
+                <div className="relative h-full w-full rounded-[24px] overflow-hidden bg-slate-900">
+                  <Image
+                    src="/images/why-us/card3-reels.jpg"
+                    alt="TikTok Reels Video Preview"
+                    fill
+                    className="object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/80" />
+
+                  {/* Sağ Taraf Etkileşim İkonları (Reels Stili) */}
+                  <div className="absolute right-1.5 bottom-12 z-20 flex flex-col items-center gap-2.5 text-white/90">
+                    <div className="flex flex-col items-center">
+                      <FaHeart className="h-3.5 w-3.5 text-rose-500 drop-shadow-xs" />
+                      <span className="text-[7px] font-bold font-mono">12.4K</span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <FaComment className="h-3.5 w-3.5 text-white drop-shadow-xs" />
+                      <span className="text-[7px] font-bold font-mono">348</span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <FaBookmark className="h-3.5 w-3.5 text-white drop-shadow-xs" />
+                      <span className="text-[7px] font-bold font-mono">920</span>
+                    </div>
+                    <FaShare className="h-3.5 w-3.5 text-white drop-shadow-xs" />
+                  </div>
+
+                  {/* Ürün Etiketi Rozeti (Predis'teki Aloe Vera Maskesi benzeri) */}
+                  <div className="absolute left-2 bottom-6 z-20 flex items-center gap-1.5 rounded-lg bg-white/90 px-1.5 py-1 backdrop-blur-xs shadow-md">
+                    <div className="h-5 w-5 rounded bg-emerald-100 flex items-center justify-center text-[8px] font-bold text-emerald-800">
+                      🌿
+                    </div>
+                    <div>
+                      <p className="text-[7px] font-bold text-slate-900 leading-tight">Skin Glow Serum</p>
+                      <p className="text-[6px] text-emerald-700 font-semibold">Marka Kiti Uyumlu</p>
+                    </div>
+                  </div>
+
+                  {/* Alt Oynatma Çubuğu */}
+                  <div className="absolute bottom-1 inset-x-2 z-20">
+                    <div className="h-0.5 w-full rounded-full bg-white/30 overflow-hidden">
+                      <div className="h-full w-2/3 bg-white rounded-full" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+        {/* ================= MERKEZİ BUTON: ŞİMDİ DENEYİN (PREDİS.Aİ BİREBİR) ================= */}
+        <div className="mt-12 sm:mt-14 text-center">
+          <Link
+            href="/kayit"
+            className="inline-flex items-center justify-center rounded-full bg-[#3B82F6] px-10 py-3.5 text-base font-bold text-white shadow-lg shadow-blue-500/25 hover:bg-[#2563EB] hover:shadow-xl transition-all cursor-pointer hover:scale-[1.03]"
+          >
+            Şimdi deneyin
+          </Link>
         </div>
       </div>
     </section>

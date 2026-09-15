@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { useMediaLibrary, type MediaLibraryItem } from "@/lib/media/useMediaLibrary";
+import { useCanvaConnection } from "@/lib/canva/useCanvaConnection";
+import { useCanvaDesignFlow } from "@/lib/canva/useCanvaDesignFlow";
 
 type Props = {
   brandId: string;
@@ -111,7 +113,9 @@ function DraggableThumb({
 export default function CalendarMediaPanel({ brandId, isOpen, onClose }: Props) {
   // enabled=isOpen — no fetch until the panel is opened at least once;
   // stays loaded afterwards (see useMediaLibrary), so re-opening is instant.
-  const { items, loading, uploading, error, upload, rename } = useMediaLibrary(brandId, isOpen);
+  const { items, loading, uploading, error, upload, addItem, rename } = useMediaLibrary(brandId, isOpen);
+  const { connected: canvaConnected } = useCanvaConnection(brandId);
+  const { busy: canvaBusy, error: canvaError, start: handleCanvaClick } = useCanvaDesignFlow(addItem);
   const [filter, setFilter] = useState<MediaFilter>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -184,7 +188,29 @@ export default function CalendarMediaPanel({ brandId, isOpen, onClose }: Props) 
               }}
             />
           </label>
+
+          {canvaConnected ? (
+            <button
+              type="button"
+              onClick={handleCanvaClick}
+              disabled={canvaBusy}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-violet-300 bg-violet-50 py-2 text-xs font-semibold text-violet-700 hover:border-violet-400 hover:bg-violet-100 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {canvaBusy ? "Tasarım alınıyor..." : "🎨 Canva ile Tasarla"}
+            </button>
+          ) : (
+            <a
+              href="/settings?tab=baglantilar"
+              target="_blank"
+              rel="noreferrer"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50 py-2 text-xs font-semibold text-slate-400 hover:border-violet-300 hover:text-violet-600 transition"
+              title="Canva ile tasarlamak için önce Ayarlar'dan bağlayın"
+            >
+              🎨 Canva&apos;yı Bağla
+            </a>
+          )}
           {error && <p className="text-xs text-red-600">{error}</p>}
+          {canvaError && <p className="text-xs text-red-600">{canvaError}</p>}
 
           <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50/80 p-0.5 text-xs font-semibold w-fit">
             {([

@@ -106,9 +106,11 @@ export default function LoopSection() {
 
         const st = ScrollTrigger.create({
           trigger: pinRef.current,
-          start: "top top+=80",
-          end: () => `+=${steps.length * window.innerHeight * 0.8}`,
+          start: "top top+=75",
+          end: () => `+=${steps.length * window.innerHeight * 0.75}`,
           pin: true,
+          pinSpacing: true,
+          anticipatePin: 1,
           scrub: 1,
           invalidateOnRefresh: true,
           onUpdate: (self) => {
@@ -137,10 +139,10 @@ export default function LoopSection() {
     <section
       ref={sectionRef}
       id="dongu"
-      className="relative z-20 -mt-8 sm:-mt-12 overflow-hidden rounded-t-[2.25rem] sm:rounded-t-[3rem] lg:rounded-t-[3.5rem] bg-bg-violet text-ink shadow-[0_-10px_30px_rgba(28,20,48,0.05)] border-t border-line px-6 pt-16 pb-24 sm:pt-24 sm:pb-32"
+      className="relative z-20 -mt-8 sm:-mt-12 overflow-hidden rounded-t-[2.25rem] sm:rounded-t-[3rem] lg:rounded-t-[3.5rem] bg-bg-violet text-ink shadow-[0_-10px_30px_rgba(28,20,48,0.05)] border-t border-line pt-16 pb-24 sm:pt-24 sm:pb-32 w-full"
     >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-32 rounded-t-[inherit] bg-gradient-to-b from-white/40 to-transparent" aria-hidden="true" />
-      <div className="relative mx-auto max-w-6xl">
+      <div className="relative mx-auto max-w-6xl px-6">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent-subtle px-3 py-1 font-mono text-xs uppercase tracking-[0.2em] text-accent-text">
             <span>{t.loop.badge}</span>
@@ -157,8 +159,7 @@ export default function LoopSection() {
 
       <div
         ref={pinRef}
-        className="relative mt-10 flex min-h-[78vh] w-screen flex-col items-center justify-center"
-        style={{ marginLeft: "calc(50% - 50vw)", marginRight: "calc(50% - 50vw)" }}
+        className="relative mt-8 sm:mt-12 flex min-h-[82vh] w-full flex-col items-center justify-center overflow-hidden"
       >
         <video
           ref={videoRef}
@@ -167,14 +168,18 @@ export default function LoopSection() {
           muted
           playsInline
           preload="metadata"
-          className="pointer-events-none absolute inset-x-0 top-0 -bottom-24 object-cover sm:-bottom-32"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
           aria-hidden="true"
         >
           <source src="/video/background.mp4" type="video/mp4" />
         </video>
-        <div className="pointer-events-none absolute inset-x-0 top-0 -bottom-24 bg-bg-violet/40 sm:-bottom-32" aria-hidden="true" />
+        <div className="pointer-events-none absolute inset-0 bg-bg-violet/30" aria-hidden="true" />
 
-        <div className="relative mx-auto w-full max-w-3xl px-4 pb-16 sm:px-6">
+        {/* Soft top & bottom gradient masks for seamless visual transition */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-bg-violet via-bg-violet/70 to-transparent z-10" aria-hidden="true" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-bg-violet via-bg-violet/70 to-transparent z-10" aria-hidden="true" />
+
+        <div className="relative z-20 mx-auto w-full max-w-3xl px-4 pb-14 sm:px-6">
           <div className="relative aspect-[4/3] w-full">
             {steps.map((step, i) => (
               <div
@@ -205,11 +210,11 @@ export default function LoopSection() {
           </div>
         </div>
 
-        <p className="relative z-30 mt-4 max-w-lg text-center font-display text-lg font-semibold text-ink sm:text-xl">
+        <p className="relative z-20 mt-4 max-w-lg text-center font-display text-lg font-semibold text-ink sm:text-xl">
           {currentStep.title}
         </p>
 
-        <span className="relative z-30 mt-5 inline-flex items-center gap-1.5 rounded-full bg-surface/80 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.15em] text-muted backdrop-blur-sm">
+        <span className="relative z-20 mt-5 inline-flex items-center gap-1.5 rounded-full bg-surface/80 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.15em] text-muted backdrop-blur-sm shadow-xs">
           <span aria-hidden="true">↓</span> {t.loop.scrollHint}
         </span>
       </div>

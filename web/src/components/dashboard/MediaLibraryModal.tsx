@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useMediaLibrary, type MediaLibraryItem } from "@/lib/media/useMediaLibrary";
 import { useCanvaConnection } from "@/lib/canva/useCanvaConnection";
+import { useCanvaDesignFlow } from "@/lib/canva/useCanvaDesignFlow";
 
 export type { MediaLibraryItem };
 
@@ -52,61 +53,9 @@ export default function MediaLibraryModal({
 }: Props) {
   const { items, loading, uploading, error, upload, addItem, rename } = useMediaLibrary(brandId);
   const { connected: canvaConnected } = useCanvaConnection(brandId);
+  const { busy: canvaBusy, error: canvaError, start: handleCanvaClick } = useCanvaDesignFlow(addItem);
   const [filter, setFilter] = useState<MediaFilter>("all");
   const [checked, setChecked] = useState<Set<string>>(new Set());
-  const [canvaBusy, setCanvaBusy] = useState(false);
-  const [canvaError, setCanvaError] = useState<string | null>(null);
-  const canvaPopupRef = useRef<Window | null>(null);
-
-  // "Canva ile Tasarla": open a blank design in a popup, wait for
-  // /api/canva/design/return to postMessage the finished design's id back
-  // once the user clicks Done in Canva, then export+import it as a normal
-  // media item. The listener stays mounted for the modal's lifetime so it
-  // still catches the message if the popup finishes after a slow export.
-  useEffect(() => {
-    async function handleMessage(event: MessageEvent) {
-      if (event.origin !== window.location.origin) return;
-      if (event.data?.type !== "canva-design-complete") return;
-      const designId = event.data.designId;
-      if (typeof designId !== "string") return;
-
-      setCanvaBusy(true);
-      setCanvaError(null);
-      try {
-        const res = await fetch("/api/canva/design/finalize", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ designId }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Tasarım içeri aktarılamadı.");
-        addItem(data.media as MediaLibraryItem);
-      } catch (err) {
-        setCanvaError(err instanceof Error ? err.message : "Tasarım içeri aktarılamadı.");
-      } finally {
-        setCanvaBusy(false);
-      }
-    }
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, [addItem]);
-
-  async function handleCanvaClick() {
-    setCanvaError(null);
-    // Open the popup synchronously (before the await) so browsers don't
-    // treat it as an unrequested popup and block it.
-    const popup = window.open("about:blank", "canva-editor", "width=1200,height=850");
-    canvaPopupRef.current = popup;
-    try {
-      const res = await fetch("/api/canva/design/start", { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Canva tasarımı başlatılamadı.");
-      if (popup) popup.location.href = data.editUrl;
-    } catch (err) {
-      popup?.close();
-      setCanvaError(err instanceof Error ? err.message : "Canva tasarımı başlatılamadı.");
-    }
-  }
 
   // Carousel building has no video story yet (see the `multiple` prop
   // comment) — the filter toggle would just let someone check a video that

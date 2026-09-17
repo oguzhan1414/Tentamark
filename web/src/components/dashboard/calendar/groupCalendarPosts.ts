@@ -2,10 +2,8 @@ import type { CalendarPost } from "./types";
 
 export type CalendarPostGroup = {
   key: string;
-  // First platform in the group — the one whose image/caption the merged
-  // card actually shows. Media is attached at the content level (same
-  // imageUrl on every platform row), so which one is "hero" only affects
-  // which caption text is previewed, not the thumbnail.
+  // Platform represented by the card. A failed destination takes priority
+  // so the merged card never hides a publishing problem.
   hero: CalendarPost;
   // Every platform this content is going out to, hero included — order
   // matches the order platforms were selected in Compose.
@@ -34,6 +32,7 @@ export function groupCalendarPosts(posts: CalendarPost[]): CalendarPostGroup[] {
   }
   return order.map((key) => {
     const members = map.get(key)!;
-    return { key, hero: members[0], members };
+    // A problem on any destination needs to stay visible in the merged card.
+    return { key, hero: members.find((post) => post.postStatus === "FAILED") ?? members[0], members };
   });
 }

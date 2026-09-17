@@ -2,6 +2,7 @@ import type { createClient } from "@/lib/supabase/client";
 import type { PlatformName } from "@/components/PlatformIcon";
 import type { ApprovalComment, ApprovalItem } from "@/components/dashboard/approvals/types";
 import type { UIStatus } from "@/lib/contentStatus";
+import { deriveStatus } from "@/lib/contentStatus";
 
 /*
   Shared between Gönderiler (posts/page.tsx) and Takvim (calendar/page.tsx) —
@@ -23,6 +24,7 @@ export type PlatformRow = {
   caption?: string | null;
   hashtags?: string[] | null;
   permalink_url?: string | null;
+  last_error?: string | null;
 };
 
 export type ContentRow = {
@@ -89,14 +91,21 @@ export function rowToApprovalItem(row: ContentRow, brandName: string): ApprovalI
   const kanbanStatus: "NEEDS_REVIEW" | "FEEDBACK_GIVEN" | "APPROVED" =
     row.status === "APPROVED" ? "APPROVED" : hasComments ? "FEEDBACK_GIVEN" : "NEEDS_REVIEW";
   const createdDate = new Date(row.created_at);
+  const firstScheduled = row.content_platforms
+    .map((p) => p.scheduled_at)
+    .filter((date): date is string => Boolean(date))
+    .sort()[0];
+  const displayDate = firstScheduled ? new Date(firstScheduled) : createdDate;
 
   return {
     id: row.id,
     title: row.title,
     accountName: brandName || "Marka",
     handle: (brandName || "marka").toLowerCase().replace(/\s+/g, ""),
-    timeLabel: createdDate.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }),
-    fullDateLabel: createdDate.toLocaleDateString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
+    timeLabel: displayDate.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }),
+    fullDateLabel: displayDate.toLocaleDateString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
+    dateKind: firstScheduled ? "scheduled" : "created",
+    createdAt: row.created_at,
     imageUrl: row.imageUrl || "",
     imageIsVideo: row.imageIsVideo ?? false,
     caption: firstPlatform?.caption || row.title,
@@ -115,6 +124,10 @@ export function rowToApprovalItem(row: ContentRow, brandName: string): ApprovalI
       hashtags: p.hashtags ?? undefined,
       scheduledAt: p.scheduled_at,
       permalinkUrl: p.permalink_url ?? null,
+      status: deriveStatus(row.status, p.status),
+      rawStatus: p.status,
+      lastError: p.last_error ?? null,
+      id: p.id,
     })),
     hook: row.metadata?.hook,
     visualPrompt: row.metadata?.visualPrompt,
@@ -127,15 +140,15 @@ export function rowToApprovalItem(row: ContentRow, brandName: string): ApprovalI
 // each inlining their own supabase.from("content")... call, which is how
 // Takvim ended up silently diverging from Gönderiler's behavior before.
 export async function approveContentRow(supabase: SupabaseBrowserClient, id: string) {
-  return supabase.from("content").update({ status: "APPROVED" }).eq("id", id);
+  return supabase.from("content").update({ status: "APPROVED" }).eq("id", id).select("id");
 }
 
 export async function rejectContentRow(supabase: SupabaseBrowserClient, id: string) {
-  return supabase.from("content").update({ status: "DRAFT" }).eq("id", id);
+  return supabase.from("content").update({ status: "DRAFT" }).eq("id", id).select("id");
 }
 
 export async function deleteContentRow(supabase: SupabaseBrowserClient, id: string) {
-  return supabase.from("content").delete().eq("id", id);
+  return supabase.from("content").delete().eq("id", id).select("id");
 }
 
 export async function setContentApproval(
@@ -143,15 +156,15 @@ export async function setContentApproval(
   id: string,
   nextStatus: "NEEDS_REVIEW" | "APPROVED"
 ) {
-  return supabase.from("content").update({ status: nextStatus }).eq("id", id);
+  return supabase.from("content").update({ status: nextStatus }).eq("id", id).select("id");
 }
 
 export async function setContentTags(supabase: SupabaseBrowserClient, id: string, tags: string[]) {
-  return supabase.from("content").update({ tags }).eq("id", id);
+  return supabase.from("content").update({ tags }).eq("id", id).select("id");
 }
 
 export async function assignContentRow(supabase: SupabaseBrowserClient, id: string, userId: string | null) {
-  return supabase.from("content").update({ assigned_to: userId }).eq("id", id);
+  return supabase.from("content").update({ assigned_to: userId }).eq("id", id).select("id");
 }
 
 export async function insertContentComment(
@@ -163,52 +176,68 @@ export async function insertContentComment(
   return supabase.from("content_comments").insert({ content_id: contentId, author_id: authorId, body: text });
 }
 
-export async function fetchContentRows(supabase: SupabaseBrowserClient, brandId: string): Promise<ContentRow[]> {
-  const { data, error } = await supabase
-    .from("content")
-    .select(
-      "id, title, core_idea, category, status, created_at, tags, format, assigned_to, assignee:profiles!assigned_to(full_name, email), campaigns(name), content_media(media(file_url, file_type)), content_platforms(id, platform, caption, hashtags, status, scheduled_at, permalink_url)"
-    )
-    .eq("brand_id", brandId)
-    .order("created_at", { ascending: false })
-    .limit(200);
-
-  if (error) {
-    console.error("İçerikler yüklenemedi:", error.message);
-    return [];
+export async function fetchContentRows(supabase: SupabaseBrowserClient, brandId: string, options?: { throwOnError?: boolean }): Promise<ContentRow[]> {
+  const list: Array<Record<string, unknown>> = [];
+  const batchSize = 200;
+  for (let offset = 0; ; offset += batchSize) {
+    const { data, error } = await supabase
+      .from("content")
+      .select(
+        "id, title, core_idea, category, status, created_at, tags, format, assigned_to, assignee:profiles!assigned_to(full_name, email), campaigns(name), content_media(media(file_url, file_type)), content_platforms(id, platform, caption, hashtags, status, scheduled_at, permalink_url, last_error)"
+      )
+      .eq("brand_id", brandId)
+      .order("created_at", { ascending: false })
+      .range(offset, offset + batchSize - 1);
+    if (error) {
+      if (options?.throwOnError) throw new Error(error.message);
+      console.error("İçerikler yüklenemedi:", error.message);
+      return [];
+    }
+    const batch = (data ?? []) as unknown as Array<Record<string, unknown>>;
+    list.push(...batch);
+    if (batch.length < batchSize) break;
   }
-
-  const list = data as unknown as Array<Record<string, unknown>>;
   const ids = list.map((r) => String(r.id));
   const commentsByContent = new Map<string, ApprovalComment[]>();
 
   if (ids.length > 0) {
-    const { data: comments } = await supabase
-      .from("content_comments")
-      .select("id, content_id, body, created_at, is_external, author:profiles(full_name, email)")
-      .in("content_id", ids)
-      .order("created_at", { ascending: true });
+    for (let offset = 0; offset < ids.length; offset += batchSize) {
+      for (let commentOffset = 0; ; commentOffset += batchSize) {
+        const { data: comments, error: commentsError } = await supabase
+          .from("content_comments")
+          .select("id, content_id, body, created_at, is_external, author:profiles(full_name, email)")
+          .in("content_id", ids.slice(offset, offset + batchSize))
+          .order("created_at", { ascending: true })
+          .range(commentOffset, commentOffset + batchSize - 1);
+        if (commentsError) {
+          if (options?.throwOnError) throw new Error(commentsError.message);
+          console.error("Yorumlar yüklenemedi:", commentsError.message);
+          break;
+        }
 
-    for (const c of (comments ?? []) as unknown as Array<{
+        for (const c of (comments ?? []) as unknown as Array<{
       id: string;
       content_id: string;
       body: string;
       created_at: string;
       is_external?: boolean;
       author?: { full_name?: string | null; email?: string | null } | { full_name?: string | null; email?: string | null }[];
-    }>) {
-      const authorRow = Array.isArray(c.author) ? c.author[0] : c.author;
-      const authorName = c.is_external ? "Dış Paylaşım" : authorRow?.full_name || authorRow?.email?.split("@")[0] || "Ekip Üyesi";
-      const commList = commentsByContent.get(c.content_id) ?? [];
-      commList.push({
-        id: c.id,
-        authorName,
-        avatarText: c.is_external ? "🔗" : authorName.charAt(0).toUpperCase(),
-        timeAgo: new Date(c.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }),
-        text: c.body,
-        isExternal: c.is_external,
-      });
-      commentsByContent.set(c.content_id, commList);
+        }>) {
+          const authorRow = Array.isArray(c.author) ? c.author[0] : c.author;
+          const authorName = c.is_external ? "Dış Paylaşım" : authorRow?.full_name || authorRow?.email?.split("@")[0] || "Ekip Üyesi";
+          const commList = commentsByContent.get(c.content_id) ?? [];
+          commList.push({
+            id: c.id,
+            authorName,
+            avatarText: c.is_external ? "🔗" : authorName.charAt(0).toUpperCase(),
+            timeAgo: new Date(c.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }),
+            text: c.body,
+            isExternal: c.is_external,
+          });
+          commentsByContent.set(c.content_id, commList);
+        }
+        if ((comments?.length ?? 0) < batchSize) break;
+      }
     }
   }
 

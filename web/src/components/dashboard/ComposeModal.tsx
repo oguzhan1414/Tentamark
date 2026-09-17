@@ -12,7 +12,7 @@ import type { MediaLibraryItem } from "@/lib/media/useMediaLibrary";
   is a single compact column now, so a wide modal would just leave dead
   backdrop on both sides instead of framing it.
 
-  The form box is capped at max-w-xl, not full-width — on any wider screen
+  The form box is capped at 540px, not full-width — on any wider screen
   there's real clickable backdrop around it, and that backdrop used to close
   the whole modal on a single click with zero confirmation. A stray click
   there (or Escape) instantly threw away a typed idea, generated drafts, or
@@ -58,31 +58,38 @@ export default function ComposeModal({
   }, [requestClose]);
 
   return (
-    <div className="fixed inset-0 z-100 flex items-start justify-center overflow-y-auto p-4 sm:p-8">
+    <div className="fixed inset-0 z-100 flex items-center justify-center p-3 sm:p-6">
       <button
         type="button"
         aria-label="Kapat"
         onClick={requestClose}
-        className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm"
+        className="fixed inset-0 bg-slate-950/45 backdrop-blur-[2px]"
       />
-      <div className="relative z-10 my-4 w-full max-w-xl rounded-[28px] bg-[#F8FAFC] p-3 shadow-2xl sm:p-4">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Yeni gönderi oluştur"
+        className="relative z-10 flex max-h-[min(760px,calc(100dvh-24px))] w-full max-w-[540px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.24)]"
+      >
         <button
           type="button"
           onClick={requestClose}
           aria-label="Kapat"
-          className="absolute right-4 top-4 z-20 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white text-slate-500 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
+          className="absolute right-4 top-3 z-20 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
         >
           ✕
         </button>
-        <ComposeForm
-          onNavigate={onClose}
-          onSubmitted={onSubmitted}
-          onDirtyChange={setIsDirty}
-          initialCampaignId={initialCampaignId}
-          initialDate={initialDate}
-          initialHour={initialHour}
-          initialMedia={initialMedia}
-        />
+        <div className="min-h-0 overflow-y-auto overscroll-contain">
+          <ComposeForm
+            onNavigate={onClose}
+            onSubmitted={onSubmitted}
+            onDirtyChange={setIsDirty}
+            initialCampaignId={initialCampaignId}
+            initialDate={initialDate}
+            initialHour={initialHour}
+            initialMedia={initialMedia}
+          />
+        </div>
       </div>
 
       <ConfirmDiscardDialog

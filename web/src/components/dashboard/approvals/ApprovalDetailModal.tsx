@@ -33,6 +33,8 @@ type Props = {
   // content_media/comments per schema). Closes the modal itself once done —
   // there's nothing left to look at.
   onDelete?: (id: string) => void;
+  onSavePlatform?: (contentId: string, platformId: string, caption: string, scheduledAt: string | null) => Promise<string | null>;
+  onRetryPlatform?: (contentId: string, platformId: string) => Promise<string | null>;
 };
 
 export default function ApprovalDetailModal({
@@ -49,6 +51,8 @@ export default function ApprovalDetailModal({
   onEditTags,
   onReject,
   onDelete,
+  onSavePlatform,
+  onRetryPlatform,
 }: Props) {
   const { t } = useLanguage();
   const p = t.dashboard.posts;
@@ -62,10 +66,43 @@ export default function ApprovalDetailModal({
   const [sharing, setSharing] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [confirmingClose, setConfirmingClose] = useState(false);
+  const [editingPlatformId, setEditingPlatformId] = useState<string | null>(null);
+  const [editCaption, setEditCaption] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [platformError, setPlatformError] = useState<string | null>(null);
+  const [platformBusy, setPlatformBusy] = useState(false);
 
   // A typed-but-unsent comment or tag used to vanish silently on Escape or
   // the X button — same "stray dismiss eats real input" bug as ComposeModal.
-  const isDirty = Boolean(commentInput.trim() || tagInput.trim());
+  const isDirty = Boolean(commentInput.trim() || tagInput.trim() || editingPlatformId);
+
+  function startPlatformEdit(platform: NonNullable<ApprovalItem["platforms"]>[number]) {
+    setEditingPlatformId(platform.id ?? null);
+    setEditCaption(platform.caption);
+    const date = platform.scheduledAt ? new Date(platform.scheduledAt) : null;
+    setEditDate(date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}T${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}` : "");
+    setPlatformError(null);
+  }
+
+  async function savePlatform(platformId: string) {
+    if (!onSavePlatform) return;
+    const parsedDate = editDate ? new Date(editDate) : null;
+    if (parsedDate && Number.isNaN(parsedDate.getTime())) { setPlatformError("Geçerli bir tarih ve saat seçin."); return; }
+    const iso = parsedDate?.toISOString() ?? null;
+    setPlatformBusy(true);
+    const error = await onSavePlatform(item.id, platformId, editCaption, iso);
+    setPlatformBusy(false);
+    setPlatformError(error);
+    if (!error) setEditingPlatformId(null);
+  }
+
+  async function retryPlatform(platformId: string) {
+    if (!onRetryPlatform) return;
+    setPlatformBusy(true);
+    const error = await onRetryPlatform(item.id, platformId);
+    setPlatformBusy(false);
+    setPlatformError(error);
+  }
 
   const requestClose = useCallback(() => {
     if (isDirty) {
@@ -79,6 +116,8 @@ export default function ApprovalDetailModal({
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") requestClose();
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
       if (e.key === "ArrowLeft") onPrev();
       if (e.key === "ArrowRight") onNext();
     }
@@ -511,18 +550,19 @@ export default function ApprovalDetailModal({
                 </div>
               )}
 
-              {item.platforms && item.platforms.length > 1 && (
+              {item.platforms && item.platforms.length > 0 && (
                 <div className="space-y-2.5">
                   <span className="text-xs font-mono uppercase tracking-wider text-slate-400 font-bold">
                     Platform Metinleri ({item.platforms.length})
                   </span>
                   {item.platforms.map((p, idx) => (
-                    <div key={idx} className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-2">
-                      <div className="flex items-center gap-2 border-b border-slate-200/60 pb-2">
+                    <div key={p.id ?? idx} className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200/60 pb-2">
                         <PlatformIcon name={p.platform} className="h-5 w-5 rounded-md" />
                         <span className="text-xs font-bold text-slate-800">{p.platform}</span>
+                        {p.status && <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_LABEL[p.status].className}`}>{p.rawStatus === "QUEUED" && p.lastError ? "Tekrar deneniyor" : STATUS_LABEL[p.status].label}</span>}
                         {p.scheduledAt && (
-                          <span className="ml-auto font-mono text-[10px] text-slate-500">
+                          <span className="font-mono text-[10px] text-slate-500">
                             {new Date(p.scheduledAt).toLocaleString("tr-TR", {
                               day: "numeric",
                               month: "short",
@@ -532,7 +572,21 @@ export default function ApprovalDetailModal({
                           </span>
                         )}
                       </div>
-                      <p className="whitespace-pre-line text-xs text-slate-800 leading-relaxed">{p.caption}</p>
+                      {p.lastError && <p role="alert" className="rounded-lg border border-red-100 bg-red-50 p-2 text-[11px] text-red-800">{p.rawStatus === "QUEUED" ? "Otomatik yeniden denenecek: " : "Yayın hatası: "}{p.lastError}</p>}
+                      {editingPlatformId === p.id ? <div className="space-y-2">
+                        <textarea value={editCaption} onChange={(event) => setEditCaption(event.target.value)} rows={5} aria-label={`${p.platform} metni`} className="w-full rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-800" />
+                        <label className="block text-[11px] font-semibold text-slate-600">Yayın tarihi ve saati
+                          <input type="datetime-local" value={editDate} onChange={(event) => setEditDate(event.target.value)} className="mt-1 block w-full rounded-lg border border-slate-200 bg-white p-2 text-xs" />
+                        </label>
+                        <div className="flex gap-2"><button type="button" disabled={platformBusy || !editCaption.trim()} onClick={() => p.id && savePlatform(p.id)} className="rounded-lg bg-blue-600 px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-40">Kaydet</button><button type="button" onClick={() => { setEditingPlatformId(null); setPlatformError(null); }} className="text-[11px] font-semibold text-slate-600">Vazgeç</button></div>
+                      </div> : <p className="whitespace-pre-line text-xs text-slate-800 leading-relaxed">{p.caption}</p>}
+                      {platformError && (editingPlatformId === p.id || platformBusy === false && p.status === "failed") && <p role="alert" className="text-[11px] text-red-600">{platformError}</p>}
+                      <div className="flex flex-wrap gap-2">
+                        {onSavePlatform && p.id && ["PENDING", "NEEDS_USER_ACTION", "FAILED"].includes(p.rawStatus ?? "") && editingPlatformId !== p.id && <button type="button" onClick={() => startPlatformEdit(p)} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100">Metni / tarihi düzenle</button>}
+                        {onRetryPlatform && p.id && ["NEEDS_USER_ACTION", "FAILED"].includes(p.rawStatus ?? "") && <button type="button" disabled={platformBusy} onClick={() => {
+                          if (p.id && confirm("Bu gönderinin platformda zaten yayınlanmadığını kontrol ettiniz mi? Yeniden deneme yaklaşık 2 dakika içinde paylaşım yapabilir.")) void retryPlatform(p.id);
+                        }} className="rounded-lg bg-red-600 px-2.5 py-1 text-[11px] font-bold text-white disabled:opacity-40">2 dakika içinde tekrar dene</button>}
+                      </div>
                       {p.hashtags && p.hashtags.length > 0 && (
                         <div className="flex flex-wrap gap-1 pt-1 border-t border-slate-200/40">
                           {p.hashtags.map((h, hIdx) => (

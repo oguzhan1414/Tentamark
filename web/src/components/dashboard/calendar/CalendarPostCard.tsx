@@ -27,6 +27,7 @@ import { useLanguage } from "@/context/LanguageContext";
 // is supposed to resolve.
 function statusMeta(post: CalendarPost, locale: "tr" | "en" = "tr"): { dot: string; text: string; label: string } {
   const isEn = locale === "en";
+  if (post.postStatus === "FAILED") return { dot: "bg-rose-500", text: "text-rose-700", label: isEn ? "Needs attention" : "İşlem gerekli" };
   if (post.postStatus === "DRAFT") return { dot: "bg-slate-400", text: "text-slate-500", label: isEn ? "Draft" : "Taslak" };
   if (post.postStatus === "PUBLISHED") return { dot: "bg-blue-500", text: "text-blue-600", label: isEn ? "Published" : "Yayınlandı" };
   return post.approvalStatus === "APPROVED"
@@ -63,7 +64,7 @@ export default function CalendarPostCard({ post, onClick, draggable = true, comp
             onClick();
           }
         }}
-        title={post.caption || post.title}
+        title={`${status.label} · ${post.caption || post.title}`}
         className={`flex items-center gap-2 rounded-lg border border-slate-200/90 bg-white px-1.5 py-1.5 shadow-2xs transition hover:border-slate-300 hover:shadow-sm ${
           draggable ? "cursor-grab touch-none select-none active:cursor-grabbing" : "cursor-pointer"
         } ${isDragging ? "opacity-30" : ""}`}
@@ -98,10 +99,11 @@ export default function CalendarPostCard({ post, onClick, draggable = true, comp
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1 font-mono text-[9px] text-slate-400">
             <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${status.dot}`} />
-            <span>{post.timeLabel}</span>
+            <span className={`truncate font-semibold ${status.text}`}>{status.label}</span>
+            <span className="shrink-0">· {post.timeLabel}</span>
           </div>
           <p className="truncate text-[11px] font-medium leading-tight text-slate-800">
-            {post.caption || post.title}
+            {post.title || post.caption}
           </p>
         </div>
       </div>

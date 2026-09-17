@@ -65,7 +65,7 @@ export default function DashboardSidebar({
     <aside
       className="sticky top-0 hidden h-dvh w-24 shrink-0 flex-col overflow-y-auto bg-white px-2 py-4 border-r border-slate-200/80 [-ms-overflow-style:none] [scrollbar-width:none] lg:flex [&::-webkit-scrollbar]:hidden print:hidden"
     >
-      {/* Brand Logo Header (Freestanding mascot without background box, matching user reference) */}
+      {/* Brand mark */}
       <Link href="/dashboard" className="flex items-center justify-center py-2 group">
         <div className="relative flex shrink-0 items-center justify-center transition-transform duration-200 group-hover:scale-105">
           <TentamarkIcon size={48} />

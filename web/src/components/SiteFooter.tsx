@@ -13,8 +13,8 @@ export default function SiteFooter() {
         <div className="flex items-center gap-3">
           <TentamarkIcon size={28} variant="coral" />
           <div>
-            <p className="font-display text-base font-semibold text-ink">
-              Tenta<span className="text-[#FA5252]">mark</span>
+            <p className="font-body text-base font-bold tracking-[-0.04em] text-ink">
+              Tentamark
             </p>
             <p className="font-body text-xs text-muted">
               {t.footer.tagline}
@@ -31,6 +31,9 @@ export default function SiteFooter() {
           </Link>
           <Link href="/fiyatlandirma" className="hover:text-ink transition">
             Fiyatlandırma
+          </Link>
+          <Link href="/blog" className="font-bold text-[#C92E35] transition hover:text-[#A5202B]">
+            Blog & Rehberler
           </Link>
           <Link href="/gizlilik" className="hover:text-ink transition">
             {t.footer.privacy}

@@ -30,6 +30,7 @@ export default function CalendarFilterDrawer({
     DRAFT: isEn ? "Draft" : "Taslak",
     SCHEDULED: isEn ? "Scheduled" : "Zamanlandı",
     PUBLISHED: isEn ? "Published" : "Yayınlandı",
+    FAILED: isEn ? "Needs attention" : "İşlem gerekli",
   };
 
   if (!isOpen) return null;

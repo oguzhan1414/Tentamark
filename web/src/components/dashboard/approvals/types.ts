@@ -18,6 +18,8 @@ export type ApprovalItem = {
   handle: string;
   timeLabel: string;
   fullDateLabel: string;
+  dateKind?: "scheduled" | "created";
+  createdAt?: string;
   imageUrl: string;
   imageIsVideo?: boolean;
   isCarousel?: boolean;
@@ -41,7 +43,11 @@ export type ApprovalItem = {
   // every platform's caption/hashtags, not just one. Optional because
   // Onaylarım's own fetch never populated this and doesn't need to.
   platforms?: {
+    id?: string;
     platform: PlatformName;
+    status?: UIStatus;
+    rawStatus?: string;
+    lastError?: string | null;
     caption: string;
     hashtags?: string[];
     scheduledAt?: string | null;

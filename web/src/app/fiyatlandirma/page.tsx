@@ -92,7 +92,7 @@ export default function FiyatlandirmaPage() {
 
               <h1 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
                 Kişi başı sürpriz fatura yok. <br className="hidden sm:inline" />
-                <span className="bg-gradient-to-r from-[#6d4feb] via-[#9b5de5] to-[#FA5252] bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-[#172B46] to-[#FA5252] bg-clip-text text-transparent">
                   Sadece Çalışma Alanı kadar ödeyin.
                 </span>
               </h1>

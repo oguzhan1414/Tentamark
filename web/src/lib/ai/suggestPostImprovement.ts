@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { FAST_MODEL, callGroq, estimateGroqCost } from "./groqModel";
 import { getBrandContext } from "../brand/getBrandContext";
 
-const PROMPT_VERSION = "post-suggestion-v1";
+const PROMPT_VERSION = "post-suggestion-v2";
 
 export type PostSuggestion = {
   tip: string;
@@ -33,7 +33,9 @@ export async function suggestPostImprovement(
 Kurallar:
 - Türkçe yaz.
 - "tip": Tek cümle, bu gönderiye ve platforma özel somut bir öneri (genel/klişe tavsiye verme, gerçek bir sayı biliyormuş gibi uydurma istatistik yazma).
-- "hashtags": markaya ve gönderinin konusuna uygun, gerçekçi hashtag'ler (uydurma marka adı kullanma).
+- "hashtags": gönderinin gerçek konusu, ürünü veya etkinliğiyle doğrudan ilgili 3-5 kısa etiket yaz. Metin Türkçeyse Türkçe, İngilizceyse İngilizce etiketleri tercih et.
+- Metinde veya marka bağlamında geçmeyen marka/ürün adlarını, uydurma kampanya adlarını, alakasız genel trend etiketlerini ve erişim garantisi ima eden etiketleri yazma.
+- Her etiketi tek bir #kelime veya #BirleşikKelime biçiminde ver; boşluk ve noktalama kullanma. Aynı anlama gelen yakın tekrarları çıkar. Platformun etiket kullanımına uygun, ölçülü bir liste sun.
 - SADECE şu JSON formatında yanıt ver, başka hiçbir metin ekleme: {"tip": "...", "hashtags": ["...", "..."]}
 
 Platform: ${platform}

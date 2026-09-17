@@ -92,10 +92,10 @@ export default function RegisterPage() {
         <div className="mx-auto flex w-full max-w-md items-center justify-between">
           <Link href="/" className="group flex items-center gap-2.5">
             <span className="relative flex h-8 w-8 shrink-0 items-center justify-center transition-transform duration-200 group-hover:scale-105">
-              <TentamarkIcon size={32} variant="coral" />
+              <TentamarkIcon size={32} variant="white" />
             </span>
-            <span className="font-display text-xl font-bold tracking-tight text-white">
-              Tenta<span className="text-[#FA5252]">mark</span>
+            <span className="font-body text-xl font-bold tracking-[-0.04em] text-white">
+              Tentamark
             </span>
           </Link>
 

@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import PlatformIcon from "@/components/PlatformIcon";
+import { STATUS_LABEL } from "@/lib/contentStatus";
 import { useLanguage } from "@/context/LanguageContext";
 import type { ApprovalItem } from "./types";
 
@@ -78,6 +79,14 @@ export default function ApprovalCard({ item, onClick }: Props) {
       <p className="line-clamp-2 text-xs font-normal text-slate-800 leading-snug">
         {item.caption || item.title}
       </p>
+      {item.platforms && item.platforms.length > 1 && <div className="flex flex-wrap gap-1">
+        {item.platforms.map((platform) => {
+          const status = platform.status ?? item.realStatus ?? "draft";
+          return <span key={platform.id ?? platform.platform} title={platform.lastError ?? undefined} className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold ${STATUS_LABEL[status].className}`}>
+            <PlatformIcon name={platform.platform} className="h-3 w-3" />{STATUS_LABEL[status].label}
+          </span>;
+        })}
+      </div>}
 
       {/* Card Footer: Status & Comments */}
       <div className="mt-0.5 flex items-center justify-between border-t border-slate-100 pt-2 text-xs">

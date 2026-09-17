@@ -1,21 +1,20 @@
 # Tentamark — Marka Görsel Varlıkları (Brand Assets)
 
-Bu klasör, **Tentamark** markası ve maskotu **Tenta** için üretilen resmi görsel varlıkları ve web sitesi için hazırlanacak mockup görsellerini içerir.
+Bu klasör, Tentamark için hazırlanmış görsel çalışmalarını ve web sitesi mockup görsellerini içerir. Güncel resmi logo dosyaları `web/public/brand/` klasöründedir.
 
 Tüm görseller doğrudan bu klasöre (`d:\marketing-project\images\`) kaydedilmelidir.
 
 ---
 
-## 1. Mevcut Logo & Maskot Varlıkları
+## 1. Güncel Logo Varlıkları
 
 | Dosya Adı | Format | Durum | Kullanım Alanı |
 |---|---|---|---|
-| [`tentamark-logo-light.jpg`](tentamark-logo-light.jpg) | 3:2 JPG | Hazır | **Resmi Logo Lockup (Normal Durum):** Beyaz zemin, canlı mor-turkuaz Tenta ve modern koyu lacivert tipografi. |
-| [`tentamark-logo-wink.jpg`](tentamark-logo-wink.jpg) | 3:2 JPG | Hazır | **Resmi Logo Lockup (Göz Kırpan Durum):** Navbar'da hover durumunda Tenta'nın göz kırptığı varyasyon. |
-| [`tenta-avatar-open.png`](tenta-avatar-open.png) | 1:1 PNG | Hazır | **Tenta Avatar (Gözler Açık):** Navbar logo ikonu, mobil menü ikonu, buton içi avatar. |
-| [`tenta-avatar-wink.png`](tenta-avatar-wink.png) | 1:1 PNG | Hazır | **Tenta Avatar (Göz Kırpan):** Hover mikro-etkileşimi için winking avatar. |
-| [`tenta-wink-animation.gif`](tenta-wink-animation.gif) | GIF Animasyon | Hazır | **Hareketli Tenta Göz Kırpma:** Otomatik göz kırpan hazır döngüsel GIF. |
-| [`tentamark-app-icon.jpg`](tentamark-app-icon.jpg) | 1:1 Kare | Hazır | Mobil App Icon, Favicon, Koyu mod profil resmi. |
+| [`tentamark-mark.svg`](../web/public/brand/tentamark-mark.svg) | SVG | Hazır | Birleşen T işareti; web ve panelde kullanılan ana kaynak. |
+| [`tentamark-mark-white.svg`](../web/public/brand/tentamark-mark-white.svg) | SVG | Hazır | Koyu arka plan için tek renk sürüm. |
+| [`tentamark-mark-on-dark.svg`](../web/public/brand/tentamark-mark-on-dark.svg) | SVG | Hazır | Koyu arka plan için açık renk ve mercan sürümü. |
+| [`tentamark-lockup.svg`](../web/public/brand/tentamark-lockup.svg) | SVG | Hazır | İşaret ve Tentamark yazısı. |
+| [`tentamark-mark-512.png`](../web/public/brand/tentamark-mark-512.png) | PNG | Hazır | Yüksek çözünürlüklü saydam ikon. |
 | [`tentamark-hero-showcase.jpg`](tentamark-hero-showcase.jpg) | 16:9 Geniş | Hazır | Web Landing Page Hero sahnesi (Tenta ofiste, takvim & analitik devrede). |
 | [`tentamark-mascot-portrait.jpg`](tentamark-mascot-portrait.jpg) | 1:1 Kare | Hazır | Tenta 3D Portresi (Tablet, Kahve & Thumbs-Up). |
 

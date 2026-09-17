@@ -3,6 +3,11 @@
 import { useState } from "react";
 import type { PlatformName } from "@/components/PlatformIcon";
 import { useLanguage } from "@/context/LanguageContext";
+import InstagramGridFeed from "./instagram/InstagramGridFeed";
+import TikTokGridFeed from "./instagram/TikTokGridFeed";
+import PinterestBoardFeed from "./instagram/PinterestBoardFeed";
+import ThreadsTimelineFeed from "./instagram/ThreadsTimelineFeed";
+import FacebookPageFeed from "./instagram/FacebookPageFeed";
 
 type PreviewMediaItem = { url: string; isVideo: boolean };
 
@@ -11,12 +16,14 @@ type Props = {
   brandName: string;
   caption: string;
   media: PreviewMediaItem[];
+  brandId?: string;
 };
 
-export default function ComposePreviewCard({ platform, brandName, caption, media }: Props) {
+export default function ComposePreviewCard({ platform, brandName, caption, media, brandId }: Props) {
   const { locale } = useLanguage();
   const isEn = locale === "en";
   const [index, setIndex] = useState(0);
+  const [viewStyle, setViewStyle] = useState<"post" | "profile">("post");
 
   const initial = brandName[0]?.toUpperCase() || "A";
   const handle = (brandName || (isEn ? "brand" : "marka")).toLowerCase().replace(/\s+/g, "");
@@ -114,8 +121,94 @@ export default function ComposePreviewCard({ platform, brandName, caption, media
     </p>
   );
 
-  if (platform === "tiktok") {
+  const profileSupported = Boolean(brandId);
+
+  const profilePlannerNode = brandId ? (
+    platform === "instagram" ? (
+      <InstagramGridFeed
+        brandId={brandId}
+        brandName={brandName}
+        currentDraftMedia={mediaUrl ? { url: mediaUrl, isVideo: mediaIsVideo, caption } : null}
+        isEn={isEn}
+      />
+    ) : platform === "tiktok" || platform === "youtube" ? (
+      <TikTokGridFeed
+        brandId={brandId}
+        brandName={brandName}
+        currentDraftMedia={mediaUrl ? { url: mediaUrl, isVideo: mediaIsVideo, caption } : null}
+        isEn={isEn}
+        platform={platform}
+      />
+    ) : platform === "pinterest" ? (
+      <PinterestBoardFeed
+        brandId={brandId}
+        brandName={brandName}
+        currentDraftMedia={mediaUrl ? { url: mediaUrl, isVideo: mediaIsVideo, caption } : null}
+        isEn={isEn}
+      />
+    ) : platform === "threads" || platform === "bluesky" ? (
+      <ThreadsTimelineFeed
+        brandId={brandId}
+        brandName={brandName}
+        currentDraftCaption={caption}
+        currentDraftMedia={mediaUrl ? { url: mediaUrl, isVideo: mediaIsVideo } : null}
+        isEn={isEn}
+        platform={platform}
+      />
+    ) : platform === "facebook" ? (
+      <FacebookPageFeed
+        brandId={brandId}
+        brandName={brandName}
+        currentDraftCaption={caption}
+        currentDraftMedia={mediaUrl ? { url: mediaUrl, isVideo: mediaIsVideo } : null}
+        isEn={isEn}
+      />
+    ) : null
+  ) : null;
+
+  const switcherNode = profileSupported && (
+    <div className="flex items-center rounded-xl bg-slate-100 p-1 text-[11px] font-bold shadow-2xs mb-2.5">
+      <button
+        type="button"
+        onClick={() => setViewStyle("post")}
+        className={`flex-1 py-1.5 text-center rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
+          viewStyle === "post" ? "bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-900"
+        }`}
+      >
+        <span>📱</span>
+        <span>{isEn ? "Feed Post" : "Tekil Akış"}</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => setViewStyle("profile")}
+        className={`flex-1 py-1.5 text-center rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
+          viewStyle === "profile" ? "bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-900"
+        }`}
+      >
+        <span>🌐</span>
+        <span>{isEn ? "Profile / Feed Planner" : "Profil & Akış Planlayıcı"}</span>
+      </button>
+    </div>
+  );
+
+  if (viewStyle === "profile" && profilePlannerNode) {
     return (
+      <div className="space-y-2.5">
+        {switcherNode}
+        {profilePlannerNode}
+      </div>
+    );
+  }
+
+  const wrapWithSwitcher = (node: React.ReactNode) => (
+    <div className="space-y-2.5">
+      {switcherNode}
+      {node}
+    </div>
+  );
+
+  if (platform === "tiktok") {
+    return wrapWithSwitcher(
       <div className="overflow-hidden rounded-[26px] border border-slate-200/90 bg-slate-950 shadow-[0_12px_40px_rgba(0,0,0,0.15)]">
         <div className="relative aspect-[9/16] w-full bg-slate-900">
           {mediaUrl ? (
@@ -171,7 +264,7 @@ export default function ComposePreviewCard({ platform, brandName, caption, media
   }
 
   if (platform === "facebook") {
-    return (
+    return wrapWithSwitcher(
       <div className="overflow-hidden rounded-[26px] border border-slate-200/90 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
         <div className="flex items-center gap-2.5 px-4 py-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1877F2] text-xs font-bold text-white shadow-2xs">
@@ -220,8 +313,8 @@ export default function ComposePreviewCard({ platform, brandName, caption, media
     );
   }
 
-  if (platform === "threads") {
-    return (
+  if (platform === "threads" || platform === "bluesky") {
+    return wrapWithSwitcher(
       <div className="overflow-hidden rounded-[26px] border border-slate-200/90 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
         <div className="p-4 space-y-2.5">
           <div className="flex items-start justify-between">
@@ -267,7 +360,7 @@ export default function ComposePreviewCard({ platform, brandName, caption, media
   }
 
   if (platform === "pinterest") {
-    return (
+    return wrapWithSwitcher(
       <div className="overflow-hidden rounded-[26px] border border-slate-200/90 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
         <div className="relative aspect-[2/3] w-full bg-slate-100 overflow-hidden">
           {mediaUrl ? mediaNode : emptyMedia}
@@ -296,7 +389,7 @@ export default function ComposePreviewCard({ platform, brandName, caption, media
   }
 
   if (platform === "telegram") {
-    return (
+    return wrapWithSwitcher(
       <div className="overflow-hidden rounded-[26px] border border-slate-200/90 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
         <div className="flex items-center gap-2.5 px-4 py-3 border-b border-slate-100">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#26A5E4] text-xs font-bold text-white shadow-2xs">
@@ -325,7 +418,7 @@ export default function ComposePreviewCard({ platform, brandName, caption, media
   }
 
   if (platform === "youtube") {
-    return (
+    return wrapWithSwitcher(
       <div className="overflow-hidden rounded-[26px] border border-slate-200/90 bg-slate-950 shadow-[0_12px_40px_rgba(0,0,0,0.15)]">
         <div className="relative aspect-[9/16] w-full bg-slate-900">
           {mediaUrl ? (
@@ -377,7 +470,7 @@ export default function ComposePreviewCard({ platform, brandName, caption, media
   }
 
   // Instagram — the default/fallback shape.
-  return (
+  return wrapWithSwitcher(
     <div className="overflow-hidden rounded-[26px] border border-slate-200/90 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
       <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 bg-slate-50/50">
         <div className="flex items-center gap-2.5">

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import { TentamarkIcon } from "@/components/TentamarkLogo";
 import { useBrand } from "@/components/dashboard/BrandProvider";
 import { createClient } from "@/lib/supabase/client";
 import { askAssistant, type ChatTurn, type ContentDraft } from "@/lib/ai/askAssistant";
@@ -852,16 +853,9 @@ export default function AssistantPage() {
             {/* Empty State: Sleek ChatGPT-style Welcome */}
             {activeMessages.length === 0 && (
               <div className="flex flex-col items-center justify-center min-h-[380px] max-w-2xl mx-auto text-center px-4 py-8">
-                {/* Freestanding Mascot Logo without background box */}
+                {/* Tentamark brand mark */}
                 <div className="relative mb-3 flex items-center justify-center">
-                  <Image
-                    src="/images/tentamark-mascot.png"
-                    alt="Tentamark"
-                    width={72}
-                    height={72}
-                    className="object-contain drop-shadow-sm transition-transform duration-200 hover:scale-105"
-                    priority
-                  />
+                  <TentamarkIcon size={72} />
                 </div>
 
                 <h3 className="font-display text-xl font-bold text-slate-900 sm:text-2xl">
@@ -909,13 +903,7 @@ export default function AssistantPage() {
                 {/* Assistant Avatar */}
                 {m.role === "assistant" && (
                   <div className="relative flex h-8 w-8 shrink-0 items-center justify-center">
-                    <Image
-                      src="/images/tentamark-mascot.png"
-                      alt="Tentamark"
-                      width={28}
-                      height={28}
-                      className="object-contain"
-                    />
+                    <TentamarkIcon size={28} />
                   </div>
                 )}
 
@@ -1091,13 +1079,7 @@ export default function AssistantPage() {
             {loading && (
               <div className="flex gap-3.5 items-center">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center">
-                  <Image
-                    src="/images/tentamark-mascot.png"
-                    alt="Tentamark"
-                    width={28}
-                    height={28}
-                    className="object-contain animate-pulse"
-                  />
+                  <TentamarkIcon size={28} className="animate-pulse" />
                 </div>
                 <div className="flex items-center gap-2 rounded-2xl border border-rose-100 bg-rose-50/50 px-4 py-3 text-xs text-rose-700 font-medium">
                   <span className="flex gap-1">

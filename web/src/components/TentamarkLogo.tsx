@@ -12,11 +12,7 @@ export interface LogoProps {
   subtitle?: string;
 }
 
-/**
- * Tentamark 8-Tentacle Mascot Icon
- * Professional 8-tentacled warm coral mascot design.
- * Rendered from high-resolution transparent asset with subtle depth.
- */
+/** The shared Tentamark mark used across the site and product. */
 export function TentamarkIcon({
   size = 40,
   className = "",
@@ -26,27 +22,17 @@ export function TentamarkIcon({
   className?: string;
   variant?: "coral" | "white" | "badge" | "dark";
 }) {
-  const isWhite = variant === "white";
-  const isDark = variant === "dark";
-
   return (
     <span
       className={`relative inline-flex items-center justify-center shrink-0 select-none ${className}`}
       style={{ width: size, height: size }}
     >
       <Image
-        src="/images/tentamark-mascot.png"
+        src={variant === "white" ? "/brand/tentamark-mark-on-dark.svg" : "/brand/tentamark-mark.svg"}
         alt="Tentamark"
-        width={size * 2}
-        height={size * 2}
-        priority
-        className={`h-full w-full object-contain transition-transform duration-200 ${
-          isWhite
-            ? "brightness-0 invert drop-shadow-[0_2px_8px_rgba(255,255,255,0.4)]"
-            : isDark
-            ? "brightness-0 contrast-200"
-            : "drop-shadow-[0_4px_12px_rgba(250,82,82,0.16)]"
-        }`}
+        width={size}
+        height={size}
+        className="h-full w-full object-contain"
       />
     </span>
   );
@@ -58,7 +44,7 @@ export default function TentamarkLogo({
   variant = "coral",
   withWordmark = false,
   wordmarkColor = "dark",
-  subtitle = "Social AI Engine",
+  subtitle = "",
 }: LogoProps) {
   const isLightText = wordmarkColor === "white";
 
@@ -68,11 +54,11 @@ export default function TentamarkLogo({
       {withWordmark && (
         <div className="flex flex-col leading-none">
           <span
-            className={`font-display text-lg font-bold tracking-tight ${
+            className={`font-body text-lg font-bold tracking-[-0.04em] ${
               isLightText ? "text-white" : "text-slate-900"
             }`}
           >
-            Tenta<span className="text-[#FA5252]">mark</span>
+            Tentamark
           </span>
           {subtitle && (
             <span
@@ -88,4 +74,3 @@ export default function TentamarkLogo({
     </div>
   );
 }
-

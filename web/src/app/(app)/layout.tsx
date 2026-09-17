@@ -7,6 +7,7 @@ import DashboardMobileNav from "@/components/dashboard/DashboardMobileNav";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import DashboardTopbar from "@/components/dashboard/DashboardTopbar";
 import { LanguageProvider } from "@/context/LanguageContext";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import type { PlatformName } from "@/components/PlatformIcon";
 
 /*
@@ -98,7 +99,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 connectedPlatforms={connectedPlatforms}
               />
               <DashboardMobileNav />
-              <main className="flex-1 overflow-y-auto">{children}</main>
+              <main className="flex-1 overflow-y-auto">
+                <ErrorBoundary>{children}</ErrorBoundary>
+              </main>
             </div>
           </div>
         </ComposeModalProvider>

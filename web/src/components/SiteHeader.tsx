@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useLanguage } from "@/context/LanguageContext";
-import { TentamarkIcon } from "@/components/TentamarkLogo";
+import TentamarkLogo from "@/components/TentamarkLogo";
 import {
   HiOutlineChevronDown,
   HiOutlineSparkles,
@@ -103,12 +103,7 @@ export default function SiteHeader() {
       <div className="mx-auto flex max-w-6xl items-center justify-between rounded-full border border-slate-200/90 bg-white/95 px-5 py-2.5 text-slate-900 shadow-[0_8px_30px_-14px_rgba(15,23,42,0.12)] backdrop-blur-md sm:px-6">
         {/* Brand Logo */}
         <Link href="/" className="group flex items-center gap-2.5 shrink-0">
-          <span className="relative flex h-8 w-8 shrink-0 items-center justify-center transition-transform duration-200 group-hover:scale-105">
-            <TentamarkIcon size={32} />
-          </span>
-          <span className="font-display text-xl font-bold tracking-tight text-slate-900">
-            Tenta<span className="text-[#FA5252]">mark</span>
-          </span>
+          <TentamarkLogo size={32} withWordmark />
         </Link>
 
         {/* Desktop Nav */}
@@ -274,6 +269,14 @@ export default function SiteHeader() {
             Neden Tentamark
           </Link>
 
+          {/* Blog Link */}
+          <Link
+            href="/blog"
+            className="font-body text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
+          >
+            Blog
+          </Link>
+
           {/* Fiyatlandırma Link */}
           <Link
             href="/fiyatlandirma"
@@ -336,6 +339,14 @@ export default function SiteHeader() {
               className="flex items-center justify-between rounded-xl p-2.5 text-xs font-bold text-slate-800 hover:bg-slate-50"
             >
               <span>Neden Tentamark?</span>
+              <span>→</span>
+            </Link>
+            <Link
+              href="/blog"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center justify-between rounded-xl p-2.5 text-xs font-bold text-slate-800 hover:bg-slate-50"
+            >
+              <span>Blog & Rehberler</span>
               <span>→</span>
             </Link>
             <Link

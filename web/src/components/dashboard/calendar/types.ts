@@ -29,7 +29,7 @@ export type CalendarPost = {
   campaignName?: string | null;
   platform: PlatformName;
   approvalStatus: "PENDING" | "APPROVED" | "FEEDBACK";
-  postStatus: "DRAFT" | "SCHEDULED" | "PUBLISHED";
+  postStatus: "DRAFT" | "SCHEDULED" | "PUBLISHED" | "FAILED";
   commentCount: number;
   isDemo?: boolean;
   analytics?: {
@@ -82,7 +82,7 @@ export type CalendarFilterState = {
   searchQuery: string;
   sortBy: "last_created" | "scheduled_date";
   approvalStatus: "all" | "PENDING" | "APPROVED" | "FEEDBACK";
-  postStatus: "all" | "DRAFT" | "SCHEDULED" | "PUBLISHED";
+  postStatus: "all" | "DRAFT" | "SCHEDULED" | "PUBLISHED" | "FAILED";
   campaign: string; // "all" or a campaign name
   platform: string; // "all" or a PlatformName
 };

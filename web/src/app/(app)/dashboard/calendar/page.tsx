@@ -94,6 +94,7 @@ export default function CalendarPage() {
   const [teamMembers, setTeamMembers] = useState<TeamMemberOption[]>([]);
   const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [calendarError, setCalendarError] = useState<string | null>(null);
 
   // One CalendarPost per (content, platform) pair — a platform's own
   // scheduled_at/status decides where it lands and how it looks, not the
@@ -106,12 +107,16 @@ export default function CalendarPage() {
     const list: CalendarPost[] = [];
     for (const r of contentRows) {
       for (const p of r.content_platforms) {
-        const schedDate = p.scheduled_at ? new Date(p.scheduled_at) : new Date(r.created_at);
+        // An unscheduled draft belongs in Drafts, not on its creation date
+        // in a calendar that users read as a publishing schedule.
+        if (!p.scheduled_at) continue;
+        const schedDate = new Date(p.scheduled_at);
+        if (Number.isNaN(schedDate.getTime())) continue;
         const uiStatus = deriveStatus(r.status, p.status);
         const apprStatus: "PENDING" | "APPROVED" | "FEEDBACK" =
           uiStatus === "scheduled" || uiStatus === "published" ? "APPROVED" : "PENDING";
-        const cellPostStatus: "DRAFT" | "SCHEDULED" | "PUBLISHED" =
-          uiStatus === "draft" ? "DRAFT" : uiStatus === "published" ? "PUBLISHED" : "SCHEDULED";
+        const cellPostStatus: CalendarPost["postStatus"] =
+          uiStatus === "failed" ? "FAILED" : uiStatus === "draft" ? "DRAFT" : uiStatus === "published" ? "PUBLISHED" : "SCHEDULED";
 
         list.push({
           id: `real-${r.id}-${p.platform}`,
@@ -502,7 +507,7 @@ export default function CalendarPage() {
     // Belt-and-suspenders — CalendarPostCard already refuses to start a drag
     // for a published post (draggable=false), this just makes sure nothing
     // can move one even if that ever changes.
-    if (post.postStatus === "PUBLISHED") return;
+    if (post.postStatus === "PUBLISHED" || post.postStatus === "FAILED") return;
 
     if (post.isDemo) {
       setDemoPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, date: newDateKey } : p)));
@@ -510,37 +515,45 @@ export default function CalendarPage() {
     }
 
     if (post.contentPlatformId && post.scheduledAtIso) {
-      const original = new Date(post.scheduledAtIso);
       const [y, m, d] = newDateKey.split("-").map(Number);
-      const moved = new Date(original);
-      moved.setFullYear(y, m - 1, d);
-      const movedIso = moved.toISOString();
-
-      // The dragged card represents every platform of this content (see
-      // groupCalendarPosts) — moving it moves all of them together, not
-      // just the one platform that happened to render as the card's hero.
-      const siblingIds = post.contentId
-        ? posts
-            .filter((p) => p.contentId === post.contentId && p.contentPlatformId)
-            .map((p) => p.contentPlatformId!)
-        : [post.contentPlatformId];
+      // A card groups only the platforms shown on this date. Keep each
+      // platform's original time and leave versions on other dates alone.
+      const siblings = filteredPosts.filter((p) =>
+        p.contentPlatformId && p.date === post.date &&
+        p.postStatus !== "PUBLISHED" && p.postStatus !== "FAILED" &&
+        (post.contentId ? p.contentId === post.contentId : p.id === post.id)
+      );
+      const movedTimes = new Map(
+        siblings.filter((p) => p.scheduledAtIso).map((p) => {
+          const moved = new Date(p.scheduledAtIso!);
+          moved.setFullYear(y, m - 1, d);
+          return [p.contentPlatformId!, moved.toISOString()] as const;
+        })
+      );
+      if (movedTimes.size === 0) return;
+      setCalendarError(null);
 
       setContentRows((prev) =>
         prev.map((r) => ({
           ...r,
           content_platforms: r.content_platforms.map((p) =>
-            p.id && siblingIds.includes(p.id) ? { ...p, scheduled_at: movedIso } : p
+            p.id && movedTimes.has(p.id) ? { ...p, scheduled_at: movedTimes.get(p.id)! } : p
           ),
         }))
       );
 
-      supabase
-        .from("content_platforms")
-        .update({ scheduled_at: movedIso })
-        .in("id", siblingIds)
-        .then(({ error }) => {
-          if (error) console.error("Tarih güncellenemedi:", error.message);
-        });
+      void Promise.all(
+        [...movedTimes].map(([id, scheduled_at]) =>
+          supabase.from("content_platforms").update({ scheduled_at }).eq("id", id).select("id")
+        )
+      ).then((results) => {
+        const failed = results.find((result) => result.error || !result.data?.length);
+        if (failed) {
+          console.error("Tarih güncellenemedi:", failed.error?.message ?? "Kayıt güncellenmedi.");
+          setCalendarError(locale === "en" ? "The post could not be moved. The calendar has been refreshed." : "Gönderi taşınamadı. Takvim yeniden yüklendi.");
+          setRefreshKey((key) => key + 1);
+        }
+      });
     }
   }
 
@@ -618,6 +631,13 @@ export default function CalendarPage() {
           }}
           filterCount={activeFilterCount}
         />
+
+        {calendarError && (
+          <div role="alert" className="flex items-center justify-between border-b border-rose-200 bg-rose-50 px-5 py-2 text-xs font-medium text-rose-700">
+            <span>{calendarError}</span>
+            <button type="button" onClick={() => setCalendarError(null)} aria-label={locale === "en" ? "Dismiss error" : "Hatayı kapat"} className="ml-3 text-rose-600 hover:text-rose-900">✕</button>
+          </div>
+        )}
 
         {/* Demo-data preview toggle intentionally hidden for now — showDemo
             still defaults to false and the merge logic below is untouched,

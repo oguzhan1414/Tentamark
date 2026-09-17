@@ -104,7 +104,7 @@ function DayColumn({
           post={g.hero}
           otherPlatforms={g.members.slice(1).map((m) => m.platform)}
           onClick={() => onSelectPost(g.hero)}
-          draggable={!isPast && g.hero.postStatus !== "PUBLISHED"}
+          draggable={!isPast && g.hero.postStatus !== "PUBLISHED" && g.hero.postStatus !== "FAILED"}
         />
       ))}
 

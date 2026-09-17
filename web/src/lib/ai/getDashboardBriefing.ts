@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { MODEL, callGroq } from "./groqModel";
+import { FAST_MODEL, callGroq, estimateGroqCost } from "./groqModel";
 
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour — matches Social Stats' briefing pattern
 const PROMPT_VERSION = "briefing-v1";
@@ -34,8 +34,9 @@ export async function getDashboardBriefing(brandId: string): Promise<string> {
   const facts = await gatherFacts(supabase, brandId);
   if (!facts) return cached?.text ?? "";
 
+  const startedAt = Date.now();
   try {
-    const text = await callGroqForBriefing(facts);
+    const { text, inputTokens, outputTokens, model } = await callGroqForBriefing(facts);
     if (!text) return "";
 
     await supabase
@@ -46,11 +47,11 @@ export async function getDashboardBriefing(brandId: string): Promise<string> {
       brand_id: brandId,
       stage: "dashboard_briefing",
       prompt_version: PROMPT_VERSION,
-      model: MODEL,
-      input_tokens: 0,
-      output_tokens: 0,
-      cost_estimate_usd: 0,
-      latency_ms: 0,
+      model,
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+      cost_estimate_usd: estimateGroqCost(model, inputTokens, outputTokens),
+      latency_ms: Date.now() - startedAt,
       status: "SUCCESS",
       error: null,
     });
@@ -125,8 +126,10 @@ async function gatherFacts(
   return hasSignal ? facts : null;
 }
 
-async function callGroqForBriefing(facts: Facts): Promise<string> {
-  if (!process.env.GROQ_API_KEY) return "";
+async function callGroqForBriefing(
+  facts: Facts
+): Promise<{ text: string; inputTokens: number; outputTokens: number; model: string }> {
+  if (!process.env.GROQ_API_KEY) return { text: "", inputTokens: 0, outputTokens: 0, model: FAST_MODEL };
 
   const lines = [
     `Onay bekleyen içerik: ${facts.needsReview}`,
@@ -147,12 +150,18 @@ async function callGroqForBriefing(facts: Facts): Promise<string> {
     "tek bir satırın karşılığı olsun.";
 
   const result = await callGroq(system, lines.join("\n"), {
+    model: FAST_MODEL,
     temperature: 0.3,
     maxTokens: 300,
     jsonMode: false,
     reasoningEffort: "low",
   });
-  return cleanBriefing(result.content);
+  return {
+    text: cleanBriefing(result.content),
+    inputTokens: result.inputTokens,
+    outputTokens: result.outputTokens,
+    model: result.model,
+  };
 }
 
 function cleanBriefing(raw: string): string {

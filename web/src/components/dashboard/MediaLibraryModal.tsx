@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMediaLibrary, type MediaLibraryItem } from "@/lib/media/useMediaLibrary";
 import { useCanvaConnection } from "@/lib/canva/useCanvaConnection";
 import { useCanvaDesignFlow } from "@/lib/canva/useCanvaDesignFlow";
+import { useLanguage } from "@/context/LanguageContext";
 
 export type { MediaLibraryItem };
 
@@ -51,6 +52,8 @@ export default function MediaLibraryModal({
   maxSelectable,
   onClose,
 }: Props) {
+  const { locale } = useLanguage();
+  const isEn = locale === "en";
   const { items, loading, uploading, error, upload, addItem, rename } = useMediaLibrary(brandId);
   const { connected: canvaConnected } = useCanvaConnection(brandId);
   const { busy: canvaBusy, error: canvaError, start: handleCanvaClick } = useCanvaDesignFlow(addItem);
@@ -92,7 +95,9 @@ export default function MediaLibraryModal({
       <div className="relative z-10 flex max-h-[80vh] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
         <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-3.5">
           <span className="text-sm font-bold text-slate-900">
-            {multiple ? "Medyadan Seç" : "Medya Kütüphanesi"}
+            {multiple
+              ? isEn ? "Select from Media" : "Medyadan Seç"
+              : isEn ? "Media Library" : "Medya Kütüphanesi"}
           </span>
           <button
             type="button"
@@ -109,7 +114,7 @@ export default function MediaLibraryModal({
               htmlFor="media_library_upload"
               className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 py-2.5 text-xs font-semibold text-slate-600 hover:border-rose-400 hover:text-rose-600 transition"
             >
-              {uploading ? "Yükleniyor..." : "+ Yeni Dosya Yükle"}
+              {uploading ? (isEn ? "Uploading..." : "Yükleniyor...") : (isEn ? "+ Upload New File" : "+ Yeni Dosya Yükle")}
               <input
                 id="media_library_upload"
                 type="file"
@@ -131,7 +136,7 @@ export default function MediaLibraryModal({
                 disabled={canvaBusy}
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-dashed border-violet-300 bg-violet-50 py-2.5 text-xs font-semibold text-violet-700 hover:border-violet-400 hover:bg-violet-100 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
-                {canvaBusy ? "Tasarım alınıyor..." : "🎨 Canva ile Tasarla"}
+                {canvaBusy ? (isEn ? "Fetching design..." : "Tasarım alınıyor...") : (isEn ? "🎨 Design with Canva" : "🎨 Canva ile Tasarla")}
               </button>
             ) : (
               <a
@@ -139,9 +144,9 @@ export default function MediaLibraryModal({
                 target="_blank"
                 rel="noreferrer"
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50 py-2.5 text-xs font-semibold text-slate-400 hover:border-violet-300 hover:text-violet-600 transition"
-                title="Canva ile tasarlamak için önce Ayarlar'dan bağlayın"
+                title={isEn ? "Connect from Settings first to design with Canva" : "Canva ile tasarlamak için önce Ayarlar'dan bağlayın"}
               >
-                🎨 Canva&apos;yı Bağla
+                {isEn ? "🎨 Connect Canva" : "🎨 Canva'yı Bağla"}
               </a>
             )}
           </div>
@@ -150,15 +155,20 @@ export default function MediaLibraryModal({
 
           {multiple ? (
             <p className="text-[11px] text-slate-500">
-              Sadece fotoğraf seçilebilir — video, carousel gönderilerde henüz desteklenmiyor.
-              {maxSelectable !== undefined && ` En fazla ${maxSelectable} görsel daha ekleyebilirsin.`}
+              {isEn
+                ? "Only photos can be selected — video is not yet supported for carousel posts."
+                : "Sadece fotoğraf seçilebilir — video, carousel gönderilerde henüz desteklenmiyor."}
+              {maxSelectable !== undefined &&
+                (isEn
+                  ? ` You can add up to ${maxSelectable} more image${maxSelectable > 1 ? "s" : ""}.`
+                  : ` En fazla ${maxSelectable} görsel daha ekleyebilirsin.`)}
             </p>
           ) : (
             <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50/80 p-0.5 text-xs font-semibold w-fit">
               {([
-                { key: "all", label: "Tümü" },
-                { key: "image", label: "Fotoğraf" },
-                { key: "video", label: "Video" },
+                { key: "all", label: isEn ? "All" : "Tümü" },
+                { key: "image", label: isEn ? "Photos" : "Fotoğraf" },
+                { key: "video", label: isEn ? "Videos" : "Video" },
               ] as const).map((f) => (
                 <button
                   key={f.key}
@@ -177,10 +187,12 @@ export default function MediaLibraryModal({
 
         <div className="flex-1 overflow-y-auto p-5">
           {loading ? (
-            <p className="text-center text-xs text-slate-400">Yükleniyor...</p>
+            <p className="text-center text-xs text-slate-400">{isEn ? "Loading..." : "Yükleniyor..."}</p>
           ) : filteredItems.length === 0 ? (
             <p className="text-center text-xs text-slate-400">
-              {items.length === 0 ? "Henüz yüklenmiş medya yok — yukarıdan ekleyebilirsin." : "Bu filtrede medya yok."}
+              {items.length === 0
+                ? isEn ? "No uploaded media yet — you can add one above." : "Henüz yüklenmiş medya yok — yukarıdan ekleyebilirsin."
+                : isEn ? "No media found for this filter." : "Bu filtrede medya yok."}
             </p>
           ) : (
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
@@ -221,7 +233,7 @@ export default function MediaLibraryModal({
                       ) : (
                         onSelect && (
                           <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-[10px] font-bold text-transparent transition group-hover:bg-black/40 group-hover:text-white">
-                            Seç
+                            {isEn ? "Select" : "Seç"}
                           </span>
                         )
                       )}
@@ -229,7 +241,7 @@ export default function MediaLibraryModal({
                     <input
                       type="text"
                       defaultValue={m.alt_text ?? ""}
-                      placeholder="Etiket ekle..."
+                      placeholder={isEn ? "Add tag..." : "Etiket ekle..."}
                       onBlur={(e) => {
                         if (e.target.value.trim() !== (m.alt_text ?? "")) rename(m.id, e.target.value);
                       }}
@@ -245,7 +257,9 @@ export default function MediaLibraryModal({
         {multiple && (
           <div className="flex shrink-0 items-center justify-between border-t border-slate-100 bg-slate-50/80 px-5 py-3">
             <div className="flex items-center gap-3 text-xs">
-              <span className="font-bold text-slate-800">{checked.size} seçildi</span>
+              <span className="font-bold text-slate-800">
+                {checked.size} {isEn ? "selected" : "seçildi"}
+              </span>
               {filteredItems.length > 0 && (
                 <button
                   type="button"
@@ -254,7 +268,7 @@ export default function MediaLibraryModal({
                   }
                   className="font-semibold text-slate-500 hover:text-slate-800 transition cursor-pointer"
                 >
-                  Tümünü seç
+                  {isEn ? "Select all" : "Tümünü seç"}
                 </button>
               )}
               {checked.size > 0 && (
@@ -263,7 +277,7 @@ export default function MediaLibraryModal({
                   onClick={() => setChecked(new Set())}
                   className="font-semibold text-slate-500 hover:text-slate-800 transition cursor-pointer"
                 >
-                  Temizle
+                  {isEn ? "Clear" : "Temizle"}
                 </button>
               )}
             </div>
@@ -273,7 +287,7 @@ export default function MediaLibraryModal({
               disabled={checked.size === 0}
               className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
-              Gönderiye Ekle
+              {isEn ? "Add to Post" : "Gönderiye Ekle"}
             </button>
           </div>
         )}

@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import PlatformIcon from "@/components/PlatformIcon";
+import { useLanguage } from "@/context/LanguageContext";
 import type { ApprovalItem } from "./types";
 
 type Props = {
@@ -10,6 +11,8 @@ type Props = {
 };
 
 export default function ApprovalCard({ item, onClick }: Props) {
+  const { t } = useLanguage();
+  const p = t.dashboard.posts;
   const commentCount = item.comments.length;
 
   return (
@@ -81,18 +84,18 @@ export default function ApprovalCard({ item, onClick }: Props) {
         {item.status === "APPROVED" ? (
           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600">
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Onaylı</span>
+            <span>{p.actions.approved}</span>
           </div>
         ) : (
           <span className="rounded border border-slate-200 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
-            {item.statusLabel || "Askıda olması"}
+            {item.status === "FEEDBACK_GIVEN" ? p.kanbanColumns.feedbackGiven : p.kanbanColumns.pendingReview}
           </span>
         )}
 
         <div className="flex items-center gap-2">
           {item.assignedTo && (
             <div
-              title={`Atandı: ${item.assignedTo.name}`}
+              title={item.assignedTo.name}
               className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-[9px] font-bold text-white"
             >
               {item.assignedTo.name[0]?.toUpperCase()}

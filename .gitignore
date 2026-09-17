@@ -21,3 +21,9 @@ node_modules/
 # Build/cache artifacts (anywhere in the tree)
 .next/
 *.tsbuildinfo
+
+# Local tooling and temporary source snapshots
+supabase/.temp/
+web/all_dash_files.txt
+web/has_language_files.txt
+*.backup.tsx

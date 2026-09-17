@@ -1,61 +1,68 @@
-import Link from "next/link";
+"use client";
+
 import TentamarkLogo from "@/components/TentamarkLogo";
 import UserProfileDropdown from "@/components/dashboard/UserProfileDropdown";
+import { useLanguage } from "@/context/LanguageContext";
 import type { PlatformName } from "@/components/PlatformIcon";
 
 export default function DashboardTopbar({
   userName,
   userEmail,
   brandName,
-  systemHealthy,
+  systemHealthy: _systemHealthy,
   connectedPlatforms,
 }: {
   userName: string;
   userEmail?: string;
   brandName?: string;
-  systemHealthy: boolean;
+  systemHealthy?: boolean;
   connectedPlatforms: PlatformName[];
 }) {
+  const { locale, setLocale, t } = useLanguage();
+
   return (
     <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-slate-200/70 bg-white/80 px-4 backdrop-blur-md sm:px-6 lg:px-8 print:hidden">
-      {/* Left / Brand Info & AI Status Badge */}
+      {/* Left / Brand Info & Mobile Logo */}
       <div className="flex items-center gap-3 sm:gap-4">
         <div className="flex items-center gap-2.5 lg:hidden">
           <TentamarkLogo size={24} withWordmark={true} />
         </div>
-
-        {/* AI Engine Status Pill — reflects real connection/publish health */}
-        {systemHealthy ? (
-          <div className="flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-50/70 px-3.5 py-1.5 shadow-[0_2px_8px_rgba(16,185,129,0.08)]">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
-            </span>
-            <span className="text-xs font-semibold text-emerald-800 tracking-tight">
-              AI Marketing Engine <span className="font-normal text-emerald-600 hidden sm:inline">· Tüm sistemler aktif</span>
-            </span>
-          </div>
-        ) : (
-          <Link
-            href="/settings?tab=baglantilar"
-            className="flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-50/70 px-3.5 py-1.5 shadow-[0_2px_8px_rgba(217,119,6,0.08)] hover:bg-amber-100/70 transition"
-          >
-            <span className="relative flex h-2 w-2">
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500"></span>
-            </span>
-            <span className="text-xs font-semibold text-amber-800 tracking-tight">
-              AI Marketing Engine <span className="font-normal text-amber-700 hidden sm:inline">· Dikkat gerekiyor</span>
-            </span>
-          </Link>
-        )}
       </div>
 
       {/* Right / Actions & Profile */}
-      <div className="flex items-center gap-3 sm:gap-4">
+      <div className="flex items-center gap-2.5 sm:gap-3.5">
+        {/* Language Switcher Pill (TR / EN) */}
+        <div className="flex items-center rounded-full border border-slate-200/90 bg-white p-0.5 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => setLocale("tr")}
+            className={`rounded-full px-2.5 py-1 text-[11px] font-bold transition-all cursor-pointer ${
+              locale === "tr"
+                ? "bg-slate-900 text-white shadow-xs"
+                : "text-slate-500 hover:text-slate-900"
+            }`}
+            aria-label="Türkçe"
+          >
+            TR
+          </button>
+          <button
+            type="button"
+            onClick={() => setLocale("en")}
+            className={`rounded-full px-2.5 py-1 text-[11px] font-bold transition-all cursor-pointer ${
+              locale === "en"
+                ? "bg-slate-900 text-white shadow-xs"
+                : "text-slate-500 hover:text-slate-900"
+            }`}
+            aria-label="English"
+          >
+            EN
+          </button>
+        </div>
+
         {/* Quick notification bell — decorative until a real notification system exists */}
         <button
           type="button"
-          aria-label="Bildirimler"
+          aria-label={t.dashboard.topbar.notifications}
           className="relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 shadow-sm"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -13,6 +13,7 @@ import { STATUS_LABEL, type UIStatus } from "@/lib/contentStatus";
 import { PLATFORM_LABEL } from "@/lib/ai/platforms";
 import PlatformIcon, { type PlatformName } from "@/components/PlatformIcon";
 import AnalyticsPageHeader from "@/components/dashboard/analytics/AnalyticsPageHeader";
+import { useLanguage } from "@/context/LanguageContext";
 import {
   HiOutlineChartBar,
   HiOutlineUsers,
@@ -35,6 +36,9 @@ type DateRange = "7d" | "30d" | "month" | "all";
 
 export default function AnalyticsPage() {
   const brand = useBrand();
+  const { locale, t } = useLanguage();
+  const an = t.dashboard.analytics;
+
   const [data, setData] = useState<AnalyticsOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<DateRange>("7d");
@@ -68,12 +72,14 @@ export default function AnalyticsPage() {
     return data.topPosts.filter((p) => p.platform === selectedChannel);
   }, [data, selectedChannel]);
 
+  const dateLocale = locale === "en" ? "en-US" : "tr-TR";
+
   return (
     <div className="space-y-6">
       <AnalyticsPageHeader
         icon={HiOutlineChartBar}
-        title="Sosyal Medya Performans & Analitik"
-        subtitle={`${brand.name} markasının bağlı kanallarındaki (Instagram, LinkedIn, Facebook, TikTok) kitle büyümesi ve etkileşim metrikleri.`}
+        title={an.title}
+        subtitle={`${brand.name} ${an.subtitle}`}
       >
         {/* Date Range Selector Pills */}
         <div className="flex rounded-xl border border-slate-200 bg-white p-1 shadow-2xs">
@@ -84,7 +90,7 @@ export default function AnalyticsPage() {
               dateRange === "7d" ? "bg-slate-900 text-white" : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            Son 7 Gün
+            {an.ranges.d7}
           </button>
           <button
             type="button"
@@ -93,7 +99,7 @@ export default function AnalyticsPage() {
               dateRange === "30d" ? "bg-slate-900 text-white" : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            Son 30 Gün
+            {an.ranges.d30}
           </button>
           <button
             type="button"
@@ -102,7 +108,7 @@ export default function AnalyticsPage() {
               dateRange === "month" ? "bg-slate-900 text-white" : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            Bu Ay
+            {an.ranges.month}
           </button>
           <button
             type="button"
@@ -111,7 +117,7 @@ export default function AnalyticsPage() {
               dateRange === "all" ? "bg-slate-900 text-white" : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            Tümü
+            {an.ranges.all}
           </button>
         </div>
 
@@ -119,7 +125,7 @@ export default function AnalyticsPage() {
           href="/dashboard/calendar"
           className="rounded-xl bg-[#FA5252] px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-[#E03131] transition"
         >
-          Takvime Git →
+          {locale === "en" ? "Go to Calendar →" : "Takvime Git →"}
         </Link>
       </AnalyticsPageHeader>
 
@@ -127,7 +133,7 @@ export default function AnalyticsPage() {
         <div className="flex h-64 items-center justify-center rounded-2xl border border-slate-200 bg-white text-xs text-slate-400">
           <div className="flex items-center gap-2">
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-rose-600 border-t-transparent" />
-            <span>Performans verileri hesaplanıyor...</span>
+            <span>{locale === "en" ? "Calculating performance data..." : "Performans verileri hesaplanıyor..."}</span>
           </div>
         </div>
       ) : (
@@ -139,41 +145,41 @@ export default function AnalyticsPage() {
             {/* Card 1: Toplam Takipçi */}
             <WhiteStatCard
               icon={HiOutlineUsers}
-              label="Toplam Takipçi Sayısı"
-              value={data.totalFollowers.toLocaleString("tr-TR")}
-              badge={`↑ +${data.followersGrowthPct}% bu hafta`}
+              label={an.kpis.audience}
+              value={data.totalFollowers.toLocaleString(dateLocale)}
+              badge={`↑ +${data.followersGrowthPct}% ${locale === "en" ? "this week" : "bu hafta"}`}
               badgeColor="bg-emerald-50 text-emerald-700 border border-emerald-200"
-              subtext="Instagram, LinkedIn, Facebook ve TikTok toplamı"
+              subtext={locale === "en" ? "Instagram, LinkedIn, Facebook, and TikTok combined" : "Instagram, LinkedIn, Facebook ve TikTok toplamı"}
             />
 
             {/* Card 2: Haftalık Yayınlanan Gönderi */}
             <WhiteStatCard
               icon={HiOutlineDocumentText}
-              label="Yayınlanan Gönderi"
-              value={`${data.totalPosts || 23} Gönderi`}
-              badge={data.publishSuccessRatePct !== null ? `%${data.publishSuccessRatePct} başarı` : "Aktif"}
+              label={an.kpis.scheduledPosts}
+              value={`${data.totalPosts || 23} ${locale === "en" ? "Posts" : "Gönderi"}`}
+              badge={data.publishSuccessRatePct !== null ? `${data.publishSuccessRatePct}% ${locale === "en" ? "success" : "başarı"}` : (locale === "en" ? "Active" : "Aktif")}
               badgeColor="bg-rose-50 text-rose-700 border border-rose-200"
-              subtext="Planlanan tüm içerikler zamanında yayında"
+              subtext={locale === "en" ? "All scheduled content published on time" : "Planlanan tüm içerikler zamanında yayında"}
             />
 
             {/* Card 3: Ortalama Etkileşim Oranı */}
             <WhiteStatCard
               icon={HiOutlineBolt}
-              label="Ortalama Etkileşim Oranı"
+              label={an.kpis.engagementRate}
               value={`%${data.avgEngagementRate}`}
-              badge="Sektörün %85 üzerinde"
+              badge={locale === "en" ? "85% above industry avg" : "Sektörün %85 üzerinde"}
               badgeColor="bg-emerald-50 text-emerald-700 border border-emerald-200"
-              subtext="Beğeni, yorum, kaydetme ve tıklama oranı"
+              subtext={locale === "en" ? "Likes, comments, saves, and clicks rate" : "Beğeni, yorum, kaydetme ve tıklama oranı"}
             />
 
             {/* Card 4: Toplam Haftalık Erişim */}
             <WhiteStatCard
               icon={HiOutlineEye}
-              label="Toplam Haftalık Erişim"
+              label={an.kpis.impressions}
               value={`${(data.weeklyReach / 1000).toFixed(1)}K`}
-              badge={`↑ +${data.weeklyReachGrowthPct}% artış`}
+              badge={`↑ +${data.weeklyReachGrowthPct}% ${locale === "en" ? "growth" : "artış"}`}
               badgeColor="bg-emerald-50 text-emerald-700 border border-emerald-200"
-              subtext="Tekil kullanıcılara erişim hacmi"
+              subtext={locale === "en" ? "Unique audience reach volume" : "Tekil kullanıcılara erişim hacmi"}
             />
           </div>
 
@@ -183,7 +189,7 @@ export default function AnalyticsPage() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-display text-sm font-bold text-slate-900">
-                Kanal Bazlı Performans Dağılımı
+                {an.channelsTitle}
               </span>
 
               {/* Channel switcher buttons */}
@@ -199,7 +205,7 @@ export default function AnalyticsPage() {
                         : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                     }`}
                   >
-                    {ch === "all" ? "Tüm Kanallar" : ch.charAt(0).toUpperCase() + ch.slice(1)}
+                    {ch === "all" ? an.allChannels : ch.charAt(0).toUpperCase() + ch.slice(1)}
                   </button>
                 ))}
               </div>
@@ -207,7 +213,7 @@ export default function AnalyticsPage() {
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {filteredChannels.map((c) => (
-                <ChannelCard key={c.platform} channel={c} />
+                <ChannelCard key={c.platform} channel={c} locale={locale} />
               ))}
             </div>
           </div>
@@ -221,14 +227,14 @@ export default function AnalyticsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-display text-sm font-bold text-slate-900">
-                    Haftalık Yayın & Kitle Hacmi
+                    {locale === "en" ? "Weekly Publishing & Audience Volume" : "Haftalık Yayın & Kitle Hacmi"}
                   </h3>
                   <p className="mt-0.5 text-xs text-slate-500">
-                    Son 8 haftada yayınlanan gönderilerin zaman içindeki dağılımı
+                    {locale === "en" ? "Distribution of published posts over the past 8 weeks" : "Son 8 haftada yayınlanan gönderilerin zaman içindeki dağılımı"}
                   </p>
                 </div>
                 <span className="rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700">
-                  Son 8 Hafta
+                  {locale === "en" ? "Past 8 Weeks" : "Son 8 Hafta"}
                 </span>
               </div>
 
@@ -246,7 +252,7 @@ export default function AnalyticsPage() {
                       >
                         {/* Tooltip on hover */}
                         <div className="absolute -top-8 hidden rounded-md bg-slate-900 px-2 py-1 text-[10px] font-bold text-white shadow-xs group-hover:block z-10 whitespace-nowrap">
-                          {w.count} gönderi
+                          {w.count} {locale === "en" ? "posts" : "gönderi"}
                         </div>
 
                         <div
@@ -268,13 +274,13 @@ export default function AnalyticsPage() {
               <div>
                 <div className="flex items-center gap-1.5 text-xs font-bold text-rose-600 uppercase tracking-wider">
                   <HiOutlineClock className="h-4 w-4 stroke-[2]" />
-                  <span>En İyi Paylaşım Saatleri</span>
+                  <span>{locale === "en" ? "Best Posting Times" : "En İyi Paylaşım Saatleri"}</span>
                 </div>
                 <h3 className="font-display text-sm font-bold text-slate-900 mt-1">
-                  Kitle Aktivite Analizi
+                  {locale === "en" ? "Audience Activity Analysis" : "Kitle Aktivite Analizi"}
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Takipçilerinizin en çok etkileşime girdiği zaman pencereleri
+                  {locale === "en" ? "Peak time windows when followers engage most" : "Takipçilerinizin en çok etkileşime girdiği zaman pencereleri"}
                 </p>
               </div>
 
@@ -315,14 +321,14 @@ export default function AnalyticsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div>
                 <h3 className="font-display text-sm font-bold text-slate-900">
-                  En Çok Etkileşim Alan Gönderiler
+                  {an.topPostsTitle}
                 </h3>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  Algoritmada en yüksek erişim ve kaydetme getiren içerikleriniz
+                  {locale === "en" ? "Content generating highest reach and saves in the algorithm" : "Algoritmada en yüksek erişim ve kaydetme getiren içerikleriniz"}
                 </p>
               </div>
               <span className="text-xs text-slate-500 font-medium">
-                {filteredTopPosts.length} en iyi içerik listeleniyor
+                {filteredTopPosts.length} {locale === "en" ? "top posts listed" : "en iyi içerik listeleniyor"}
               </span>
             </div>
 
@@ -330,13 +336,13 @@ export default function AnalyticsPage() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    <th className="py-3 px-3">Gönderi</th>
-                    <th className="py-3 px-3">Kanal</th>
-                    <th className="py-3 px-3 text-right">Erişim</th>
-                    <th className="py-3 px-3 text-right">Beğeni</th>
-                    <th className="py-3 px-3 text-right">Yorum</th>
-                    <th className="py-3 px-3 text-right">Kaydetme</th>
-                    <th className="py-3 px-3 text-right">Etkileşim</th>
+                    <th className="py-3 px-3">{locale === "en" ? "Post" : "Gönderi"}</th>
+                    <th className="py-3 px-3">{locale === "en" ? "Channel" : "Kanal"}</th>
+                    <th className="py-3 px-3 text-right">{locale === "en" ? "Reach" : "Erişim"}</th>
+                    <th className="py-3 px-3 text-right">{locale === "en" ? "Likes" : "Beğeni"}</th>
+                    <th className="py-3 px-3 text-right">{locale === "en" ? "Comments" : "Yorum"}</th>
+                    <th className="py-3 px-3 text-right">{locale === "en" ? "Saves" : "Kaydetme"}</th>
+                    <th className="py-3 px-3 text-right">{locale === "en" ? "Engagement" : "Etkileşim"}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-body">
@@ -368,13 +374,13 @@ export default function AnalyticsPage() {
                         {post.reach}
                       </td>
                       <td className="py-3 px-3 text-right font-mono text-slate-700">
-                        {post.likes.toLocaleString()}
+                        {post.likes.toLocaleString(dateLocale)}
                       </td>
                       <td className="py-3 px-3 text-right font-mono text-slate-700">
-                        {post.comments.toLocaleString()}
+                        {post.comments.toLocaleString(dateLocale)}
                       </td>
                       <td className="py-3 px-3 text-right font-mono text-slate-700">
-                        {post.saves.toLocaleString()}
+                        {post.saves.toLocaleString(dateLocale)}
                       </td>
                       <td className="py-3 px-3 text-right">
                         <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 font-mono text-[11px] font-bold text-emerald-700">
@@ -396,10 +402,10 @@ export default function AnalyticsPage() {
             <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-xs space-y-4">
               <div>
                 <h3 className="font-display text-sm font-bold text-slate-900">
-                  İçerik Havuzu Durumu
+                  {locale === "en" ? "Content Pipeline Status" : "İçerik Havuzu Durumu"}
                 </h3>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  Operasyondaki tüm gönderilerin üretim ve yayın statüleri
+                  {locale === "en" ? "Production and publishing status of all operational posts" : "Operasyondaki tüm gönderilerin üretim ve yayın statüleri"}
                 </p>
               </div>
 
@@ -408,12 +414,19 @@ export default function AnalyticsPage() {
                   const count = data.statusBreakdown[key];
                   const max = Math.max(1, ...Object.values(data.statusBreakdown));
                   const { label, className } = STATUS_LABEL[key];
+                  const statusMap: Record<UIStatus, string> = {
+                    draft: t.dashboard.posts.tabs.drafts,
+                    scheduled: t.dashboard.posts.tabs.scheduled,
+                    published: t.dashboard.posts.tabs.published,
+                    review: t.dashboard.posts.tabs.needsReview,
+                    failed: t.dashboard.posts.tabs.failed,
+                  };
                   return (
                     <div key={key} className="flex items-center gap-3">
                       <span
                         className={`w-24 shrink-0 rounded-full px-2 py-0.5 text-center font-mono text-[10px] font-bold ${className}`}
                       >
-                        {label}
+                        {statusMap[key] || label}
                       </span>
                       <div className="h-2 flex-1 rounded-full bg-slate-100 overflow-hidden">
                         <div
@@ -434,43 +447,42 @@ export default function AnalyticsPage() {
             <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-xs space-y-4">
               <div>
                 <h3 className="font-display text-sm font-bold text-slate-900">
-                  İçerik Stratejisi Uyumu
+                  {locale === "en" ? "Strategy Adherence" : "İçerik Stratejisi Uyumu"}
                 </h3>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  Belirlenen stratejik sütun hedefleri ile gerçekleşen içerik dağılımı
+                  {locale === "en" ? "Target strategic pillar distribution vs actual published content" : "Belirlenen stratejik sütun hedefleri ile gerçekleşen içerik dağılımı"}
                 </p>
               </div>
 
               {data.pillarAdherence.length === 0 ? (
                 <p className="text-xs text-slate-400 py-4">
-                  Strateji oluşturuldukça plan-uyum karşılaştırması burada yer alacaktır.
+                  {locale === "en" ? "Plan-vs-actual comparison will appear here as strategy is established." : "Strateji oluşturuldukça plan-uyum karşılaştırması burada yer alacaktır."}
                 </p>
               ) : (
                 <div className="space-y-3 pt-1">
                   <div className="flex items-center gap-4 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                    <span className="flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-slate-700" /> Planlanan Hedef
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500" /> Gerçekleşen
-                    </span>
+                    <span className="w-28 shrink-0">{locale === "en" ? "Pillar" : "Sütun"}</span>
+                    <span className="w-16 text-right shrink-0">{locale === "en" ? "Target" : "Hedef"}</span>
+                    <span className="flex-1">{locale === "en" ? "Actual" : "Gerçekleşen"}</span>
                   </div>
-
                   {data.pillarAdherence.map((p) => (
-                    <div key={p.name} className="space-y-1">
-                      <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
-                        <span>{p.name}</span>
-                        <span className="font-mono text-[11px] text-slate-500">
-                          Hedef: %{p.planned} · Gerçekleşen: %{p.actual}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="h-2 flex-1 rounded-full bg-slate-100 overflow-hidden flex gap-0.5">
+                    <div key={p.name} className="flex items-center gap-4">
+                      <span className="w-28 shrink-0 text-xs font-medium text-slate-800 truncate">
+                        {p.name}
+                      </span>
+                      <span className="w-16 shrink-0 text-right font-mono text-xs text-slate-500">
+                        %{p.planned}
+                      </span>
+                      <div className="flex-1 flex items-center gap-2">
+                        <div className="h-2 flex-1 rounded-full bg-slate-100 overflow-hidden">
                           <div
                             className="h-2 rounded-full bg-emerald-500"
                             style={{ width: `${Math.min(100, p.actual)}%` }}
                           />
                         </div>
+                        <span className="w-8 shrink-0 text-right font-mono text-xs font-bold text-slate-700">
+                          %{p.actual}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -525,7 +537,10 @@ function WhiteStatCard({
   );
 }
 
-function ChannelCard({ channel }: { channel: SocialChannelMetric }) {
+function ChannelCard({ channel, locale }: { channel: SocialChannelMetric; locale?: string }) {
+  const isEn = locale === "en";
+  const dateLoc = isEn ? "en-US" : "tr-TR";
+
   return (
     <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xs space-y-3 hover:border-slate-300 transition">
       <div className="flex items-center justify-between">
@@ -542,25 +557,25 @@ function ChannelCard({ channel }: { channel: SocialChannelMetric }) {
 
       <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100 text-xs">
         <div>
-          <p className="text-[10px] text-slate-400">Takipçi</p>
+          <p className="text-[10px] text-slate-400">{isEn ? "Followers" : "Takipçi"}</p>
           <p className="font-mono font-bold text-slate-900 mt-0.5">
-            {channel.followers.toLocaleString("tr-TR")}
+            {channel.followers.toLocaleString(dateLoc)}
           </p>
         </div>
         <div>
-          <p className="text-[10px] text-slate-400">Etkileşim</p>
+          <p className="text-[10px] text-slate-400">{isEn ? "Engagement" : "Etkileşim"}</p>
           <p className="font-mono font-bold text-slate-900 mt-0.5">
             {channel.avgEngagementRate}
           </p>
         </div>
         <div>
-          <p className="text-[10px] text-slate-400">Haftalık Gönderi</p>
+          <p className="text-[10px] text-slate-400">{isEn ? "Weekly Posts" : "Haftalık Gönderi"}</p>
           <p className="font-mono font-bold text-slate-800 mt-0.5">
-            {channel.postsCount} Gönderi
+            {channel.postsCount} {isEn ? "Posts" : "Gönderi"}
           </p>
         </div>
         <div>
-          <p className="text-[10px] text-slate-400">Erişim</p>
+          <p className="text-[10px] text-slate-400">{isEn ? "Reach" : "Erişim"}</p>
           <p className="font-mono font-bold text-slate-800 mt-0.5">
             {channel.reach}
           </p>

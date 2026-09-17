@@ -3,6 +3,32 @@
 // had already been removed by the time this was tested.
 export const MODEL = "openai/gpt-oss-120b";
 
+// Same family, smaller — for callsites that don't need deep brand/strategy
+// reasoning (short rewrites, classification, templating pre-computed
+// numbers into a sentence). Confirmed live against /v1/models (2026-09-16)
+// and smoke-tested with jsonMode + reasoning_effort, behaves identically to
+// MODEL. Half the price ($0.075/$0.30 per 1M vs $0.15/$0.60) and Groq's own
+// benchmarks put it faster too — this is a real saving, not a quality
+// tradeoff being hidden, since it's only used where the task genuinely
+// doesn't need the bigger model's extra reasoning depth.
+export const FAST_MODEL = "openai/gpt-oss-20b";
+
+// $ per 1M tokens, input/output — verified live (Groq pricing pages,
+// 2026-09-16). Used to compute ai_runs.cost_estimate_usd, which every
+// callsite previously hardcoded to 0. Update this if Groq repriced a model;
+// an unlisted model falls back to MODEL's rate rather than silently
+// returning 0 again.
+const PRICE_PER_MILLION: Record<string, { input: number; output: number }> = {
+  "openai/gpt-oss-120b": { input: 0.15, output: 0.6 },
+  "openai/gpt-oss-20b": { input: 0.075, output: 0.3 },
+  "qwen/qwen3.8-27b": { input: 0.8, output: 4.0 },
+};
+
+export function estimateGroqCost(model: string, inputTokens: number, outputTokens: number): number {
+  const price = PRICE_PER_MILLION[model] ?? PRICE_PER_MILLION[MODEL];
+  return (inputTokens / 1_000_000) * price.input + (outputTokens / 1_000_000) * price.output;
+}
+
 // Vision-capable — MODEL above is text-only. Checked live against
 // console.groq.com/docs/vision (2026-09): Llama 4 Scout/Maverick, the
 // obvious choices, are both deprecated (Maverick Feb 2026, Scout shut down
@@ -19,9 +45,16 @@ export type GroqCallResult = {
   content: string;
   inputTokens: number;
   outputTokens: number;
+  /** Which model actually served this call — callers use this (not MODEL)
+   *  when computing cost_estimate_usd, since it may be FAST_MODEL. */
+  model: string;
 };
 
 type GroqCallOptions = {
+  /** Defaults to MODEL. Pass FAST_MODEL for callsites that don't need deep
+   *  brand/strategy reasoning — see groqModel.ts's own comment on FAST_MODEL
+   *  for which kinds of tasks that is. */
+  model?: string;
   temperature?: number;
   maxTokens?: number;
   /** Defaults to true — most callers want a structured JSON response. */
@@ -60,7 +93,7 @@ export async function callGroq(
       Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
     },
     body: JSON.stringify({
-      model: MODEL,
+      model: options?.model ?? MODEL,
       messages: [
         { role: "system", content: systemPrompt },
         ...(options?.history ?? []),
@@ -83,6 +116,7 @@ export async function callGroq(
     content: json.choices?.[0]?.message?.content ?? fallback,
     inputTokens: json.usage?.prompt_tokens ?? 0,
     outputTokens: json.usage?.completion_tokens ?? 0,
+    model: options?.model ?? MODEL,
   };
 }
 
@@ -150,5 +184,6 @@ export async function callGroqVision(
     content: json.choices?.[0]?.message?.content ?? fallback,
     inputTokens: json.usage?.prompt_tokens ?? 0,
     outputTokens: json.usage?.completion_tokens ?? 0,
+    model: VISION_MODEL,
   };
 }

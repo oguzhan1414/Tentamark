@@ -6,6 +6,8 @@ import { useMediaLibrary, type MediaLibraryItem } from "@/lib/media/useMediaLibr
 import { useCanvaConnection } from "@/lib/canva/useCanvaConnection";
 import { useCanvaDesignFlow } from "@/lib/canva/useCanvaDesignFlow";
 
+import { useLanguage } from "@/context/LanguageContext";
+
 type Props = {
   brandId: string;
   isOpen: boolean;
@@ -16,19 +18,6 @@ type MediaFilter = "all" | "image" | "video";
 
 const PANEL_WIDTH = 320;
 
-/*
-  Docked side panel (not a floating modal) — dragging a thumbnail onto a day
-  cell schedules a post for that date with the photo/video already attached,
-  same idea as Planable's calendar. The panel takes real layout width (see
-  calendar/page.tsx), so opening it visibly narrows the calendar instead of
-  covering it — the "takvim küçülüyor" effect, via a width transition.
-
-  Checkbox multi-select (photos only — same reasoning as MediaLibraryModal's
-  carousel picker: mixing video into a carousel needs a per-child Graph API
-  shape that isn't built) lets a whole selection be dragged as one group,
-  landing in ComposeForm as a real multi-photo carousel instead of one
-  thumbnail at a time.
-*/
 function DraggableThumb({
   item,
   isSelected,
@@ -38,20 +27,15 @@ function DraggableThumb({
 }: {
   item: MediaLibraryItem;
   isSelected: boolean;
-  // The full current selection, resolved to real items — determines
-  // whether dragging THIS thumbnail carries just itself or the whole group.
   selectedItems: MediaLibraryItem[];
   onToggle: (id: string) => void;
   onRename: (id: string, label: string) => void;
 }) {
+  const { locale } = useLanguage();
+  const isEn = locale === "en";
   const isVideo = item.file_type.startsWith("video/");
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `media:${item.id}`,
-    // Dragging a thumbnail that's part of the current multi-selection
-    // drags every selected item, not just the one under the pointer —
-    // matches how file-manager multi-drag works (Explorer/Finder).
-    // Dragging an unselected thumbnail (or when nothing is selected) is
-    // always just that one item.
     data: { type: "media", items: isSelected && selectedItems.length > 1 ? selectedItems : [item] },
   });
 
@@ -86,7 +70,7 @@ function DraggableThumb({
               e.stopPropagation();
               onToggle(item.id);
             }}
-            aria-label={isSelected ? "Seçimi kaldır" : "Seç"}
+            aria-label={isSelected ? (isEn ? "Deselect" : "Seçimi kaldır") : (isEn ? "Select" : "Seç")}
             className={`absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-bold transition ${
               isSelected
                 ? "border-rose-500 bg-rose-500 text-white"
@@ -100,7 +84,7 @@ function DraggableThumb({
       <input
         type="text"
         defaultValue={item.alt_text ?? ""}
-        placeholder="Etiket ekle..."
+        placeholder={isEn ? "Add tag..." : "Etiket ekle..."}
         onBlur={(e) => {
           if (e.target.value.trim() !== (item.alt_text ?? "")) onRename(item.id, e.target.value);
         }}
@@ -111,6 +95,8 @@ function DraggableThumb({
 }
 
 export default function CalendarMediaPanel({ brandId, isOpen, onClose }: Props) {
+  const { locale } = useLanguage();
+  const isEn = locale === "en";
   // enabled=isOpen — no fetch until the panel is opened at least once;
   // stays loaded afterwards (see useMediaLibrary), so re-opening is instant.
   const { items, loading, uploading, error, upload, addItem, rename } = useMediaLibrary(brandId, isOpen);
@@ -141,7 +127,7 @@ export default function CalendarMediaPanel({ brandId, isOpen, onClose }: Props) 
     >
       <div className="flex h-full flex-col" style={{ width: PANEL_WIDTH }}>
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-100 px-4">
-          <span className="text-sm font-bold text-slate-900">Medya</span>
+          <span className="text-sm font-bold text-slate-900">{isEn ? "Media" : "Medya"}</span>
           <button
             type="button"
             onClick={onClose}
@@ -153,19 +139,22 @@ export default function CalendarMediaPanel({ brandId, isOpen, onClose }: Props) 
 
         <div className="shrink-0 border-b border-slate-100 px-4 py-3 space-y-2.5">
           <p className="text-[11px] text-slate-400">
-            Bir tarihe sürükleyip bırakarak hızlıca gönderi oluştur. Fotoğrafları işaretleyip birlikte sürükleyerek
-            carousel oluşturabilirsin.
+            {isEn
+              ? "Drag and drop onto a date to quickly schedule a post. Check multiple photos and drag them together to create a carousel."
+              : "Bir tarihe sürükleyip bırakarak hızlıca gönderi oluştur. Fotoğrafları işaretleyip birlikte sürükleyerek carousel oluşturabilirsin."}
           </p>
 
           {selected.size > 0 && (
             <div className="flex items-center justify-between rounded-lg bg-rose-50 border border-rose-100 px-2.5 py-1.5">
-              <span className="text-[11px] font-bold text-rose-700">{selected.size} seçildi</span>
+              <span className="text-[11px] font-bold text-rose-700">
+                {selected.size} {isEn ? "selected" : "seçildi"}
+              </span>
               <button
                 type="button"
                 onClick={() => setSelected(new Set())}
                 className="text-[11px] font-semibold text-rose-600 hover:text-rose-800 transition cursor-pointer"
               >
-                Temizle
+                {isEn ? "Clear" : "Temizle"}
               </button>
             </div>
           )}
@@ -174,7 +163,7 @@ export default function CalendarMediaPanel({ brandId, isOpen, onClose }: Props) 
             htmlFor="calendar_media_upload"
             className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 py-2 text-xs font-semibold text-slate-600 hover:border-rose-400 hover:text-rose-600 transition"
           >
-            {uploading ? "Yükleniyor..." : "+ Yeni Dosya Yükle"}
+            {uploading ? (isEn ? "Uploading..." : "Yükleniyor...") : (isEn ? "+ Upload New File" : "+ Yeni Dosya Yükle")}
             <input
               id="calendar_media_upload"
               type="file"
@@ -196,7 +185,7 @@ export default function CalendarMediaPanel({ brandId, isOpen, onClose }: Props) 
               disabled={canvaBusy}
               className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-violet-300 bg-violet-50 py-2 text-xs font-semibold text-violet-700 hover:border-violet-400 hover:bg-violet-100 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
-              {canvaBusy ? "Tasarım alınıyor..." : "🎨 Canva ile Tasarla"}
+              {canvaBusy ? (isEn ? "Fetching design..." : "Tasarım alınıyor...") : (isEn ? "🎨 Design with Canva" : "🎨 Canva ile Tasarla")}
             </button>
           ) : (
             <a
@@ -204,9 +193,9 @@ export default function CalendarMediaPanel({ brandId, isOpen, onClose }: Props) 
               target="_blank"
               rel="noreferrer"
               className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50 py-2 text-xs font-semibold text-slate-400 hover:border-violet-300 hover:text-violet-600 transition"
-              title="Canva ile tasarlamak için önce Ayarlar'dan bağlayın"
+              title={isEn ? "Connect from Settings first to design with Canva" : "Canva ile tasarlamak için önce Ayarlar'dan bağlayın"}
             >
-              🎨 Canva&apos;yı Bağla
+              {isEn ? "🎨 Connect Canva" : "🎨 Canva'yı Bağla"}
             </a>
           )}
           {error && <p className="text-xs text-red-600">{error}</p>}
@@ -214,9 +203,9 @@ export default function CalendarMediaPanel({ brandId, isOpen, onClose }: Props) 
 
           <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50/80 p-0.5 text-xs font-semibold w-fit">
             {([
-              { key: "all", label: "Tümü" },
-              { key: "image", label: "Fotoğraf" },
-              { key: "video", label: "Video" },
+              { key: "all", label: isEn ? "All" : "Tümü" },
+              { key: "image", label: isEn ? "Photos" : "Fotoğraf" },
+              { key: "video", label: isEn ? "Videos" : "Video" },
             ] as const).map((f) => (
               <button
                 key={f.key}
@@ -234,10 +223,12 @@ export default function CalendarMediaPanel({ brandId, isOpen, onClose }: Props) 
 
         <div className="flex-1 overflow-y-auto p-4">
           {loading ? (
-            <p className="text-center text-xs text-slate-400">Yükleniyor...</p>
+            <p className="text-center text-xs text-slate-400">{isEn ? "Loading..." : "Yükleniyor..."}</p>
           ) : filteredItems.length === 0 ? (
             <p className="text-center text-xs text-slate-400">
-              {items.length === 0 ? "Henüz yüklenmiş medya yok." : "Bu filtrede medya yok."}
+              {items.length === 0
+                ? (isEn ? "No uploaded media yet." : "Henüz yüklenmiş medya yok.")
+                : (isEn ? "No media found for this filter." : "Bu filtrede medya yok.")}
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-3">

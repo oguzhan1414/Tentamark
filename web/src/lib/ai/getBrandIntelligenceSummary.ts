@@ -3,9 +3,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { getLatestStrategy } from "./generateStrategy";
 import { getAudienceInsight } from "./getAudienceInsight";
+import { computeBrandDnaScore } from "../brand/brandDnaScore";
 
 export type BrandIntelligenceSummary = {
   profileCompletenessPct: number;
+  /** What's missing/weak, in the weighted score's own check order — feeds
+   *  the KPI card's "Eksik: ..." line so the number is actionable, not just
+   *  a percentage to stare at. */
+  profileCompletenessMissing: string[];
   strategyAdherencePct: number | null; // null = not enough data yet
   competitorCount: number;
   strategyVersion: number | null;
@@ -30,7 +35,7 @@ export async function getBrandIntelligenceSummary(brandId: string): Promise<Bran
     supabase
       .from("brand_dna")
       .select(
-        "industry, tone_of_voice, brand_traits, target_audience, competitors, competitor_analysis, audience_persona, trait_scores"
+        "industry, tone_of_voice, brand_traits, target_audience, competitors, competitor_analysis, audience_persona, trait_scores, forbidden_words, founder_name"
       )
       .eq("brand_id", brandId)
       .maybeSingle(),
@@ -38,19 +43,29 @@ export async function getBrandIntelligenceSummary(brandId: string): Promise<Bran
     getAudienceInsight(brandId),
   ]);
 
-  // Profile completeness: 7 real fields, each either filled or not.
-  const checks = [
-    Boolean(dna?.industry),
-    Boolean(dna?.tone_of_voice),
-    Array.isArray(dna?.brand_traits) && dna.brand_traits.length > 0,
-    Array.isArray(dna?.target_audience) && dna.target_audience.length > 0,
-    Array.isArray(dna?.competitors) && dna.competitors.length > 0,
-    Boolean((dna?.audience_persona as Record<string, unknown> | null)?.label),
-    Boolean(strategy),
-  ];
-  const profileCompletenessPct = Math.round(
-    (checks.filter(Boolean).length / checks.length) * 100
-  );
+  // Weighted checklist (see brandDnaScore.ts) — replaces a flat "7 fields,
+  // each worth the same" average with weights that reflect how much each
+  // field actually changes AI output quality.
+  const traitScoresRaw = (dna?.trait_scores as Record<string, unknown> | null) ?? {};
+  const traitScoresNormalized: Record<string, number> = {};
+  for (const [k, v] of Object.entries(traitScoresRaw)) {
+    const n = Number(v);
+    if (Number.isFinite(n)) traitScoresNormalized[k] = n;
+  }
+  const dnaScore = computeBrandDnaScore({
+    industry: dna?.industry ?? "",
+    toneOfVoice: dna?.tone_of_voice ?? "",
+    brandTraits: Array.isArray(dna?.brand_traits) ? dna.brand_traits.map(String) : [],
+    targetAudience: Array.isArray(dna?.target_audience) ? dna.target_audience.map(String) : [],
+    personaLabel: String((dna?.audience_persona as Record<string, unknown> | null)?.label ?? ""),
+    competitors: Array.isArray(dna?.competitors) ? dna.competitors.map(String) : [],
+    competitorAnalysisCount: Array.isArray(dna?.competitor_analysis) ? dna.competitor_analysis.length : 0,
+    traitScores: traitScoresNormalized,
+    forbiddenWords: Array.isArray(dna?.forbidden_words) ? dna.forbidden_words.map(String) : [],
+    founderName: dna?.founder_name ?? "",
+  });
+  const profileCompletenessPct = dnaScore.score;
+  const profileCompletenessMissing = dnaScore.missing;
 
   const competitorCount = Array.isArray(dna?.competitor_analysis) ? dna.competitor_analysis.length : 0;
 
@@ -83,6 +98,7 @@ export async function getBrandIntelligenceSummary(brandId: string): Promise<Bran
 
   return {
     profileCompletenessPct,
+    profileCompletenessMissing,
     strategyAdherencePct,
     competitorCount,
     strategyVersion: strategy?.version ?? null,

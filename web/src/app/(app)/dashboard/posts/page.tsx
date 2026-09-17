@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useBrand } from "@/components/dashboard/BrandProvider";
 import { useComposeModal } from "@/components/dashboard/ComposeModalProvider";
+import { useLanguage } from "@/context/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { STATUS_LABEL, type UIStatus } from "@/lib/contentStatus";
 import PlatformIcon from "@/components/PlatformIcon";
@@ -29,18 +30,13 @@ import {
 
 const FORMAT_BADGE: Record<string, string> = { post: "📄 Gönderi", story: "⚡ Hikaye", reel: "🎬 Makara" };
 
-const FILTERS: { key: "all" | UIStatus; label: string }[] = [
-  { key: "all", label: "Tümü" },
-  { key: "draft", label: "Taslaklar" },
-  { key: "review", label: "Onay Bekleyen" },
-  { key: "scheduled", label: "Zamanlandı" },
-  { key: "published", label: "Yayınlandı" },
-  { key: "failed", label: "Hata" },
-];
+const FILTER_KEYS: ("all" | UIStatus)[] = ["all", "draft", "review", "scheduled", "published", "failed"];
 
 function PostsPageContent() {
   const brand = useBrand();
   const composeModal = useComposeModal();
+  const { t } = useLanguage();
+  const p = t.dashboard.posts;
   const supabase = useMemo(() => createClient(), []);
   const searchParams = useSearchParams();
 
@@ -51,8 +47,20 @@ function PostsPageContent() {
   // straight to the board (matches the old Onaylarım sidebar badge link).
   const [filter, setFilter] = useState<"all" | UIStatus>(() => {
     const param = searchParams.get("filter");
-    return FILTERS.some((f) => f.key === param) ? (param as "all" | UIStatus) : "all";
+    return FILTER_KEYS.includes(param as any) ? (param as "all" | UIStatus) : "all";
   });
+
+  const filters = useMemo<{ key: "all" | UIStatus; label: string }[]>(
+    () => [
+      { key: "all", label: p.tabs.all },
+      { key: "draft", label: p.tabs.drafts },
+      { key: "review", label: p.tabs.needsReview },
+      { key: "scheduled", label: p.tabs.scheduled },
+      { key: "published", label: p.tabs.published },
+      { key: "failed", label: p.tabs.failed },
+    ],
+    [p.tabs]
+  );
   const [boardMode, setBoardMode] = useState<"list" | "kanban">(() =>
     searchParams.get("view") === "kanban" ? "kanban" : "list"
   );
@@ -281,19 +289,14 @@ function PostsPageContent() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                Gönderiler & Onay Masası
+                {p.title}
               </h1>
               <p className="mt-1 text-sm text-slate-500 font-medium">
-                AI tarafından üretilen içerikleri inceleyin, onaylayın veya tek tıkla düzenleyin.
+                {p.subtitle}
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5">
-              {/* Demo-data preview toggle intentionally hidden for now —
-                  showDemo still defaults to false and the kanbanAll merge
-                  logic above is untouched, so it's a one-line JSX re-add
-                  away from coming back later. */}
-
               {reviewIds.length > 0 && (
                 <button
                   type="button"
@@ -303,7 +306,7 @@ function PostsPageContent() {
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span>Hepsini Onayla ({reviewIds.length})</span>
+                  <span>{p.approveAll} ({reviewIds.length})</span>
                 </button>
               )}
 
@@ -311,7 +314,7 @@ function PostsPageContent() {
                 href="/dashboard/compose/weekly"
                 className="inline-flex items-center gap-1.5 rounded-xl bg-[#FA5252] px-4 py-2.5 text-xs font-bold text-white shadow-sm shadow-rose-500/25 hover:bg-rose-600 transition"
               >
-                <span>⚡ 7 Günlük Paket</span>
+                <span>⚡ {p.weeklyPackage}</span>
               </Link>
 
               <button
@@ -322,12 +325,12 @@ function PostsPageContent() {
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
                 </svg>
-                <span>Yeni Gönderi</span>
+                <span>{p.newPostBtn}</span>
               </button>
             </div>
           </div>
 
-          {/* Liste / Kanban geçişi */}
+          {/* Liste / Kanban switch */}
           <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50/80 p-1 text-xs font-semibold w-fit">
             <button
               type="button"
@@ -336,7 +339,7 @@ function PostsPageContent() {
                 boardMode === "list" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-800"
               }`}
             >
-              Liste
+              {p.list}
             </button>
             <button
               type="button"
@@ -345,7 +348,7 @@ function PostsPageContent() {
                 boardMode === "kanban" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-800"
               }`}
             >
-              Kanban
+              {p.kanban}
             </button>
           </div>
 
@@ -354,7 +357,7 @@ function PostsPageContent() {
               {/* 2. Filters Bar & View Switcher */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/80 pb-4">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  {FILTERS.map((f) => {
+                  {filters.map((f) => {
                     const count = f.key === "all" ? allItems.length : allItems.filter((i) => i.realStatus === f.key).length;
                     const active = filter === f.key;
                     return (
@@ -393,7 +396,7 @@ function PostsPageContent() {
                     </svg>
                     <input
                       type="text"
-                      placeholder="Gönderilerde ara..."
+                      placeholder={p.searchPlaceholder}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-48 sm:w-60 rounded-xl border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs text-slate-800 placeholder-slate-400 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400"
@@ -407,7 +410,7 @@ function PostsPageContent() {
                       className={`flex h-7 w-7 items-center justify-center rounded-lg transition ${
                         viewMode === "grid" ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-900"
                       }`}
-                      title="Kart Izgarası Görünümü"
+                      title="Grid"
                     >
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <rect x="3" y="3" width="7" height="7" rx="1.5" strokeWidth={2} />
@@ -422,7 +425,7 @@ function PostsPageContent() {
                       className={`flex h-7 w-7 items-center justify-center rounded-lg transition ${
                         viewMode === "list" ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-900"
                       }`}
-                      title="Liste Görünümü"
+                      title="List"
                     >
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <line x1="4" y1="6" x2="20" y2="6" strokeWidth={2} strokeLinecap="round" />
@@ -437,7 +440,7 @@ function PostsPageContent() {
               {/* 3. Main Content: Grid or List View */}
               {loading ? (
                 <div className="flex h-72 items-center justify-center rounded-[22px] border border-slate-100 bg-white text-sm text-slate-400">
-                  Gönderiler yükleniyor...
+                  {t.dashboard.common.loading}
                 </div>
               ) : filtered.length === 0 ? (
                 <div className="flex flex-col items-center justify-center gap-3 rounded-[24px] border border-dashed border-slate-200 bg-white py-16 text-center shadow-xs">
@@ -446,23 +449,23 @@ function PostsPageContent() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                     </svg>
                   </div>
-                  <h3 className="font-display text-base font-bold text-slate-800">Henüz gönderi bulunamadı</h3>
+                  <h3 className="font-display text-base font-bold text-slate-800">{p.emptyTitle}</h3>
                   <p className="max-w-md text-xs text-slate-500">
-                    Filtreye uygun içerik yok veya henüz içerik oluşturulmadı. AI ile 1 dakikada 5&apos;li veya 7&apos;li paket oluşturabilirsiniz.
+                    {p.emptyDesc}
                   </p>
                   <div className="mt-2 flex items-center gap-3">
                     <Link
                       href="/dashboard/compose/weekly"
                       className="rounded-xl bg-[#FA5252] px-4 py-2 text-xs font-semibold text-white shadow-sm shadow-rose-500/20 hover:bg-rose-600 transition"
                     >
-                      Haftalık Paket Üret 🚀
+                      {p.weeklyPackage} 🚀
                     </Link>
                     <button
                       type="button"
                       onClick={() => composeModal.open()}
                       className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
                     >
-                      Tekli Gönderi Yaz
+                      {p.newPostBtn}
                     </button>
                   </div>
                 </div>
@@ -498,11 +501,11 @@ function PostsPageContent() {
                             <div className="flex items-center gap-1.5">
                               {item.format && item.format !== "post" && (
                                 <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700">
-                                  {FORMAT_BADGE[item.format] ?? item.format}
+                                  {p.formats[item.format as keyof typeof p.formats] ?? item.format}
                                 </span>
                               )}
                               <span className={`rounded-full px-2.5 py-0.5 font-mono text-[10px] uppercase font-bold tracking-tight ${STATUS_LABEL[status].className}`}>
-                                {STATUS_LABEL[status].label}
+                                {p.statusLabels[status] || STATUS_LABEL[status].label}
                               </span>
                             </div>
                           </div>
@@ -574,7 +577,7 @@ function PostsPageContent() {
                             onClick={() => setSelectedId(item.id)}
                             className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
                           >
-                            İncele
+                            {p.actions.inspect}
                           </button>
 
                           <div className="flex items-center gap-1.5">
@@ -585,9 +588,9 @@ function PostsPageContent() {
                                   disabled={busyId === item.id}
                                   onClick={() => reject(item.id)}
                                   className="rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-500 hover:border-red-200 hover:text-red-600 transition disabled:opacity-40"
-                                  title="Taslağa Geri Al"
+                                  title={p.actions.sendToDraft}
                                 >
-                                  Reddet
+                                  {p.actions.reject}
                                 </button>
                                 <button
                                   type="button"
@@ -595,18 +598,18 @@ function PostsPageContent() {
                                   onClick={() => approve(item.id)}
                                   className="rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition disabled:opacity-40"
                                 >
-                                  ✓ Onayla
+                                  ✓ {p.actions.approve}
                                 </button>
                               </>
                             )}
                             {status === "scheduled" && (
                               <span className="text-[11px] font-bold text-rose-600 flex items-center gap-1">
-                                <span>⏳</span> Yayına Hazır
+                                <span>⏳</span> {p.actions.readyToPublish}
                               </span>
                             )}
                             {status === "published" && (
                               <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
-                                <span>✓</span> Yayında
+                                <span>✓</span> {p.actions.published}
                               </span>
                             )}
                           </div>
@@ -621,11 +624,11 @@ function PostsPageContent() {
                     <table className="w-full text-left text-xs text-slate-600">
                       <thead className="border-b border-slate-100 bg-slate-50/70 font-mono text-[10px] uppercase font-bold text-slate-400">
                         <tr>
-                          <th className="px-5 py-3.5">İçerik / Kanca</th>
-                          <th className="px-4 py-3.5">Platformlar</th>
-                          <th className="px-4 py-3.5">Tarih</th>
-                          <th className="px-4 py-3.5">Durum</th>
-                          <th className="px-5 py-3.5 text-right">Eylemler</th>
+                          <th className="px-5 py-3.5">{p.table.contentHook}</th>
+                          <th className="px-4 py-3.5">{p.table.platforms}</th>
+                          <th className="px-4 py-3.5">{p.table.date}</th>
+                          <th className="px-4 py-3.5">{p.table.status}</th>
+                          <th className="px-5 py-3.5 text-right">{p.table.actions}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -668,22 +671,22 @@ function PostsPageContent() {
                               <td className="px-4 py-4 font-mono text-[11px] text-slate-500">{item.fullDateLabel}</td>
                               <td className="px-4 py-4">
                                 <span className={`rounded-full px-2.5 py-0.5 font-mono text-[10px] uppercase font-bold ${STATUS_LABEL[status].className}`}>
-                                  {STATUS_LABEL[status].label}
+                                  {p.statusLabels[status] || STATUS_LABEL[status].label}
                                 </span>
                               </td>
                               <td className="px-5 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                                 {status === "review" ? (
                                   <div className="flex items-center justify-end gap-1.5">
                                     <button type="button" onClick={() => reject(item.id)} className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-500 hover:text-red-600">
-                                      Reddet
+                                      {p.actions.reject}
                                     </button>
                                     <button type="button" onClick={() => approve(item.id)} className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-bold text-white shadow-2xs hover:bg-emerald-700">
-                                      Onayla
+                                      {p.actions.approve}
                                     </button>
                                   </div>
                                 ) : (
                                   <button type="button" onClick={() => setSelectedId(item.id)} className="rounded-lg border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                                    İncele
+                                    {p.actions.inspect}
                                   </button>
                                 )}
                               </td>
@@ -697,14 +700,14 @@ function PostsPageContent() {
               )}
             </>
           ) : (
-            /* ================= KANBAN BOARD (ported from Onaylarım) ================= */
+            /* ================= KANBAN BOARD ================= */
             <div className="flex h-full gap-6 min-w-[900px]">
-              {loading && <p className="mb-3 text-center text-xs text-slate-400">Onay kuyruğu yükleniyor...</p>}
+              {loading && <p className="mb-3 text-center text-xs text-slate-400">{t.dashboard.common.loading}</p>}
               <section className="flex flex-1 flex-col rounded-2xl border border-slate-200/80 bg-slate-100/40 p-4">
                 <div className="mb-3.5 flex items-center justify-between px-1">
                   <div className="flex items-center gap-2">
                     <span className="text-amber-500 text-sm">🟡</span>
-                    <h2 className="text-xs font-bold text-slate-800">Onay bekleniyor</h2>
+                    <h2 className="text-xs font-bold text-slate-800">{p.kanbanColumns.pendingReview}</h2>
                   </div>
                   <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#ef4444] px-1.5 text-[11px] font-bold text-white shadow-xs">
                     {pendingReview.length}
@@ -716,13 +719,13 @@ function PostsPageContent() {
                     onClick={() => setBatchModalOpen(true)}
                     className="flex items-center justify-center rounded-xl border border-slate-200 bg-white p-3.5 text-center text-xs font-bold text-slate-700 shadow-2xs hover:border-blue-400 hover:text-blue-600 transition cursor-pointer"
                   >
-                    İnceleme gönderileri
+                    {p.kanbanColumns.batchButton}
                   </button>
                   {pendingReview.map((item) => (
                     <ApprovalCard key={item.id} item={item} onClick={() => setSelectedId(item.id)} />
                   ))}
                   {pendingReview.length === 0 && (
-                    <p className="rounded-xl border border-dashed border-slate-200 bg-white/60 p-6 text-center text-xs text-slate-400">Onay bekleyen gönderi kalmadı.</p>
+                    <p className="rounded-xl border border-dashed border-slate-200 bg-white/60 p-6 text-center text-xs text-slate-400">{p.kanbanColumns.emptyPending}</p>
                   )}
                 </div>
               </section>
@@ -731,7 +734,7 @@ function PostsPageContent() {
                 <div className="mb-3.5 flex items-center justify-between px-1">
                   <div className="flex items-center gap-2">
                     <span className="text-slate-500 text-sm">💬</span>
-                    <h2 className="text-xs font-bold text-slate-800">Geri bildirim bırakıldı</h2>
+                    <h2 className="text-xs font-bold text-slate-800">{p.kanbanColumns.feedbackGiven}</h2>
                   </div>
                   <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-200 px-1.5 text-[11px] font-bold text-slate-600">
                     {feedbackGiven.length}
@@ -742,7 +745,7 @@ function PostsPageContent() {
                     <ApprovalCard key={item.id} item={item} onClick={() => setSelectedId(item.id)} />
                   ))}
                   {feedbackGiven.length === 0 && (
-                    <p className="rounded-xl border border-dashed border-slate-200 bg-white/60 p-6 text-center text-xs text-slate-400">Geri bildirim bırakılmış gönderi yok.</p>
+                    <p className="rounded-xl border border-dashed border-slate-200 bg-white/60 p-6 text-center text-xs text-slate-400">{p.kanbanColumns.emptyFeedback}</p>
                   )}
                 </div>
               </section>
@@ -751,7 +754,7 @@ function PostsPageContent() {
                 <div className="mb-3.5 flex items-center justify-between px-1">
                   <div className="flex items-center gap-2">
                     <span className="text-emerald-500 text-sm">🟢</span>
-                    <h2 className="text-xs font-bold text-slate-800">Onaylı</h2>
+                    <h2 className="text-xs font-bold text-slate-800">{p.kanbanColumns.approved}</h2>
                   </div>
                   <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-200 px-1.5 text-[11px] font-bold text-slate-600">
                     {approved.length}
@@ -762,7 +765,7 @@ function PostsPageContent() {
                     <ApprovalCard key={item.id} item={item} onClick={() => setSelectedId(item.id)} />
                   ))}
                   {approved.length === 0 && (
-                    <p className="rounded-xl border border-dashed border-slate-200 bg-white/60 p-6 text-center text-xs text-slate-400">Henüz onaylanmış gönderi yok.</p>
+                    <p className="rounded-xl border border-dashed border-slate-200 bg-white/60 p-6 text-center text-xs text-slate-400">{p.kanbanColumns.emptyApproved}</p>
                   )}
                 </div>
               </section>

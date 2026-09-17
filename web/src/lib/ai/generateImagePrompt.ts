@@ -1,4 +1,4 @@
-import { callGroq } from "./groqModel";
+import { callGroq, FAST_MODEL } from "./groqModel";
 
 export async function generateImagePrompt(
   visualConcept: string,
@@ -42,6 +42,7 @@ ${hasColors ? "- A brand color palette is provided — use those exact hex color
     // images have been coming out wrong. "low" is the lowest value this
     // model actually accepts (unlike the vision model, "none" 400s here).
     const result = await callGroq(systemPrompt, userMessage, {
+      model: FAST_MODEL,
       temperature: 0.5,
       maxTokens: 300,
       jsonMode: false,

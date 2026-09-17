@@ -8,6 +8,7 @@ import { askAssistant, type ChatTurn, type ContentDraft } from "@/lib/ai/askAssi
 import { PLATFORM_LABEL, type LaunchPlatform } from "@/lib/ai/platforms";
 import MediaLibraryModal, { type MediaLibraryItem } from "@/components/dashboard/MediaLibraryModal";
 import { HiOutlineSparkles } from "react-icons/hi2";
+import { useLanguage } from "@/context/LanguageContext";
 
 export type Message = {
   id: string;
@@ -127,6 +128,23 @@ function createNewSession(): ChatSession {
 export default function AssistantPage() {
   const brand = useBrand();
   const supabase = useMemo(() => createClient(), []);
+  const { locale, t } = useLanguage();
+  const ast = t.dashboard.assistant;
+
+  function dayOffsetLabel(offset: number): string {
+    if (offset === 0) return ast.today;
+    if (offset === 1) return locale === "en" ? "Tomorrow" : "Yarın";
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return d.toLocaleDateString(locale === "en" ? "en-US" : "tr-TR", { weekday: "long", day: "2-digit", month: "long" });
+  }
+
+  const starterPrompts = [
+    { icon: "🎬", ...ast.starters.reels },
+    { icon: "🪝", ...ast.starters.hooks },
+    { icon: "🎯", ...ast.starters.story },
+    { icon: "📅", ...ast.starters.tomorrow },
+  ];
 
   // Conversation sessions state
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -628,10 +646,10 @@ export default function AssistantPage() {
           <HiOutlineSparkles className="h-6 w-6 stroke-[1.75] text-slate-700 shrink-0" />
           <div>
             <h1 className="font-display text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
-              AI Pazarlama Asistanı & Copilot
+              {ast.title}
             </h1>
             <p className="text-xs text-slate-500 hidden sm:block">
-              {brand.name} için kişiselleştirilmiş büyüme stratejisi ve onaylanabilir gönderi taslakları
+              {ast.subtitle}
             </p>
           </div>
         </div>
@@ -639,7 +657,7 @@ export default function AssistantPage() {
         <div className="flex items-center gap-2.5">
           <div className="hidden sm:flex items-center gap-2 rounded-full border border-slate-200/80 bg-white px-3 py-1 text-xs text-slate-600 shadow-2xs">
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="font-medium text-slate-700">Canlı Danışman</span>
+            <span className="font-medium text-slate-700">{locale === "en" ? "Live Advisor" : "Canlı Danışman"}</span>
           </div>
 
           <button
@@ -648,7 +666,7 @@ export default function AssistantPage() {
             className="flex items-center gap-1.5 rounded-xl bg-[#FA5252] px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-[#E03131] transition cursor-pointer"
           >
             <span>+</span>
-            <span>Yeni Sohbet</span>
+            <span>{ast.newChat}</span>
           </button>
         </div>
       </div>
@@ -686,7 +704,7 @@ export default function AssistantPage() {
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
                 </svg>
-                <span>Yeni Sohbet Başlat</span>
+                <span>{locale === "en" ? "Start New Chat" : "Yeni Sohbet Başlat"}</span>
               </span>
               <span className="text-[10px] text-slate-400">✨</span>
             </button>
@@ -704,17 +722,17 @@ export default function AssistantPage() {
           {/* Conversations History List */}
           <div className="flex-1 overflow-y-auto p-2.5 space-y-1">
             <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Sohbet Geçmişi
+              {ast.sessions}
             </div>
 
             {sessions.length === 0 ? (
               <div className="p-4 text-center text-xs text-slate-400">
-                Henüz kayıtlı sohbet bulunmuyor.
+                {ast.emptySessions}
               </div>
             ) : (
               sessions.map((s) => {
                 const isActive = s.id === activeSessionId;
-                const previewTitle = s.title || "Yeni Sohbet";
+                const previewTitle = s.title || ast.newChat;
                 const dateLabel = formatSessionDate(s.updatedAt);
 
                 return (
@@ -744,7 +762,7 @@ export default function AssistantPage() {
                       <button
                         type="button"
                         onClick={(e) => handleDeleteSession(e, s.id)}
-                        title="Sohbeti Sil"
+                        title={locale === "en" ? "Delete Chat" : "Sohbeti Sil"}
                         className="hidden group-hover:flex h-6 w-6 items-center justify-center rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
                       >
                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -772,10 +790,12 @@ export default function AssistantPage() {
                 </div>
                 <div className="truncate text-xs">
                   <p className="font-semibold text-slate-900 truncate">{brand.name}</p>
-                  <p className="text-[10px] text-slate-400">Pazarlama Hafızası Aktif</p>
+                  <p className="text-[10px] text-slate-400">
+                    {locale === "en" ? "Marketing Memory Active" : "Pazarlama Hafızası Aktif"}
+                  </p>
                 </div>
               </div>
-              <span className="h-2 w-2 rounded-full bg-emerald-500" title="AI Modeli Çevrimiçi" />
+              <span className="h-2 w-2 rounded-full bg-emerald-500" title={locale === "en" ? "AI Model Online" : "AI Modeli Çevrimiçi"} />
             </div>
           </div>
         </div>
@@ -799,17 +819,19 @@ export default function AssistantPage() {
                 type="button"
                 onClick={() => setMobileSidebarOpen(true)}
                 className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 lg:hidden"
-                title="Sohbet Geçmişi"
+                title={ast.sessions}
               >
                 ☰
               </button>
 
               <div>
                 <h2 className="font-display text-sm font-bold text-slate-900 truncate max-w-[200px] sm:max-w-md">
-                  {activeSession?.title || "Yeni Sohbet"}
+                  {activeSession?.title || ast.newChat}
                 </h2>
                 <p className="text-[10px] text-slate-400">
-                  {activeMessages.length} mesaj • Marka DNA ve Tonunuzla senkronize
+                  {locale === "en"
+                    ? `${activeMessages.length} messages • Synchronized with your Brand DNA`
+                    : `${activeMessages.length} mesaj • Marka DNA ve Tonunuzla senkronize`}
                 </p>
               </div>
             </div>
@@ -820,7 +842,7 @@ export default function AssistantPage() {
                 onClick={handleStartNewChat}
                 className="text-xs text-slate-500 hover:text-rose-600 font-medium px-2 py-1 rounded-lg hover:bg-slate-50 transition cursor-pointer"
               >
-                + Temiz Sohbet
+                + {locale === "en" ? "Clear Chat" : "Temiz Sohbet"}
               </button>
             </div>
           </div>
@@ -843,15 +865,17 @@ export default function AssistantPage() {
                 </div>
 
                 <h3 className="font-display text-xl font-bold text-slate-900 sm:text-2xl">
-                  {brand.name} için bugün ne planlamak istersin?
+                  {locale === "en"
+                    ? `What would you like to plan for ${brand.name} today?`
+                    : `${brand.name} için bugün ne planlamak istersin?`}
                 </h3>
                 <p className="mt-1.5 text-xs text-slate-500 max-w-md leading-relaxed">
-                  İster genel strateji ve kancalar danış, ister doğrudan görsel ekleyip onaylanabilir gönderi taslağı ürettir.
+                  {ast.starterSubtitle}
                 </p>
 
                 {/* 4 Interactive Starter Chips */}
                 <div className="mt-8 grid w-full grid-cols-1 gap-3 sm:grid-cols-2 text-left">
-                  {STARTER_PROMPTS.map((starter, idx) => (
+                  {starterPrompts.map((starter, idx) => (
                     <button
                       key={idx}
                       type="button"
@@ -868,7 +892,7 @@ export default function AssistantPage() {
                         </p>
                       </div>
                       <div className="mt-3 flex items-center justify-end text-[10px] font-semibold text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                        Başlat →
+                        {locale === "en" ? "Start →" : "Başlat →"}
                       </div>
                     </button>
                   ))}
@@ -902,7 +926,7 @@ export default function AssistantPage() {
                       <div className="relative h-44 w-60 sm:h-52 sm:w-72 bg-slate-100">
                         <Image
                           src={m.imageUrl}
-                          alt={m.imageName || "Eklenen görsel"}
+                          alt={m.imageName || (locale === "en" ? "Attached image" : "Eklenen görsel")}
                           fill
                           className="object-cover"
                         />
@@ -937,7 +961,13 @@ export default function AssistantPage() {
                           onClick={() => handleCopy(m.id, m.content)}
                           className="text-[10px] text-slate-400 hover:text-rose-600 font-medium transition cursor-pointer"
                         >
-                          {copiedId === m.id ? "✓ Kopyalandı" : "Metni Kopyala"}
+                          {copiedId === m.id
+                            ? locale === "en"
+                              ? "✓ Copied"
+                              : "✓ Kopyalandı"
+                            : locale === "en"
+                              ? "Copy Text"
+                              : "Metni Kopyala"}
                         </button>
                       )}
                     </div>
@@ -950,15 +980,17 @@ export default function AssistantPage() {
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={m.generatedImageDataUrl}
-                          alt={m.generatedImagePrompt || "Üretilen görsel"}
+                          alt={m.generatedImagePrompt || (locale === "en" ? "Generated image" : "Üretilen görsel")}
                           className="h-full w-full object-cover"
                         />
                       </div>
                       <div className="flex items-center justify-between gap-2 p-3">
-                        <span className="text-[10px] text-slate-400">🎨 AI ile üretildi</span>
+                        <span className="text-[10px] text-slate-400">
+                          {locale === "en" ? "🎨 Generated by AI" : "🎨 AI ile üretildi"}
+                        </span>
                         {m.savedMediaId ? (
                           <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
-                            ✓ Kütüphaneye eklendi
+                            ✓ {ast.actions.savedToLibrary}
                           </span>
                         ) : (
                           <button
@@ -967,7 +999,11 @@ export default function AssistantPage() {
                             disabled={savingImageId === m.id}
                             className="rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-slate-800 transition disabled:opacity-50 cursor-pointer"
                           >
-                            {savingImageId === m.id ? "Ekleniyor..." : "Medya Kütüphanesine Ekle"}
+                            {savingImageId === m.id
+                              ? locale === "en"
+                                ? "Adding..."
+                                : "Ekleniyor..."
+                              : ast.actions.saveToLibrary}
                           </button>
                         )}
                       </div>
@@ -1009,10 +1045,15 @@ export default function AssistantPage() {
                       <div className="mt-3.5 pt-2 border-t border-rose-100">
                         {m.draftStatus === "accepted" ? (
                           <p className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 rounded-xl px-3 py-2 border border-emerald-200">
-                            <span>✓</span> Taslak takvime kaydedildi! Takvim sayfasından inceleyebilirsiniz.
+                            <span>✓</span>{" "}
+                            {locale === "en"
+                              ? "Draft saved to calendar! You can review it on the Calendar page."
+                              : "Taslak takvime kaydedildi! Takvim sayfasından inceleyebilirsiniz."}
                           </p>
                         ) : m.draftStatus === "rejected" ? (
-                          <p className="text-xs font-medium text-slate-400 py-1">Bu taslak reddedildi.</p>
+                          <p className="text-xs font-medium text-slate-400 py-1">
+                            {locale === "en" ? "This draft was rejected." : "Bu taslak reddedildi."}
+                          </p>
                         ) : (
                           <div className="flex gap-2">
                             <button
@@ -1021,7 +1062,13 @@ export default function AssistantPage() {
                               disabled={processingDraftId === m.id}
                               className="flex-1 rounded-xl bg-[#FA5252] px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#E03131] transition disabled:opacity-50 cursor-pointer"
                             >
-                              {processingDraftId === m.id ? "Takvime Ekleniyor…" : "✓ Onayla ve Takvime Ekle"}
+                              {processingDraftId === m.id
+                                ? locale === "en"
+                                  ? "Adding to Calendar…"
+                                  : "Takvime Ekleniyor…"
+                                : locale === "en"
+                                  ? `✓ Approve & ${ast.actions.addToCalendar}`
+                                  : `✓ Onayla ve ${ast.actions.addToCalendar}`}
                             </button>
                             <button
                               type="button"
@@ -1029,7 +1076,7 @@ export default function AssistantPage() {
                               disabled={processingDraftId === m.id}
                               className="rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-500 hover:border-red-200 hover:text-red-600 transition disabled:opacity-50 cursor-pointer"
                             >
-                              ✕ Reddet
+                              ✕ {ast.actions.reject}
                             </button>
                           </div>
                         )}
@@ -1058,7 +1105,9 @@ export default function AssistantPage() {
                     <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-bounce [animation-delay:0.2s]" />
                     <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-bounce [animation-delay:0.4s]" />
                   </span>
-                  <span>Tentamark yanıtı hazırlıyor...</span>
+                  <span>
+                    {locale === "en" ? "Tentamark is preparing response..." : "Tentamark yanıtı hazırlıyor..."}
+                  </span>
                 </div>
               </div>
             )}
@@ -1084,7 +1133,9 @@ export default function AssistantPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-slate-800 truncate">{selectedImage.name}</p>
-                    <p className="text-[10px] text-rose-600 font-medium">Görsel eklendi • AI analiz edecek</p>
+                    <p className="text-[10px] text-rose-600 font-medium">
+                      {locale === "en" ? "Image attached • AI will analyze" : "Görsel eklendi • AI analiz edecek"}
+                    </p>
                   </div>
                   <button
                     type="button"
@@ -1110,7 +1161,7 @@ export default function AssistantPage() {
                     }
                   }}
                   rows={1}
-                  placeholder="Tentamark danışmanına bir soru sorun veya görsel ekleyin... (Enter: Gönder, Shift+Enter: Yeni satır)"
+                  placeholder={ast.inputPlaceholder}
                   className="w-full resize-none border-0 bg-transparent px-3 pt-1 pb-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none leading-relaxed"
                 />
 
@@ -1122,7 +1173,7 @@ export default function AssistantPage() {
                     <button
                       type="button"
                       onClick={() => setShowAttachMenu((v) => !v)}
-                      title="Görsel Ekle"
+                      title={locale === "en" ? "Attach Image" : "Görsel Ekle"}
                       disabled={uploadingImage}
                       className="flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:border-rose-200 hover:text-rose-600 transition shadow-2xs cursor-pointer"
                     >
@@ -1131,7 +1182,7 @@ export default function AssistantPage() {
                       ) : (
                         <span>📷</span>
                       )}
-                      <span>Görsel Ekle</span>
+                      <span>{locale === "en" ? "Attach Image" : "Görsel Ekle"}</span>
                     </button>
 
                     {/* Attach options popover */}
@@ -1143,7 +1194,7 @@ export default function AssistantPage() {
                           className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition cursor-pointer text-left"
                         >
                           <span>📁</span>
-                          <span>Bilgisayardan Yükle</span>
+                          <span>{locale === "en" ? "Upload from Computer" : "Bilgisayardan Yükle"}</span>
                         </button>
                         <button
                           type="button"
@@ -1154,7 +1205,7 @@ export default function AssistantPage() {
                           className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition cursor-pointer text-left"
                         >
                           <span>🖼️</span>
-                          <span>Medya Kütüphanesinden Seç</span>
+                          <span>{locale === "en" ? "Choose from Media Library" : "Medya Kütüphanesinden Seç"}</span>
                         </button>
                       </div>
                     )}
@@ -1167,14 +1218,16 @@ export default function AssistantPage() {
                     disabled={(!input.trim() && !selectedImage) || loading}
                     className="flex items-center gap-1.5 rounded-xl bg-[#FA5252] px-4 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-rose-600 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                   >
-                    <span>Gönder</span>
+                    <span>{ast.sendBtn}</span>
                     <span>🚀</span>
                   </button>
                 </div>
               </div>
 
               <p className="text-center text-[10px] text-slate-400">
-                Tentamark AI, marka profilinizdeki kimlik, ses tonu ve sektör verilerinizi referans alarak yanıt üretir.
+                {locale === "en"
+                  ? "Tentamark AI generates responses referencing your brand identity, tone of voice, and industry data."
+                  : "Tentamark AI, marka profilinizdeki kimlik, ses tonu ve sektör verilerinizi referans alarak yanıt üretir."}
               </p>
             </div>
           </div>

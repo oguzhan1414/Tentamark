@@ -37,10 +37,10 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/dashboard/calendar");
+      router.push("/dashboard");
     } catch (err) {
       console.error("Login error:", err);
-      router.push("/dashboard/calendar");
+      router.push("/dashboard");
     } finally {
       setLoading(false);
     }
@@ -61,7 +61,7 @@ export default function LoginPage() {
         setLoading(false);
       }
     } catch {
-      router.push("/dashboard/calendar");
+      router.push("/dashboard");
     }
   };
 

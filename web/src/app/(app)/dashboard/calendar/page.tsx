@@ -12,6 +12,7 @@ import {
 } from "@dnd-kit/core";
 import { useBrand } from "@/components/dashboard/BrandProvider";
 import { useComposeModal } from "@/components/dashboard/ComposeModalProvider";
+import { useLanguage } from "@/context/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import type {
   CalendarPost,
@@ -72,6 +73,7 @@ const DEFAULT_FILTER: CalendarFilterState = {
 
 export default function CalendarPage() {
   const brand = useBrand();
+  const { locale } = useLanguage();
   const supabase = useMemo(() => createClient(), []);
   const composeModal = useComposeModal();
 
@@ -117,9 +119,9 @@ export default function CalendarPage() {
           contentPlatformId: p.id,
           scheduledAtIso: schedDate.toISOString(),
           title: r.title,
-          accountName: brand.name || "Marka",
-          handle: (brand.name || "marka").toLowerCase().replace(/\s+/g, ""),
-          timeLabel: schedDate.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }),
+          accountName: brand.name || (locale === "en" ? "Brand" : "Marka"),
+          handle: (brand.name || "brand").toLowerCase().replace(/\s+/g, ""),
+          timeLabel: schedDate.toLocaleTimeString(locale === "en" ? "en-US" : "tr-TR", { hour: "2-digit", minute: "2-digit" }),
           date: dateKey(schedDate),
           imageUrl: r.imageUrl || "/images/no-image-placeholder.png",
           imageIsVideo: r.imageIsVideo ?? false,
@@ -136,7 +138,7 @@ export default function CalendarPage() {
       }
     }
     return list;
-  }, [contentRows, brand.name]);
+  }, [contentRows, brand.name, locale]);
 
   const posts = useMemo(
     () => (showDemo ? [...realPosts, ...demoPosts] : realPosts),
@@ -324,16 +326,17 @@ export default function CalendarPage() {
   // Date label for header — computed for real from currentDate/weekStart,
   // not a hardcoded "Sep 2026 W37".
   const dateLabel = useMemo(() => {
+    const loc = locale === "en" ? "en-US" : "tr-TR";
     if (viewMode === "week") {
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekEnd.getDate() + 6);
       const sameMonth = weekStart.getMonth() === weekEnd.getMonth();
-      const startStr = weekStart.toLocaleDateString("tr-TR", { day: "numeric", month: sameMonth ? undefined : "short" });
-      const endStr = weekEnd.toLocaleDateString("tr-TR", { day: "numeric", month: "short", year: "numeric" });
+      const startStr = weekStart.toLocaleDateString(loc, { day: "numeric", month: sameMonth ? undefined : "short" });
+      const endStr = weekEnd.toLocaleDateString(loc, { day: "numeric", month: "short", year: "numeric" });
       return `${startStr} – ${endStr}`;
     }
-    return currentDate.toLocaleDateString("tr-TR", { month: "long", year: "numeric" });
-  }, [viewMode, currentDate, weekStart]);
+    return currentDate.toLocaleDateString(loc, { month: "long", year: "numeric" });
+  }, [viewMode, currentDate, weekStart, locale]);
 
   // Navigation handlers — week mode now actually moves ±7 days instead of
   // being a no-op.
@@ -621,7 +624,7 @@ export default function CalendarPage() {
             so it's a one-line JSX re-add away from coming back later. */}
 
         {/* Main Calendar Content Area */}
-        <div className="relative flex flex-1 overflow-hidden">
+        <div className="relative flex min-h-0 flex-1 overflow-hidden">
           {viewMode === "month" ? (
             <CalendarMonthView
               currentDate={currentDate}

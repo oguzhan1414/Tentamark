@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { suggestPostImprovement, type PostSuggestion } from "@/lib/ai/suggestPostImprovement";
 import { STATUS_LABEL } from "@/lib/contentStatus";
 import ConfirmDiscardDialog from "@/components/dashboard/ConfirmDiscardDialog";
+import { useLanguage } from "@/context/LanguageContext";
 import type { ApprovalItem, TeamMemberOption } from "./types";
 
 type Props = {
@@ -49,6 +50,9 @@ export default function ApprovalDetailModal({
   onReject,
   onDelete,
 }: Props) {
+  const { t } = useLanguage();
+  const p = t.dashboard.posts;
+  const isTr = t.dashboard.userMenu.language === "Dil Seçimi";
   const supabase = useMemo(() => createClient(), []);
   const [deviceView, setDeviceView] = useState<"desktop" | "mobile">("desktop");
   const [activeTab, setActiveTab] = useState<"comments" | "suggestions">("comments");
@@ -159,29 +163,26 @@ export default function ApprovalDetailModal({
 
           <div className="h-4 w-px bg-slate-200 mx-0.5 hidden sm:block" />
 
-          {/* Campaign — informational only (not a button, since clicking it
-              doesn't do anything; campaign assignment happens in Compose). */}
+          {/* Campaign */}
           <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50/80 px-3 py-1 text-xs font-semibold text-slate-700">
             <svg className="h-3 w-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
             </svg>
-            <span>{item.campaignName || "Kampanya yok"}</span>
+            <span>{item.campaignName || (isTr ? "Kampanya yok" : "No campaign")}</span>
           </span>
 
-          {/* Tags — opens the feedback panel, where they're actually
-              editable (onEditTags below), instead of being its own dead
-              pill duplicating that. */}
+          {/* Tags */}
           {onEditTags && (
             <button
               type="button"
               onClick={() => setShowRightPanel(true)}
-              title="Etiketleri düzenle"
+              title={isTr ? "Etiketleri düzenle" : "Edit tags"}
               className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50/80 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition hidden sm:inline-flex"
             >
               <svg className="h-3 w-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
               </svg>
-              <span>Etiketler</span>
+              <span>{isTr ? "Etiketler" : "Tags"}</span>
               {item.tags.length > 0 && (
                 <span className="rounded-full bg-slate-200 px-1.5 py-0.2 text-[10px] font-bold text-slate-600">
                   {item.tags.length}
@@ -190,7 +191,7 @@ export default function ApprovalDetailModal({
             </button>
           )}
 
-          {/* Onaya ata — real, wired up. */}
+          {/* Onaya ata */}
           <div className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1">
             <svg className="h-3 w-3 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -198,10 +199,10 @@ export default function ApprovalDetailModal({
             <select
               value={item.assignedTo?.id ?? ""}
               onChange={(e) => onAssign(item.id, e.target.value || null)}
-              title="Onaya ata"
+              title={isTr ? "Onaya ata" : "Assign review"}
               className="bg-transparent text-xs font-bold text-rose-700 cursor-pointer focus:outline-none"
             >
-              <option value="">Atanmadı</option>
+              <option value="">{p.actions.unassigned}</option>
               {teamMembers.map((m) => (
                 <option key={m.userId} value={m.userId}>
                   {m.name}
@@ -218,25 +219,24 @@ export default function ApprovalDetailModal({
             O
           </div>
 
-          {/* Paylaşmak Button */}
+          {/* Share Button */}
           <button
             type="button"
             onClick={handleShare}
             disabled={sharing || item.isDemo}
-            title="Hesabı olmayan biriyle paylaşabileceğin, onay verebileceği bir bağlantı oluşturur"
+            title={isTr ? "Hesabı olmayan biriyle paylaşabileceğin, onay verebileceği bir bağlantı oluşturur" : "Create a link for external reviewers"}
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition disabled:opacity-50"
           >
-            <span>{shareCopied ? "Bağlantı Kopyalandı!" : sharing ? "Oluşturuluyor..." : "Onay Linki Paylaş"}</span>
+            <span>{shareCopied ? p.actions.linkCopied : sharing ? p.actions.generatingLink : p.actions.shareLink}</span>
           </button>
 
           <div className="h-4 w-px bg-slate-200 mx-0.5" />
 
-          {/* Feedback panel toggle — the one icon-only button left, since
-              its own drawer's header repeats the label right after opening. */}
+          {/* Feedback panel toggle */}
           <button
             type="button"
             onClick={() => setShowRightPanel((prev) => !prev)}
-            title="Geri bildirim panelini aç/kapat"
+            title={isTr ? "Geri bildirim panelini aç/kapat" : "Toggle feedback panel"}
             className={`flex h-8 w-8 items-center justify-center rounded-lg transition ${
               showRightPanel ? "bg-slate-100 text-slate-800" : "text-slate-500 hover:bg-slate-100"
             }`}
@@ -250,13 +250,13 @@ export default function ApprovalDetailModal({
             <button
               type="button"
               onClick={handleDelete}
-              title="İçeriği kalıcı olarak sil"
+              title={p.actions.delete}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-600 transition"
             >
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3m-9 0h10" />
               </svg>
-              <span>Sil</span>
+              <span>{p.actions.delete}</span>
             </button>
           )}
 
@@ -343,7 +343,7 @@ export default function ApprovalDetailModal({
                   <span
                     className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-tight ${STATUS_LABEL[realStatus].className}`}
                   >
-                    {STATUS_LABEL[realStatus].label}
+                    {p.statusLabels[realStatus] || STATUS_LABEL[realStatus].label}
                   </span>
                   {realStatus === "published" && heroPermalinkUrl && (
                     <a
@@ -352,13 +352,13 @@ export default function ApprovalDetailModal({
                       rel="noopener noreferrer"
                       className="text-[11px] font-semibold text-blue-600 hover:underline"
                     >
-                      Gönderiyi Görüntüle ↗
+                      {isTr ? "Gönderiyi Görüntüle ↗" : "View Post ↗"}
                     </a>
                   )}
                 </div>
               ) : isApproved ? (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-slate-700">Onaylandı</span>
+                  <span className="text-xs font-semibold text-slate-700">{p.actions.approved}</span>
                   <button
                     type="button"
                     onClick={() => onToggleApprove(item.id)}
@@ -367,12 +367,12 @@ export default function ApprovalDetailModal({
                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                     </svg>
-                    <span>Onayı geri al</span>
+                    <span>{p.actions.sendToDraft}</span>
                   </button>
                 </div>
               ) : (
                 <div className="flex flex-col items-end gap-2">
-                  <span className="text-xs font-medium text-slate-500">Henüz onaylanmadı</span>
+                  <span className="text-xs font-medium text-slate-500">{isTr ? "Henüz onaylanmadı" : "Not approved yet"}</span>
                   <div className="flex items-center gap-1.5">
                     {onReject && (
                       <button
@@ -383,7 +383,7 @@ export default function ApprovalDetailModal({
                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                         </svg>
-                        <span>Reddet</span>
+                        <span>{p.actions.reject}</span>
                       </button>
                     )}
                     <button
@@ -394,7 +394,7 @@ export default function ApprovalDetailModal({
                       <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                       </svg>
-                      <span>Onayla</span>
+                      <span>{p.actions.approve}</span>
                     </button>
                   </div>
                 </div>
@@ -565,7 +565,7 @@ export default function ApprovalDetailModal({
           <aside className="w-full sm:w-[380px] shrink-0 border-l border-slate-200 bg-white flex flex-col h-full shadow-lg z-10">
             {/* Drawer Header */}
             <div className="flex h-14 items-center justify-between border-b border-slate-100 px-5">
-              <h3 className="font-semibold text-sm text-slate-800">Geri bildirim</h3>
+              <h3 className="font-semibold text-sm text-slate-800">{isTr ? "Geri bildirim" : "Feedback"}</h3>
               <button
                 type="button"
                 onClick={() => setShowRightPanel(false)}
@@ -604,7 +604,7 @@ export default function ApprovalDetailModal({
                     if (t && !item.tags.includes(t)) onEditTags(item.id, [...item.tags, t]);
                     setTagInput("");
                   }}
-                  placeholder="+ etiket"
+                  placeholder={isTr ? "+ etiket" : "+ tag"}
                   className="w-20 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] text-slate-700 placeholder-slate-400 focus:border-slate-400 focus:outline-none"
                 />
               </div>
@@ -621,7 +621,7 @@ export default function ApprovalDetailModal({
                     : "border-transparent text-slate-500 hover:text-slate-700"
                 }`}
               >
-                <span>Yorumlar</span>
+                <span>{p.actions.comments}</span>
                 {item.comments.length > 0 && (
                   <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white">
                     {item.comments.length}
@@ -637,7 +637,7 @@ export default function ApprovalDetailModal({
                     : "border-transparent text-slate-500 hover:text-slate-700"
                 }`}
               >
-                Öneriler
+                {p.actions.suggestions}
               </button>
             </div>
 
@@ -654,7 +654,7 @@ export default function ApprovalDetailModal({
                       type="text"
                       value={commentInput}
                       onChange={(e) => setCommentInput(e.target.value)}
-                      placeholder="Bir şey söylemek..."
+                      placeholder={p.actions.quickCommentPlaceholder}
                       className="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
                     />
                     <button
@@ -671,8 +671,8 @@ export default function ApprovalDetailModal({
                   {/* Comments list or Empty State */}
                   {item.comments.length === 0 ? (
                     <div className="py-16 text-center text-xs text-slate-400 space-y-1">
-                      <p className="font-semibold text-slate-600">Henüz yorum yok.</p>
-                      <p>İlk yorumu bırakarak sohbete başlayın.</p>
+                      <p className="font-semibold text-slate-600">{isTr ? "Henüz yorum yok." : "No comments yet."}</p>
+                      <p>{isTr ? "İlk yorumu bırakarak sohbete başlayın." : "Start the conversation by leaving a comment."}</p>
                     </div>
                   ) : (
                     <div className="space-y-3 pt-2">

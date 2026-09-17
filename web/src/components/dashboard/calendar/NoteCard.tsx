@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useLanguage } from "@/context/LanguageContext";
 
 const COLORS: Record<string, string> = {
   amber: "#FDE68A",
@@ -33,6 +34,8 @@ export default function NoteCard({
   onColorChange: (id: string, color: string) => void;
   onDelete: (id: string) => void;
 }) {
+  const { t } = useLanguage();
+  const c = t.dashboard.calendar;
   const [text, setText] = useState(initialText);
   const [isEditing, setIsEditing] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -56,7 +59,7 @@ export default function NoteCard({
             if (text !== initialText) onSaveText(id, text);
           }}
           rows={3}
-          placeholder="Not ekle..."
+          placeholder={c.addNotePlaceholder}
           className="max-h-32 w-full resize-none overflow-y-auto bg-transparent text-[11px] leading-snug text-slate-800 placeholder-slate-500/70 outline-none! focus:outline-none!"
         />
       ) : (
@@ -64,7 +67,7 @@ export default function NoteCard({
           onClick={() => setIsEditing(true)}
           className="line-clamp-3 min-h-[2.6em] cursor-text whitespace-pre-wrap text-[11px] leading-snug text-slate-800"
         >
-          {text || <span className="text-slate-500/70">Not ekle...</span>}
+          {text || <span className="text-slate-500/70">{c.addNotePlaceholder}</span>}
         </p>
       )}
       <div className="mt-1 flex items-center justify-between">
@@ -85,7 +88,7 @@ export default function NoteCard({
         <button
           type="button"
           onClick={() => onDelete(id)}
-          title="Notu sil"
+          title={c.deleteNote}
           className="cursor-pointer text-slate-500 opacity-0 transition hover:text-red-600 group-hover:opacity-100"
         >
           <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">

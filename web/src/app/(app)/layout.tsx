@@ -6,6 +6,7 @@ import { ComposeModalProvider } from "@/components/dashboard/ComposeModalProvide
 import DashboardMobileNav from "@/components/dashboard/DashboardMobileNav";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import DashboardTopbar from "@/components/dashboard/DashboardTopbar";
+import { LanguageProvider } from "@/context/LanguageContext";
 import type { PlatformName } from "@/components/PlatformIcon";
 
 /*
@@ -79,27 +80,29 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .eq("status", "open");
 
   return (
-    <BrandProvider brand={brand}>
-      <ComposeModalProvider>
-        <div className="flex min-h-dvh bg-[#F8FAFC] text-slate-900 antialiased selection:bg-[#FA5252] selection:text-white">
-          <DashboardSidebar
-            connectedPlatforms={connectedPlatforms}
-            pendingApprovals={pendingApprovals ?? 0}
-            unreadInboxCount={unreadInboxCount ?? 0}
-          />
-          <div className="flex min-w-0 flex-1 flex-col">
-            <DashboardTopbar
-              userName={userName}
-              userEmail={userEmail}
-              brandName={brand.name}
-              systemHealthy={systemHealthy}
+    <LanguageProvider>
+      <BrandProvider brand={brand}>
+        <ComposeModalProvider>
+          <div className="flex min-h-dvh bg-[#F8FAFC] text-slate-900 antialiased selection:bg-[#FA5252] selection:text-white">
+            <DashboardSidebar
               connectedPlatforms={connectedPlatforms}
+              pendingApprovals={pendingApprovals ?? 0}
+              unreadInboxCount={unreadInboxCount ?? 0}
             />
-            <DashboardMobileNav />
-            <main className="flex-1 overflow-y-auto">{children}</main>
+            <div className="flex min-w-0 flex-1 flex-col">
+              <DashboardTopbar
+                userName={userName}
+                userEmail={userEmail}
+                brandName={brand.name}
+                systemHealthy={systemHealthy}
+                connectedPlatforms={connectedPlatforms}
+              />
+              <DashboardMobileNav />
+              <main className="flex-1 overflow-y-auto">{children}</main>
+            </div>
           </div>
-        </div>
-      </ComposeModalProvider>
-    </BrandProvider>
+        </ComposeModalProvider>
+      </BrandProvider>
+    </LanguageProvider>
   );
 }

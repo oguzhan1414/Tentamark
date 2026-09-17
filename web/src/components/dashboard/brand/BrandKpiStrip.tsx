@@ -7,19 +7,23 @@ import {
   HiOutlineUsers,
   HiOutlineSparkles,
 } from "react-icons/hi2";
+import { useLanguage } from "@/context/LanguageContext";
 
 type Props = {
   summary: BrandIntelligenceSummary;
 };
 
 export default function BrandKpiStrip({ summary }: Props) {
+  const { t } = useLanguage();
+  const kpi = t.dashboard.brand.kpi;
+
   return (
     <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-      {/* KPI 1: Profil Tamamlanma */}
+      {/* KPI 1: Profile Completeness */}
       <div className="rounded-xl border border-slate-200/80 bg-white px-3.5 py-3 shadow-2xs">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            Profil Tamamlanma
+            {kpi.profileCompleteness}
           </span>
           <HiOutlineChartPie className="h-4 w-4 stroke-[1.75] text-slate-400" />
         </div>
@@ -34,13 +38,18 @@ export default function BrandKpiStrip({ summary }: Props) {
             style={{ width: `${Math.min(100, summary.profileCompletenessPct)}%` }}
           />
         </div>
+        {summary.profileCompletenessMissing.length > 0 && (
+          <p className="mt-1.5 truncate text-[10px] font-medium text-slate-400" title={summary.profileCompletenessMissing.join(", ")}>
+            {kpi.missingPrefix} {summary.profileCompletenessMissing.join(", ")}
+          </p>
+        )}
       </div>
 
-      {/* KPI 2: Strateji Uyumu */}
+      {/* KPI 2: Strategy Adherence */}
       <div className="rounded-xl border border-slate-200/80 bg-white px-3.5 py-3 shadow-2xs">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            Strateji Uyumu
+            {kpi.strategyAdherence}
           </span>
           <HiOutlineBolt className="h-4 w-4 stroke-[1.75] text-slate-400" />
         </div>
@@ -59,11 +68,11 @@ export default function BrandKpiStrip({ summary }: Props) {
         </div>
       </div>
 
-      {/* KPI 3: Takip Edilen Rakip */}
+      {/* KPI 3: Competitors Tracked */}
       <div className="rounded-xl border border-slate-200/80 bg-white px-3.5 py-3 shadow-2xs">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            Takip Edilen Rakip
+            {kpi.competitorsTracked}
           </span>
           <HiOutlineUsers className="h-4 w-4 stroke-[1.75] text-slate-400" />
         </div>
@@ -71,15 +80,15 @@ export default function BrandKpiStrip({ summary }: Props) {
           <span className="font-display text-xl font-bold text-slate-900">
             {summary.competitorCount}
           </span>
-          <span className="text-[10px] font-semibold text-slate-400">profil</span>
+          <span className="text-[10px] font-semibold text-slate-400">{kpi.profileUnit}</span>
         </div>
       </div>
 
-      {/* KPI 4: Aktif Strateji */}
+      {/* KPI 4: Active Strategy */}
       <div className="rounded-xl border border-slate-200/80 bg-white px-3.5 py-3 shadow-2xs">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            Aktif Strateji
+            {kpi.activeStrategy}
           </span>
           <HiOutlineSparkles className="h-4 w-4 stroke-[1.75] text-slate-400" />
         </div>

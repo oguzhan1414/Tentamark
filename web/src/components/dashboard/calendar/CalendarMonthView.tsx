@@ -1,6 +1,7 @@
 "use client";
 
 import { useDroppable } from "@dnd-kit/core";
+import { useLanguage } from "@/context/LanguageContext";
 import CalendarPostCard from "./CalendarPostCard";
 import { groupCalendarPosts } from "./groupCalendarPosts";
 import type { CalendarPost, CalendarNote, CalendarCampaign } from "./types";
@@ -17,8 +18,6 @@ type Props = {
   onAddNote: (dateStr: string) => void;
   onOpenDay: (dateKey: string) => void;
 };
-
-const WEEKDAYS = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 
 // A day cell's height is a fixed share of the grid (see numRows below) — it
 // can never grow with content, so how many posts it shows inline has to be
@@ -57,6 +56,8 @@ function DayCell({
   onAddNote: (dateStr: string) => void;
   onOpenDay: (dateKey: string) => void;
 }) {
+  const { locale } = useLanguage();
+  const isTr = locale === "tr";
   const isToday = cell.dateKey === todayKey;
   const isPast = cell.dateKey < todayKey;
   const { setNodeRef, isOver } = useDroppable({ id: cell.dateKey, disabled: isPast });
@@ -82,10 +83,10 @@ function DayCell({
         <button
           type="button"
           onClick={() => onOpenDay(cell.dateKey)}
-          title="Günü aç"
-          className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold transition hover:ring-2 hover:ring-rose-300 ${
+          title={isTr ? "Günü aç" : "Open day"}
+          className={`flex h-6 w-6 items-center justify-center rounded-full font-mono text-xs font-bold transition hover:bg-slate-100 cursor-pointer ${
             isToday
-              ? "bg-[#FA5252] text-white font-bold"
+              ? "bg-[#FA5252] text-white hover:bg-rose-600"
               : cell.inCurrentMonth
                 ? isPast
                   ? "text-slate-400"
@@ -104,7 +105,7 @@ function DayCell({
               <button
                 type="button"
                 onClick={() => onSmartFillDate(cell.dateKey)}
-                title="Bu günü AI ile doldur"
+                title={isTr ? "Bu günü AI ile doldur" : "Fill this day with AI"}
                 className="flex h-5 w-5 items-center justify-center rounded-md border border-rose-200 bg-rose-50 text-rose-700 shadow-2xs hover:bg-[#FA5252] hover:text-white transition cursor-pointer"
               >
                 <span className="text-[10px] leading-none">✨</span>
@@ -113,7 +114,7 @@ function DayCell({
             <button
               type="button"
               onClick={() => onAddNote(cell.dateKey)}
-              title="Bu tarihe not ekle"
+              title={isTr ? "Bu tarihe not ekle" : "Add note on this date"}
               className="flex h-5 w-5 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-2xs hover:bg-amber-50 hover:text-amber-600 transition cursor-pointer"
             >
               <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -123,7 +124,7 @@ function DayCell({
             <button
               type="button"
               onClick={() => onAddPostAtDate(cell.dateKey)}
-              title="Bu tarihe gönderi planla"
+              title={isTr ? "Bu tarihe gönderi planla" : "Schedule post on this date"}
               className="flex h-5 w-5 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-2xs hover:bg-slate-50 hover:text-blue-600 transition cursor-pointer"
             >
               <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -168,10 +169,10 @@ function DayCell({
             className="mt-auto shrink-0 rounded-md bg-slate-100 px-1.5 py-1 text-left text-[10px] font-bold text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition"
           >
             {hiddenPostCount > 0 && dayNotes.length > 0
-              ? `+${hiddenPostCount} gönderi, ${dayNotes.length} not`
+              ? `+${hiddenPostCount} ${isTr ? "gönderi" : "posts"}, ${dayNotes.length} ${isTr ? "not" : "notes"}`
               : hiddenPostCount > 0
-                ? `+${hiddenPostCount} gönderi daha`
-                : `${dayNotes.length} not`}
+                ? `+${hiddenPostCount} ${isTr ? "gönderi daha" : "more posts"}`
+                : `${dayNotes.length} ${isTr ? "not" : "notes"}`}
           </button>
         )}
       </div>
@@ -191,6 +192,8 @@ export default function CalendarMonthView({
   onAddNote,
   onOpenDay,
 }: Props) {
+  const { t } = useLanguage();
+  const weekdays = t.dashboard.calendar.dayNames;
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
@@ -225,11 +228,11 @@ export default function CalendarMonthView({
   const numRows = cells.length / 7;
 
   return (
-    <div className="flex h-full flex-1 flex-col overflow-hidden bg-white">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white">
       {/* Weekday Header Row */}
       <div className="grid shrink-0 grid-cols-7 border-b border-slate-200 bg-slate-50/50 text-center text-xs font-semibold text-slate-500">
-        {WEEKDAYS.map((day) => (
-          <div key={day} className="py-2">
+        {weekdays.map((day, idx) => (
+          <div key={idx} className="py-2">
             {day}
           </div>
         ))}
@@ -240,7 +243,7 @@ export default function CalendarMonthView({
           min-h-0 child's need to shrink, which is what caused the old
           forced-scroll bug. */}
       <div
-        className="grid flex-1 grid-cols-7 border-l border-t border-slate-200"
+        className="grid min-h-0 flex-1 grid-cols-7 border-l border-t border-slate-200"
         style={{ gridTemplateRows: `repeat(${numRows}, minmax(0, 1fr))` }}
       >
         {cells.map((cell, idx) => {

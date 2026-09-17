@@ -1,6 +1,7 @@
 "use client";
 
 import { useDroppable } from "@dnd-kit/core";
+import { useLanguage } from "@/context/LanguageContext";
 import CalendarPostCard from "./CalendarPostCard";
 import NoteCard from "./NoteCard";
 import { groupCalendarPosts } from "./groupCalendarPosts";
@@ -21,8 +22,6 @@ type Props = {
   onNoteColorChange: (id: string, color: string) => void;
   onDeleteNote: (id: string) => void;
 };
-
-const DAY_NAMES = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 
 function dateKey(d: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -58,6 +57,8 @@ function DayColumn({
   onNoteColorChange: (id: string, color: string) => void;
   onDeleteNote: (id: string) => void;
 }) {
+  const { t } = useLanguage();
+  const c = t.dashboard.calendar;
   const isPast = day.key < todayKey;
   const { setNodeRef, isOver } = useDroppable({ id: day.key, disabled: isPast });
 
@@ -113,7 +114,7 @@ function DayColumn({
             <button
               type="button"
               onClick={() => onSmartFillDate(day.key)}
-              title="Bu günü AI ile doldur"
+              title={c.smartFillTooltip}
               className="flex items-center justify-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-2 py-1.5 text-[11px] font-bold text-rose-700 hover:bg-[#FA5252] hover:text-white transition cursor-pointer"
             >
               <span>✨</span>
@@ -124,14 +125,14 @@ function DayColumn({
             onClick={() => onAddNote(day.key)}
             className="flex flex-1 items-center justify-center gap-1 rounded-xl border border-dashed border-slate-300 py-1.5 text-[11px] font-semibold text-slate-500 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50/50 transition cursor-pointer"
           >
-            <span>+ Not</span>
+            <span>+ {c.addNote}</span>
           </button>
           <button
             type="button"
             onClick={() => onAddPostAtDate(day.key)}
             className="flex flex-1 items-center justify-center gap-1 rounded-xl border border-dashed border-slate-300 py-1.5 text-[11px] font-semibold text-slate-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/50 transition cursor-pointer"
           >
-            <span>+ Gönderi</span>
+            <span>+ {c.addPost}</span>
           </button>
         </div>
       )}
@@ -154,10 +155,12 @@ export default function CalendarWeekView({
   onNoteColorChange,
   onDeleteNote,
 }: Props) {
+  const { t } = useLanguage();
+  const dayNames = t.dashboard.calendar.dayNames;
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart);
     d.setDate(d.getDate() + i);
-    return { name: DAY_NAMES[i], dateNum: d.getDate(), key: dateKey(d) };
+    return { name: dayNames[i] ?? "", dateNum: d.getDate(), key: dateKey(d) };
   });
 
   return (

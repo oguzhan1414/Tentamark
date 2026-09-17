@@ -48,6 +48,8 @@ export type BrandContext = {
   competitors: string[];
   rawNotes: string | null;
   strategy?: Record<string, unknown> | null;
+  founderName: string | null;
+  founderVoice: string | null;
   formattedText: string;
 };
 
@@ -62,7 +64,7 @@ export async function getBrandContext(
     supabase
       .from("brand_dna")
       .select(
-        "industry, tone_of_voice, brand_traits, forbidden_words, color_palette, target_audience, competitors, raw_notes, trait_scores, tone_position"
+        "industry, tone_of_voice, brand_traits, forbidden_words, color_palette, target_audience, competitors, raw_notes, trait_scores, tone_position, founder_name, founder_voice"
       )
       .eq("brand_id", brandId)
       .maybeSingle(),
@@ -143,6 +145,13 @@ export async function getBrandContext(
     competitors,
     rawNotes,
     strategy,
+    // Not folded into formattedText/lines on purpose — the founder's voice
+    // only matters when a caller explicitly asks to write as the founder
+    // (see generateDrafts' voiceMode). Every other consumer of this context
+    // (image prompts, hook analysis, the assistant chat...) should keep
+    // reading the brand's own voice, not silently pick up a person's.
+    founderName: (dnaRow?.founder_name as string | null) ?? null,
+    founderVoice: (dnaRow?.founder_voice as string | null) ?? null,
     formattedText: lines.join("\n"),
   };
 }

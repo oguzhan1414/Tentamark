@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useBrand } from "@/components/dashboard/BrandProvider";
 import { useComposeModal } from "@/components/dashboard/ComposeModalProvider";
+import { useLanguage } from "@/context/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import CampaignFormModal, { type CampaignFormValues, type CampaignStatus } from "@/components/dashboard/CampaignFormModal";
 import CampaignPlannerModal from "@/components/dashboard/CampaignPlannerModal";
@@ -34,6 +35,9 @@ export default function CampaignsPage() {
   const brand = useBrand();
   const composeModal = useComposeModal();
   const supabase = useMemo(() => createClient(), []);
+  const { locale, t } = useLanguage();
+  const cmp = t.dashboard.campaigns;
+  const isTr = locale === "tr";
 
   const [campaigns, setCampaigns] = useState<Campaign[] | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -140,7 +144,7 @@ export default function CampaignsPage() {
   }
 
   async function remove(id: string) {
-    if (!confirm("Bu kampanyayı silmek istediğinize emin misiniz?")) return;
+    if (!confirm(isTr ? "Bu kampanyayı silmek istediğinize emin misiniz?" : "Are you sure you want to delete this campaign?")) return;
     const { error } = await supabase.from("campaigns").delete().eq("id", id);
     if (error) {
       console.error("Silinemedi:", error.message);
@@ -163,22 +167,22 @@ export default function CampaignsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-            Kampanyalar & Büyüme Masası
+            {cmp.title}
           </h1>
           <p className="mt-1 text-sm text-slate-500 font-medium">
-            {brand.name} için tematik pazarlama hedeflerini, içerik paketlerini ve zaman çizelgelerini yönetin.
+            {isTr ? `${brand.name} ${cmp.subtitle}` : `${cmp.subtitle} ${brand.name}.`}
           </p>
         </div>
 
         <button
           type="button"
           onClick={() => setFormModal("create")}
-          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-slate-800 transition self-start sm:self-auto"
+          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-slate-800 transition self-start sm:self-auto cursor-pointer"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
           </svg>
-          <span>Yeni Kampanya Başlat</span>
+          <span>{cmp.newCampaignBtn}</span>
         </button>
       </div>
 
@@ -186,37 +190,37 @@ export default function CampaignsPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-[22px] border border-slate-100 bg-white p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Aktif Kampanyalar
+            {cmp.kpiActive}
           </span>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
               {activeCount}
             </span>
-            <span className="text-xs font-semibold text-emerald-600">Yayında</span>
+            <span className="text-xs font-semibold text-emerald-600">{cmp.kpiLive}</span>
           </div>
         </div>
 
         <div className="rounded-[22px] border border-slate-100 bg-white p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Toplam Kampanya
+            {cmp.kpiTotal}
           </span>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
               {campaigns?.length ?? 0}
             </span>
-            <span className="text-xs text-slate-400">Kayıtlı</span>
+            <span className="text-xs text-slate-400">{cmp.kpiRecorded}</span>
           </div>
         </div>
 
         <div className="rounded-[22px] border border-slate-100 bg-white p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Hedef Ritim & Başarı
+            {cmp.kpiRhythm}
           </span>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="font-display text-2xl font-bold tracking-tight text-slate-300 sm:text-3xl">
               —
             </span>
-            <span className="text-xs text-slate-500">Analiz özelliği ile birlikte gelecek</span>
+            <span className="text-xs text-slate-500">{cmp.kpiComingSoon}</span>
           </div>
         </div>
       </div>
@@ -226,10 +230,10 @@ export default function CampaignsPage() {
         <div className="flex items-center gap-1 border-b border-slate-200 pb-px">
           {(
             [
-              { key: "all", label: "Tümü" },
-              { key: "active", label: "Aktif" },
-              { key: "completed", label: "Tamamlandı" },
-              { key: "archived", label: "Arşivlendi" },
+              { key: "all", label: cmp.tabs.all },
+              { key: "active", label: cmp.tabs.active },
+              { key: "completed", label: cmp.tabs.completed },
+              { key: "archived", label: cmp.tabs.archived },
             ] as const
           ).map((tab) => (
             <button
@@ -251,7 +255,7 @@ export default function CampaignsPage() {
       {/* 4. Campaigns Grid */}
       {campaigns === null || filteredCampaigns === null ? (
         <div className="flex h-64 items-center justify-center rounded-[22px] border border-slate-100 bg-white text-sm text-slate-400">
-          Kampanyalar yükleniyor...
+          {cmp.loading}
         </div>
       ) : campaigns.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-[24px] border border-dashed border-slate-200 bg-white py-16 text-center shadow-xs">
@@ -260,27 +264,27 @@ export default function CampaignsPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
             </svg>
           </div>
-          <h3 className="font-display text-base font-bold text-slate-800">Henüz kampanya oluşturulmadı</h3>
+          <h3 className="font-display text-base font-bold text-slate-800">{cmp.emptyTitle}</h3>
           <p className="max-w-md text-xs text-slate-500">
-            Ürün lansmanları, mevsimsel indirimler veya marka farkındalığı gibi hedeflerinizi gruplamak için ilk kampanyayı başlatın.
+            {cmp.emptyDesc}
           </p>
           <button
             type="button"
             onClick={() => setFormModal("create")}
-            className="mt-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition"
+            className="mt-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition cursor-pointer"
           >
-            + İlk Kampanyayı Başlat
+            {cmp.startFirstBtn}
           </button>
         </div>
       ) : filteredCampaigns.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 rounded-[24px] border border-dashed border-slate-200 bg-white py-12 text-center shadow-xs">
-          <p className="text-sm font-semibold text-slate-600">Bu filtrede kampanya yok.</p>
+          <p className="text-sm font-semibold text-slate-600">{cmp.emptyFilter}</p>
           <button
             type="button"
             onClick={() => setStatusFilter("all")}
-            className="text-xs font-semibold text-rose-600 hover:underline"
+            className="text-xs font-semibold text-rose-600 hover:underline cursor-pointer"
           >
-            Tümünü göster
+            {cmp.showAllBtn}
           </button>
         </div>
       ) : (
@@ -301,14 +305,14 @@ export default function CampaignsPage() {
                         </svg>
                       </div>
                       <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                        Kampanya
+                        {cmp.campaignTag}
                       </span>
                     </div>
 
                     <span
                       className={`rounded-full border px-2.5 py-0.5 font-mono text-[10px] uppercase font-bold ${cfg.className}`}
                     >
-                      {cfg.label}
+                      {cmp.status[c.status] || cfg.label}
                     </span>
                   </div>
 
@@ -323,7 +327,7 @@ export default function CampaignsPage() {
                       <button
                         type="button"
                         onClick={() => setFormModal(c)}
-                        title="Kampanyayı düzenle"
+                        title={isTr ? "Kampanyayı düzenle" : "Edit campaign"}
                         className="shrink-0 cursor-pointer rounded-lg p-1 text-slate-300 hover:bg-slate-50 hover:text-rose-600 transition"
                       >
                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -332,7 +336,7 @@ export default function CampaignsPage() {
                       </button>
                     </div>
                     <p className="mt-1 text-xs text-slate-500 line-clamp-2">
-                      {c.objective || "Belirli bir hedef tanımı girilmedi."}
+                      {c.objective || (isTr ? "Belirli bir hedef tanımı girilmedi." : "No specific objective defined.")}
                     </p>
                   </div>
 
@@ -345,8 +349,8 @@ export default function CampaignsPage() {
                         <line x1="3" y1="10" x2="21" y2="10" strokeWidth={2} />
                       </svg>
                       <span>
-                        {c.start_date ? new Date(c.start_date).toLocaleDateString("tr-TR") : "—"} →{" "}
-                        {c.end_date ? new Date(c.end_date).toLocaleDateString("tr-TR") : "—"}
+                        {c.start_date ? new Date(c.start_date).toLocaleDateString(isTr ? "tr-TR" : "en-US") : "—"} →{" "}
+                        {c.end_date ? new Date(c.end_date).toLocaleDateString(isTr ? "tr-TR" : "en-US") : "—"}
                       </span>
                     </div>
                   )}
@@ -359,14 +363,14 @@ export default function CampaignsPage() {
                     </div>
                   )}
 
-                  {/* Visual Progress Bar — real content counts, not a placeholder */}
+                  {/* Visual Progress Bar — real content counts */}
                   <div className="pt-2">
                     {c.totalContent > 0 ? (
                       <>
                         <div className="flex justify-between text-[11px] text-slate-500 mb-1">
-                          <span>İçerik Tamamlanma</span>
+                          <span>{isTr ? "İçerik Tamamlanma" : "Content Completion"}</span>
                           <span className="font-bold text-slate-800">
-                            {c.publishedContent} / {c.totalContent} Gönderi
+                            {c.publishedContent} / {c.totalContent} {cmp.totalPosts}
                           </span>
                         </div>
                         <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
@@ -377,25 +381,22 @@ export default function CampaignsPage() {
                         </div>
                       </>
                     ) : (
-                      <p className="text-[11px] text-slate-400">Bu kampanyaya bağlı içerik henüz yok.</p>
+                      <p className="text-[11px] text-slate-400">
+                        {isTr ? "Bu kampanyaya bağlı içerik henüz yok." : "No content linked to this campaign yet."}
+                      </p>
                     )}
                   </div>
                 </div>
 
                 {/* Bottom Actions */}
                 <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-3.5 gap-2">
-                  {/* A campaign with a real date range gets the ranged
-                      planner, opened in place (no page navigation) as a
-                      modal — spreads N items across its actual timeline,
-                      auto-tagged to it. One without dates falls back to
-                      plain single-post Compose, same as before. */}
                   {c.start_date && c.end_date ? (
                     <button
                       type="button"
                       onClick={() => setPlannerFor(c)}
                       className="inline-flex cursor-pointer items-center gap-1 text-xs font-bold text-rose-600 hover:text-rose-700"
                     >
-                      <span>+ İçerik Planla</span>
+                      <span>{isTr ? "+ İçerik Planla" : "+ Plan Content"}</span>
                     </button>
                   ) : (
                     <button
@@ -403,7 +404,7 @@ export default function CampaignsPage() {
                       onClick={() => composeModal.open({ campaignId: c.id })}
                       className="inline-flex cursor-pointer items-center gap-1 text-xs font-bold text-rose-600 hover:text-rose-700"
                     >
-                      <span>+ İçerik Üret</span>
+                      <span>{isTr ? "+ İçerik Üret" : "+ Create Content"}</span>
                     </button>
                   )}
 
@@ -411,18 +412,18 @@ export default function CampaignsPage() {
                     <select
                       value={c.status}
                       onChange={(e) => setStatus(c.id, e.target.value as Status)}
-                      className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 focus:outline-none"
+                      className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 focus:outline-none cursor-pointer"
                     >
-                      <option value="active">Aktif</option>
-                      <option value="completed">Tamamlandı</option>
-                      <option value="archived">Arşivlendi</option>
+                      <option value="active">{cmp.status.active}</option>
+                      <option value="completed">{cmp.status.completed}</option>
+                      <option value="archived">{cmp.status.archived}</option>
                     </select>
 
                     <button
                       type="button"
                       onClick={() => remove(c.id)}
-                      className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition"
-                      title="Sil"
+                      className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition cursor-pointer"
+                      title={t.dashboard.common.delete}
                     >
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

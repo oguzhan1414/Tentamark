@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { PlatformName } from "@/components/PlatformIcon";
+import { useLanguage } from "@/context/LanguageContext";
 
 type PreviewMediaItem = { url: string; isVideo: boolean };
 
@@ -9,36 +10,16 @@ type Props = {
   platform: PlatformName;
   brandName: string;
   caption: string;
-  // Every attached item, in order (content_media order = publish order).
-  // Only Instagram and Facebook actually publish more than the first one
-  // (see instagramProvider/metaProvider's real carousel support) — Threads
-  // and TikTok always show just item 0, matching what actually posts there.
   media: PreviewMediaItem[];
 };
 
-/*
-  One real mockup per platform, not one Instagram-shaped card with the
-  caption swapped out — clicking the platform switcher used to only ever
-  change text (and only if that platform actually had a draft; otherwise it
-  silently fell back to whichever draft came first, which is why it looked
-  like "nothing happens"). Facebook shows caption above media, Threads is
-  closer to plain text with minimal chrome, TikTok is vertical/video-first —
-  these are different enough in real life that one shared layout was never
-  going to read as "an accurate preview" for more than one of them.
-
-  Carousel navigation (arrows + dots) is real, not decorative — you can
-  actually click through every attached photo here, the same way you'd
-  browse the real post on Instagram/Facebook once it's live.
-
-  No invented engagement numbers ("1,428 beğenme") — this is an unpublished
-  draft, it has no real likes/comments yet, and a fake count is exactly the
-  kind of thing this whole app has been getting rid of.
-*/
 export default function ComposePreviewCard({ platform, brandName, caption, media }: Props) {
+  const { locale } = useLanguage();
+  const isEn = locale === "en";
   const [index, setIndex] = useState(0);
 
   const initial = brandName[0]?.toUpperCase() || "A";
-  const handle = (brandName || "marka").toLowerCase().replace(/\s+/g, "");
+  const handle = (brandName || (isEn ? "brand" : "marka")).toLowerCase().replace(/\s+/g, "");
 
   // Only Instagram/Facebook ever publish more than the first item — showing
   // carousel nav on Threads/TikTok would preview something that can't
@@ -71,7 +52,7 @@ export default function ComposePreviewCard({ platform, brandName, caption, media
         <button
           type="button"
           onClick={() => setIndex(safeIndex - 1)}
-          aria-label="Önceki görsel"
+          aria-label={isEn ? "Previous image" : "Önceki görsel"}
           className="absolute left-1.5 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-white transition hover:bg-black/70 cursor-pointer"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -83,7 +64,7 @@ export default function ComposePreviewCard({ platform, brandName, caption, media
         <button
           type="button"
           onClick={() => setIndex(safeIndex + 1)}
-          aria-label="Sonraki görsel"
+          aria-label={isEn ? "Next image" : "Sonraki görsel"}
           className="absolute right-1.5 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-white transition hover:bg-black/70 cursor-pointer"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -97,7 +78,7 @@ export default function ComposePreviewCard({ platform, brandName, caption, media
             key={i}
             type="button"
             onClick={() => setIndex(i)}
-            aria-label={`${i + 1}. görsele git`}
+            aria-label={isEn ? `Go to image ${i + 1}` : `${i + 1}. görsele git`}
             className={`h-1.5 rounded-full transition-all cursor-pointer ${
               i === safeIndex ? "w-3 bg-white" : "w-1.5 bg-white/50 hover:bg-white/70"
             }`}
@@ -119,8 +100,10 @@ export default function ComposePreviewCard({ platform, brandName, caption, media
           />
         </svg>
       </div>
-      <span className="text-xs font-bold text-slate-700">Canlı Görsel Alanı</span>
-      <p className="text-[11px] text-slate-400 mt-0.5">Görsel ürettiğinizde veya yüklediğinizde anında burada canlanacak.</p>
+      <span className="text-xs font-bold text-slate-700">{isEn ? "Live Media Canvas" : "Canlı Görsel Alanı"}</span>
+      <p className="text-[11px] text-slate-400 mt-0.5">
+        {isEn ? "Will instantly preview here once you generate or upload media." : "Görsel ürettiğinizde veya yüklediğinizde anında burada canlanacak."}
+      </p>
     </div>
   );
 
@@ -145,8 +128,10 @@ export default function ComposePreviewCard({ platform, brandName, caption, media
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <span className="text-xs font-bold text-white">Video gerekli</span>
-              <p className="text-[11px] text-white/50 mt-0.5">TikTok metin veya fotoğrafla paylaşım yapamıyor.</p>
+              <span className="text-xs font-bold text-white">{isEn ? "Video required" : "Video gerekli"}</span>
+              <p className="text-[11px] text-white/50 mt-0.5">
+                {isEn ? "TikTok does not support text or photo-only posts." : "TikTok metin veya fotoğrafla paylaşım yapamıyor."}
+              </p>
             </div>
           )}
 
@@ -195,7 +180,7 @@ export default function ComposePreviewCard({ platform, brandName, caption, media
           <div>
             <span className="font-display text-xs font-bold text-slate-900">{brandName}</span>
             <p className="flex items-center gap-1 text-[10px] text-slate-400">
-              <span>Sponsorlu · Şimdi</span>
+              <span>{isEn ? "Sponsored · Just now" : "Sponsorlu · Şimdi"}</span>
               <svg className="h-2.5 w-2.5" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
@@ -205,7 +190,7 @@ export default function ComposePreviewCard({ platform, brandName, caption, media
 
         {/* Facebook shows the caption above the media, not below it */}
         <div className="px-4 pb-3 text-xs leading-relaxed text-slate-800 whitespace-pre-line">
-          {caption || <span className="text-slate-400">Metniniz burada görünecek…</span>}
+          {caption || <span className="text-slate-400">{isEn ? "Your copy will appear here…" : "Metniniz burada görünecek…"}</span>}
         </div>
 
         <div className="relative aspect-[1.91/1] w-full bg-slate-100 overflow-hidden">
@@ -215,9 +200,9 @@ export default function ComposePreviewCard({ platform, brandName, caption, media
 
         <div className="flex items-center justify-around border-t border-slate-100 px-2 py-1.5">
           {[
-            { label: "Beğen", d: "M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2v10z" },
-            { label: "Yorum Yap", d: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" },
-            { label: "Paylaş", d: "M8.684 13.342a3 3 0 100-2.684m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" },
+            { label: isEn ? "Like" : "Beğen", d: "M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2v10z" },
+            { label: isEn ? "Comment" : "Yorum Yap", d: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" },
+            { label: isEn ? "Share" : "Paylaş", d: "M8.684 13.342a3 3 0 100-2.684m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" },
           ].map((btn) => (
             <button
               key={btn.label}
@@ -246,14 +231,14 @@ export default function ComposePreviewCard({ platform, brandName, caption, media
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-bold text-slate-900">{handle}</span>
-                <span className="text-[10px] text-slate-400">Şimdi</span>
+                <span className="text-[10px] text-slate-400">{isEn ? "Just now" : "Şimdi"}</span>
               </div>
             </div>
             <span className="text-slate-400 text-xs">•••</span>
           </div>
 
           <p className="pl-10 text-xs leading-relaxed text-slate-800 whitespace-pre-line">
-            {caption || <span className="text-slate-400">Metniniz burada görünecek…</span>}
+            {caption || <span className="text-slate-400">{isEn ? "Your copy will appear here…" : "Metniniz burada görünecek…"}</span>}
           </p>
 
           {mediaUrl && <div className="ml-10 relative aspect-square w-[calc(100%-2.5rem)] overflow-hidden rounded-xl bg-slate-100">{mediaNode}</div>}
@@ -273,7 +258,9 @@ export default function ComposePreviewCard({ platform, brandName, caption, media
             </svg>
           </div>
 
-          <p className="pl-10 text-[11px] text-slate-400">Beğenmeler ve yanıtlar yayınlandıktan sonra burada görünür.</p>
+          <p className="pl-10 text-[11px] text-slate-400">
+            {isEn ? "Likes and replies will appear here once published." : "Beğenmeler ve yanıtlar yayınlandıktan sonra burada görünür."}
+          </p>
         </div>
       </div>
     );
@@ -289,13 +276,13 @@ export default function ComposePreviewCard({ platform, brandName, caption, media
               type="button"
               className="absolute right-3 top-3 rounded-full bg-[#E60023] px-4 py-2 text-xs font-bold text-white shadow-md"
             >
-              Kaydet
+              {isEn ? "Save" : "Kaydet"}
             </button>
           )}
         </div>
         <div className="p-4 space-y-2.5">
           <p className="text-sm font-bold text-slate-900 leading-snug line-clamp-2">
-            {caption || <span className="font-normal text-slate-400">Açıklamanız burada görünecek…</span>}
+            {caption || <span className="font-normal text-slate-400">{isEn ? "Your description will appear here…" : "Açıklamanız burada görünecek…"}</span>}
           </p>
           <div className="flex items-center gap-2 pt-1">
             <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#E60023] text-[10px] font-bold text-white">
@@ -317,21 +304,21 @@ export default function ComposePreviewCard({ platform, brandName, caption, media
           </div>
           <div>
             <span className="font-display text-xs font-bold text-slate-900">{brandName}</span>
-            <p className="text-[10px] text-slate-400">Kanal · Şimdi</p>
+            <p className="text-[10px] text-slate-400">{isEn ? "Channel · Just now" : "Kanal · Şimdi"}</p>
           </div>
         </div>
 
         {mediaUrl && <div className="relative aspect-[4/3] w-full bg-slate-100 overflow-hidden">{mediaNode}</div>}
 
         <div className="px-4 py-3 text-xs leading-relaxed text-slate-800 whitespace-pre-line">
-          {caption || <span className="text-slate-400">Metniniz burada görünecek…</span>}
+          {caption || <span className="text-slate-400">{isEn ? "Your copy will appear here…" : "Metniniz burada görünecek…"}</span>}
         </div>
 
         <div className="px-4 pb-3 flex items-center gap-1.5 text-[11px] text-slate-400">
           <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
           </svg>
-          <span>Görüntülenme sayısı yayınlandıktan sonra görünür.</span>
+          <span>{isEn ? "View count will appear here once published." : "Görüntülenme sayısı yayınlandıktan sonra görünür."}</span>
         </div>
       </div>
     );
@@ -351,8 +338,10 @@ export default function ComposePreviewCard({ platform, brandName, caption, media
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <span className="text-xs font-bold text-white">Video gerekli</span>
-              <p className="text-[11px] text-white/50 mt-0.5">YouTube metin veya fotoğrafla paylaşım yapamıyor.</p>
+              <span className="text-xs font-bold text-white">{isEn ? "Video required" : "Video gerekli"}</span>
+              <p className="text-[11px] text-white/50 mt-0.5">
+                {isEn ? "YouTube Shorts does not support text or photo-only posts." : "YouTube metin veya fotoğrafla paylaşım yapamıyor."}
+              </p>
             </div>
           )}
 
@@ -402,7 +391,7 @@ export default function ComposePreviewCard({ platform, brandName, caption, media
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
             </div>
-            <p className="text-[10px] text-slate-400">Sponsorlu · Şimdi</p>
+            <p className="text-[10px] text-slate-400">{isEn ? "Sponsored · Just now" : "Sponsorlu · Şimdi"}</p>
           </div>
         </div>
         <span className="text-xs text-slate-400">•••</span>
@@ -434,8 +423,8 @@ export default function ComposePreviewCard({ platform, brandName, caption, media
         <div className="text-xs text-slate-800 leading-relaxed space-y-1">{captionNode}</div>
 
         <div className="border-t border-slate-100 pt-2.5 flex items-center justify-between text-[11px] text-slate-400">
-          <span>Yorum ekle...</span>
-          <span className="text-rose-600 font-bold cursor-pointer">Paylaş</span>
+          <span>{isEn ? "Add a comment..." : "Yorum ekle..."}</span>
+          <span className="text-rose-600 font-bold cursor-pointer">{isEn ? "Post" : "Paylaş"}</span>
         </div>
       </div>
     </div>

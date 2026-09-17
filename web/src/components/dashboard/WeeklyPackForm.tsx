@@ -10,6 +10,7 @@ import { getLatestStrategy, type BrandStrategyRecord } from "@/lib/ai/generateSt
 import { ALL_PLATFORMS, PLATFORM_LABEL, type LaunchPlatform } from "@/lib/ai/platforms";
 import PlatformIcon, { type PlatformName } from "@/components/PlatformIcon";
 import DateTimePicker from "@/components/dashboard/DateTimePicker";
+import { useLanguage } from "@/context/LanguageContext";
 
 const CHAR_LIMIT: Record<PlatformName, number> = {
   instagram: 2200,
@@ -30,7 +31,8 @@ const CHAR_LIMIT: Record<PlatformName, number> = {
   canva: 1000,
 };
 
-const DAY_NAMES = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
+const DAY_NAMES_TR = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
+const DAY_NAMES_EN = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 type Card = WeeklyPackItem & {
   id: string;
@@ -82,10 +84,10 @@ function extractHashtags(text: string): string[] {
   return Array.from(new Set(matches));
 }
 
-function formatDateRange(start: Date, daySpan: number): string {
+function formatDateRange(start: Date, daySpan: number, isEn?: boolean): string {
   const end = new Date(start);
   end.setDate(end.getDate() + daySpan - 1);
-  const fmt = (d: Date) => d.toLocaleDateString("tr-TR", { day: "numeric", month: "short", year: "numeric" });
+  const fmt = (d: Date) => d.toLocaleDateString(isEn ? "en-US" : "tr-TR", { day: "numeric", month: "short", year: "numeric" });
   return daySpan <= 1 ? fmt(start) : `${fmt(start)} → ${fmt(end)}`;
 }
 
@@ -116,6 +118,9 @@ export default function WeeklyPackForm({
 } = {}) {
   const brand = useBrand();
   const supabase = useMemo(() => createClient(), []);
+  const { locale } = useLanguage();
+  const isEn = locale === "en";
+  const dayNames = isEn ? DAY_NAMES_EN : DAY_NAMES_TR;
 
   const [selectedPlatforms, setSelectedPlatforms] = useState<LaunchPlatform[]>(ALL_PLATFORMS);
   // Which day offsets (0..daySpan-1) actually get a post — defaults to every
@@ -400,12 +405,12 @@ export default function WeeklyPackForm({
         <div>
           {campaignRange && (
             <span className="mb-1 inline-block font-mono text-[10px] font-bold uppercase tracking-wider text-accent">
-              Kampanya İçerik Planı
+              {isEn ? "Campaign Content Plan" : "Kampanya İçerik Planı"}
             </span>
           )}
           <div className="flex items-center gap-2">
             <h1 className="font-display text-2xl font-bold text-ink">
-              {campaignRange ? campaignName || "Kampanya İçerik Planı" : "Haftalık İçerik Paketi"}
+              {campaignRange ? campaignName || (isEn ? "Campaign Content Plan" : "Kampanya İçerik Planı") : (isEn ? "Weekly Content Pack" : "Haftalık İçerik Paketi")}
             </h1>
             <span className="rounded-full bg-accent-subtle px-2.5 py-0.5 font-mono text-xs font-semibold text-accent-text">
               {brand.name}
@@ -414,8 +419,8 @@ export default function WeeklyPackForm({
           {campaignRange ? (
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 py-1 font-mono text-xs font-semibold text-ink">
-                📅 {formatDateRange(campaignRange.start, campaignRange.daySpan)}
-                <span className="text-faint">· {campaignRange.daySpan} gün</span>
+                📅 {formatDateRange(campaignRange.start, campaignRange.daySpan, isEn)}
+                <span className="text-faint">· {campaignRange.daySpan} {isEn ? "days" : "gün"}</span>
               </span>
               {campaignObjective && (
                 <span className="inline-flex max-w-md items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 py-1 font-body text-xs text-muted">
@@ -425,7 +430,9 @@ export default function WeeklyPackForm({
             </div>
           ) : (
             <p className="mt-1 font-body text-sm text-muted">
-              Marka DNA&apos;nız ve içerik sütunlarınıza göre önümüzdeki 5 iş günü için hazır gönderi paketi üretin.
+              {isEn
+                ? "Generate ready-to-publish posts for the upcoming 5 workdays based on your Brand DNA and content pillars."
+                : "Marka DNA'nız ve içerik sütunlarınıza göre önümüzdeki 5 iş günü için hazır gönderi paketi üretin."}
             </p>
           )}
         </div>
@@ -435,7 +442,7 @@ export default function WeeklyPackForm({
             href="/dashboard/brand"
             className="rounded-full border border-line bg-surface px-4 py-1.5 font-body text-xs font-medium text-muted hover:border-accent/40 hover:text-accent"
           >
-            ← Marka Stratejisini İncele
+            {isEn ? "← View Brand Strategy" : "← Marka Stratejisini İncele"}
           </Link>
         )}
       </div>
@@ -445,10 +452,10 @@ export default function WeeklyPackForm({
         <div className="mt-4 rounded-2xl border border-line bg-surface p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="font-mono text-[11px] uppercase tracking-wider text-faint">
-              Hedeflenen İçerik Sütunları
+              {isEn ? "Targeted Content Pillars" : "Hedeflenen İçerik Sütunları"}
             </span>
             <span className="font-mono text-[11px] text-mint">
-              v{strategy.version}.0 Aktif Strateji
+              {isEn ? `v${strategy.version}.0 Active Strategy` : `v${strategy.version}.0 Aktif Strateji`}
             </span>
           </div>
           <div className="mt-2.5 flex flex-wrap gap-2">
@@ -472,9 +479,13 @@ export default function WeeklyPackForm({
             ✓
           </span>
           <div>
-            <h2 className="font-display text-xl font-bold text-ink">İçerik Paketi Onaya Gönderildi!</h2>
+            <h2 className="font-display text-xl font-bold text-ink">
+              {isEn ? "Content Pack Sent for Review!" : "İçerik Paketi Onaya Gönderildi!"}
+            </h2>
             <p className="mx-auto mt-1.5 max-w-md font-body text-sm text-muted">
-              {cards.length} adet gönderi oluşturuldu ve takvimde günlerine yerleştirildi. Gönderiler sayfasından inceleyip tek tıkla onaylayabilirsiniz.
+              {isEn
+                ? `${cards.length} posts were generated and placed in your calendar. You can review and approve them with one click on the Posts page.`
+                : `${cards.length} adet gönderi oluşturuldu ve takvimde günlerine yerleştirildi. Gönderiler sayfasından inceleyip tek tıkla onaylayabilirsiniz.`}
             </p>
           </div>
 
@@ -483,13 +494,13 @@ export default function WeeklyPackForm({
               href="/dashboard/posts"
               className="rounded-full bg-ink px-5 py-2.5 font-body text-sm font-semibold text-bg transition-colors hover:bg-accent"
             >
-              Onay Bekleyen Gönderileri Gör →
+              {isEn ? "View Pending Posts →" : "Onay Bekleyen Gönderileri Gör →"}
             </Link>
             <Link
               href="/dashboard/calendar"
               className="rounded-full border border-line bg-surface px-5 py-2.5 font-body text-sm font-semibold text-ink hover:border-accent/40"
             >
-              İçerik Takvimine Git
+              {isEn ? "Go to Content Calendar" : "İçerik Takvimine Git"}
             </Link>
             <button
               type="button"
@@ -497,9 +508,9 @@ export default function WeeklyPackForm({
                 setStep("select");
                 setCards([]);
               }}
-              className="rounded-full border border-line px-5 py-2.5 font-body text-sm text-muted hover:border-accent/40 hover:text-ink"
+              className="rounded-full border border-line px-5 py-2.5 font-body text-sm text-muted hover:border-accent/40 hover:text-ink cursor-pointer"
             >
-              Yeni Bir Paket Oluştur
+              {isEn ? "Create Another Pack" : "Yeni Bir Paket Oluştur"}
             </button>
           </div>
         </div>
@@ -508,10 +519,18 @@ export default function WeeklyPackForm({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="font-display text-lg font-bold text-ink">
-                {campaignRange ? `Kampanya Dönemi İçerikleri (${cards.length})` : "Önümüzdeki Haftanın 5 Günlük İçerikleri"}
+                {campaignRange
+                  ? isEn
+                    ? `Campaign Period Content (${cards.length})`
+                    : `Kampanya Dönemi İçerikleri (${cards.length})`
+                  : isEn
+                    ? "Upcoming Week's 5-Day Content"
+                    : "Önümüzdeki Haftanın 5 Günlük İçerikleri"}
               </h2>
               <p className="mt-0.5 font-body text-xs text-muted">
-                Her gönderi seçtiğiniz platformlara göre optimize edilmiş metin, hashtag ve görsel konsepti içerir.
+                {isEn
+                  ? "Each post includes copy, hashtags, and visual concept tailored to your selected platforms."
+                  : "Her gönderi seçtiğiniz platformlara göre optimize edilmiş metin, hashtag ve görsel konsepti içerir."}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2.5">
@@ -519,25 +538,27 @@ export default function WeeklyPackForm({
                 type="button"
                 onClick={generateAllImages}
                 disabled={bulkImageLoading || cards.every((c) => Boolean(c.imageUrl))}
-                className="flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-1.5 font-body text-xs font-semibold text-blue-600 hover:bg-blue-500/20 dark:text-blue-400 transition-colors disabled:opacity-40"
+                className="flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-1.5 font-body text-xs font-semibold text-blue-600 hover:bg-blue-500/20 dark:text-blue-400 transition-colors disabled:opacity-40 cursor-pointer"
               >
                 {bulkImageLoading ? (
                   <>
                     <span className="h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                    <span>Görseller Üretiliyor…</span>
+                    <span>{isEn ? "Generating Visuals…" : "Görseller Üretiliyor…"}</span>
                   </>
                 ) : (
                   <>
-                    <span>🎨 Tüm Görselleri Üret ({cards.filter((c) => c.imageUrl).length}/{cards.length})</span>
+                    <span>
+                      {isEn ? "🎨 Generate All Visuals" : "🎨 Tüm Görselleri Üret"} ({cards.filter((c) => c.imageUrl).length}/{cards.length})
+                    </span>
                   </>
                 )}
               </button>
               <button
                 type="button"
                 onClick={generate}
-                className="rounded-full border border-line bg-surface px-3.5 py-1.5 font-body text-xs font-semibold text-muted hover:border-accent/40 hover:text-accent"
+                className="rounded-full border border-line bg-surface px-3.5 py-1.5 font-body text-xs font-semibold text-muted hover:border-accent/40 hover:text-accent cursor-pointer"
               >
-                ↻ Metinleri Yeniden Üret
+                {isEn ? "↻ Regenerate Captions" : "↻ Metinleri Yeniden Üret"}
               </button>
             </div>
           </div>
@@ -549,20 +570,20 @@ export default function WeeklyPackForm({
                   <div className="flex flex-wrap items-center gap-2.5">
                     <span className="rounded-lg bg-ink px-2.5 py-1 font-mono text-xs font-bold text-bg">
                       {campaignRange
-                        ? `${new Date(card.scheduledAt).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })} · Gün ${idx + 1}`
-                        : `${DAY_NAMES[card.dayOffset % 7]} · Gün ${idx + 1}`}
+                        ? `${new Date(card.scheduledAt).toLocaleDateString(isEn ? "en-US" : "tr-TR", { day: "numeric", month: "short" })} · ${isEn ? "Day" : "Gün"} ${idx + 1}`
+                        : `${dayNames[card.dayOffset % 7]} · ${isEn ? "Day" : "Gün"} ${idx + 1}`}
                     </span>
                     <span className="rounded-lg border border-accent/30 bg-accent-subtle px-2.5 py-1 font-body text-xs font-semibold text-accent-text">
-                      {card.pillar || card.category || "Genel"}
+                      {card.pillar || card.category || (isEn ? "General" : "Genel")}
                     </span>
                   </div>
 
                   <button
                     type="button"
                     onClick={() => removeCard(card.id)}
-                    className="rounded-lg border border-line px-2 py-1 font-body text-xs text-muted hover:border-coral-bright/40 hover:text-coral-bright transition-colors"
+                    className="rounded-lg border border-line px-2 py-1 font-body text-xs text-muted hover:border-coral-bright/40 hover:text-coral-bright transition-colors cursor-pointer"
                   >
-                    Kaldır ✕
+                    {isEn ? "Remove ✕" : "Kaldır ✕"}
                   </button>
                 </div>
 
@@ -579,7 +600,7 @@ export default function WeeklyPackForm({
                 {card.hook && (
                   <div className="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3">
                     <span className="font-mono text-[10px] uppercase font-bold text-amber-500">
-                      🪝 2 Saniyelik Kanca Cümle (Hook)
+                      {isEn ? "🪝 2-Second Hook Sentence" : "🪝 2 Saniyelik Kanca Cümle (Hook)"}
                     </span>
                     <p className="mt-1 font-body text-xs leading-relaxed text-ink font-medium">
                       &ldquo;{card.hook}&rdquo;
@@ -591,16 +612,16 @@ export default function WeeklyPackForm({
                 <div className="mt-3.5 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-3.5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="font-mono text-[10px] uppercase font-bold text-blue-500 tracking-wider">
-                      🎨 Görsel / Video Çekim Konsepti
+                      {isEn ? "🎨 Visual / Video Scene Concept" : "🎨 Görsel / Video Çekim Konsepti"}
                     </span>
 
                     {!card.imageUrl && !card.imageLoading && (
                       <button
                         type="button"
                         onClick={() => generateCardImage(card.id)}
-                        className="flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 font-body text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-500/20 dark:text-blue-400"
+                        className="flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 font-body text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-500/20 dark:text-blue-400 cursor-pointer"
                       >
-                        <span>✨ Görseli AI ile Üret</span>
+                        <span>{isEn ? "✨ Generate Visual with AI" : "✨ Görseli AI ile Üret"}</span>
                       </button>
                     )}
                   </div>
@@ -616,7 +637,7 @@ export default function WeeklyPackForm({
                     <div className="mt-3 flex items-center gap-2.5 rounded-lg border border-line/60 bg-bg p-3">
                       <span className="h-4 w-4 rounded-full border-2 border-accent border-t-transparent animate-spin" />
                       <span className="font-body text-xs text-ink font-medium">
-                        Flux.1 stüdyo görseli üretiliyor…
+                        {isEn ? "Flux.1 studio visual is generating…" : "Flux.1 stüdyo görseli üretiliyor…"}
                       </span>
                     </div>
                   )}
@@ -627,9 +648,9 @@ export default function WeeklyPackForm({
                       <button
                         type="button"
                         onClick={() => generateCardImage(card.id)}
-                        className="font-body text-xs font-semibold text-coral-bright underline"
+                        className="font-body text-xs font-semibold text-coral-bright underline cursor-pointer"
                       >
-                        Tekrar Dene
+                        {isEn ? "Try Again" : "Tekrar Dene"}
                       </button>
                     </div>
                   )}
@@ -649,20 +670,20 @@ export default function WeeklyPackForm({
                           rel="noopener noreferrer"
                           className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity font-body text-xs font-medium text-white"
                         >
-                          Tam Boyut ↗
+                          {isEn ? "Full Size ↗" : "Tam Boyut ↗"}
                         </a>
                       </div>
                       <div className="flex flex-col gap-2">
                         <span className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-mint">
-                          <span>✓</span> Görsel hazır — onaya gönderince kaydedilecek
+                          <span>✓</span> {isEn ? "Visual ready — will be saved upon review submission" : "Görsel hazır — onaya gönderince kaydedilecek"}
                         </span>
                         <button
                           type="button"
                           disabled={card.imageLoading}
                           onClick={() => generateCardImage(card.id)}
-                          className="rounded-full border border-line bg-surface px-3 py-1 font-body text-xs text-muted hover:border-accent/40 hover:text-ink transition-colors w-fit"
+                          className="rounded-full border border-line bg-surface px-3 py-1 font-body text-xs text-muted hover:border-accent/40 hover:text-ink transition-colors w-fit cursor-pointer"
                         >
-                          ↻ Farklı Bir Görsel Dene
+                          {isEn ? "↻ Try a Different Visual" : "↻ Farklı Bir Görsel Dene"}
                         </button>
                       </div>
                     </div>
@@ -709,7 +730,7 @@ export default function WeeklyPackForm({
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line/60 pt-3">
                   <div className="flex items-center gap-2">
                     <label className="font-body text-xs font-medium text-muted">
-                      Planlanan Yayın Zamanı:
+                      {isEn ? "Scheduled Publish Time:" : "Planlanan Yayın Zamanı:"}
                     </label>
                     <DateTimePicker
                       value={card.scheduledAt}
@@ -726,25 +747,27 @@ export default function WeeklyPackForm({
           <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-line bg-surface-soft p-5">
             <div>
               <p className="font-body text-sm font-semibold text-ink">
-                Paket Hazır: Toplam {cards.length} Gönderi
+                {isEn ? `Pack Ready: Total ${cards.length} Posts` : `Paket Hazır: Toplam ${cards.length} Gönderi`}
               </p>
               <p className="mt-0.5 font-body text-xs text-muted">
-                Onaya gönderildiğinde yöneticiniz tarafından onaylanana kadar taslak olarak saklanır.
+                {isEn
+                  ? "Stored as drafts until approved by your manager."
+                  : "Onaya gönderildiğinde yöneticiniz tarafından onaylanana kadar taslak olarak saklanır."}
               </p>
             </div>
             <button
               type="button"
               onClick={submitAll}
               disabled={cards.length === 0 || submitting}
-              className="flex items-center gap-2 rounded-full bg-ink px-6 py-3 font-body text-sm font-semibold text-bg shadow-sm transition-all hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex items-center gap-2 rounded-full bg-ink px-6 py-3 font-body text-sm font-semibold text-bg shadow-sm transition-all hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
             >
               {submitting ? (
                 <>
                   <span className="h-4 w-4 rounded-full border-2 border-bg border-t-transparent animate-spin" />
-                  <span>Onaya Gönderiliyor…</span>
+                  <span>{isEn ? "Submitting for Review…" : "Onaya Gönderiliyor…"}</span>
                 </>
               ) : (
-                <span>✓ Tümünü Onaya Gönder ({cards.length})</span>
+                <span>{isEn ? `✓ Submit All for Review (${cards.length})` : `✓ Tümünü Onaya Gönder (${cards.length})`}</span>
               )}
             </button>
           </div>
@@ -754,10 +777,12 @@ export default function WeeklyPackForm({
         /* Step 1: Select Platforms & Generate */
         <div className="mt-6 rounded-2xl border border-line bg-surface p-6 sm:p-8">
           <h2 className="font-display text-lg font-bold text-ink">
-            Hedef Sosyal Medya Platformları
+            {isEn ? "Target Social Media Platforms" : "Hedef Sosyal Medya Platformları"}
           </h2>
           <p className="mt-1 font-body text-xs text-muted">
-            Her platformun algoritmasına ve metin uzunluğu kurallarına özel içerikler aynı anda hazırlanır.
+            {isEn
+              ? "Content tailored to each platform's algorithm and character rules is prepared simultaneously."
+              : "Her platformun algoritmasına ve metin uzunluğu kurallarına özel içerikler aynı anda hazırlanır."}
           </p>
 
           <div className="mt-4 flex flex-wrap gap-2.5">
@@ -768,7 +793,7 @@ export default function WeeklyPackForm({
                   key={platform}
                   type="button"
                   onClick={() => togglePlatform(platform)}
-                  className={`flex items-center gap-2 rounded-full border px-3.5 py-2 font-body text-xs font-medium transition-all ${
+                  className={`flex items-center gap-2 rounded-full border px-3.5 py-2 font-body text-xs font-medium transition-all cursor-pointer ${
                     checked
                       ? "border-accent bg-accent-subtle text-accent-text shadow-sm"
                       : "border-line bg-bg text-muted hover:border-accent/40"
@@ -781,18 +806,17 @@ export default function WeeklyPackForm({
             })}
           </div>
 
-          {/* Only meaningful for a campaign with a real multi-day span — the
-              plain "next week" flow always uses all 5 weekdays. Manual,
-              per-day control: the user decides exactly which days get a
-              post instead of an inferred pacing guess deciding for them. */}
+          {/* Campaign Multi-Day Control */}
           {campaignRange && (
             <div className="mt-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <label className="font-body text-xs font-bold uppercase tracking-wider text-muted">
-                  Hangi Günler Paylaşım Yapılsın?
+                  {isEn ? "Which Days Should Posts Be Scheduled?" : "Hangi Günler Paylaşım Yapılsın?"}
                 </label>
                 <span className="font-mono text-[11px] text-faint">
-                  {selectedDayOffsets.length}/{Math.min(campaignRange.daySpan, MAX_ITEM_COUNT)} gün seçili
+                  {isEn
+                    ? `${selectedDayOffsets.length}/${Math.min(campaignRange.daySpan, MAX_ITEM_COUNT)} days selected`
+                    : `${selectedDayOffsets.length}/${Math.min(campaignRange.daySpan, MAX_ITEM_COUNT)} gün seçili`}
                 </span>
               </div>
               <div className="mt-2.5 flex flex-wrap gap-2">
@@ -807,7 +831,7 @@ export default function WeeklyPackForm({
                       type="button"
                       disabled={disabled}
                       onClick={() => toggleDay(offset)}
-                      title={d.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" })}
+                      title={d.toLocaleDateString(isEn ? "en-US" : "tr-TR", { weekday: "long", day: "numeric", month: "long" })}
                       className={`flex h-12 w-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded-2xl border font-body text-[10px] font-semibold transition ${
                         checked
                           ? "cursor-pointer border-accent bg-accent text-bg shadow-sm"
@@ -817,7 +841,7 @@ export default function WeeklyPackForm({
                       }`}
                     >
                       <span className="text-[9px] uppercase opacity-80">
-                        {d.toLocaleDateString("tr-TR", { weekday: "short" })}
+                        {d.toLocaleDateString(isEn ? "en-US" : "tr-TR", { weekday: "short" })}
                       </span>
                       <span className="text-sm font-bold">{d.getDate()}</span>
                     </button>
@@ -826,23 +850,31 @@ export default function WeeklyPackForm({
               </div>
               {campaignRange.daySpan > MAX_ITEM_COUNT && (
                 <p className="mt-2 font-body text-[11px] text-faint">
-                  Tek seferde en fazla {MAX_ITEM_COUNT} gün için içerik üretilebilir — kalan günler için paketi daha sonra tekrar çalıştırabilirsiniz.
+                  {isEn
+                    ? `Up to ${MAX_ITEM_COUNT} days can be generated at once — you can run the pack again later for remaining days.`
+                    : `Tek seferde en fazla ${MAX_ITEM_COUNT} gün için içerik üretilebilir — kalan günler için paketi daha sonra tekrar çalıştırabilirsiniz.`}
                 </p>
               )}
 
               <div className="mt-4 space-y-1.5">
                 <label className="font-body text-xs font-bold uppercase tracking-wider text-muted">
-                  Bu Kampanya İçin AI&apos;a Talimat Ver
+                  {isEn ? "Give Instructions to AI for This Campaign" : "Bu Kampanya İçin AI'a Talimat Ver"}
                 </label>
                 <textarea
                   rows={3}
                   value={instructions}
                   onChange={(e) => setInstructions(e.target.value)}
-                  placeholder="Örn: %30 indirim kampanyası — ürün öncesi/sonrası görselleri, müşteri yorumları ve son gün hatırlatması olsun. Fiyat vurgusu net yapılsın."
+                  placeholder={
+                    isEn
+                      ? "e.g. 30% discount campaign — before/after photos, customer reviews, and last day reminder. Clear price emphasis."
+                      : "Örn: %30 indirim kampanyası — ürün öncesi/sonrası görselleri, müşteri yorumları ve son gün hatırlatması olsun. Fiyat vurgusu net yapılsın."
+                  }
                   className="w-full resize-none rounded-xl border border-line bg-bg px-3.5 py-2.5 font-body text-xs text-ink focus:border-accent focus:outline-none"
                 />
                 <p className="font-body text-[11px] text-faint">
-                  Ne kadar net olursan AI de o kadar isabetli üretir — konuyu, teklifi ve öne çıkması gereken noktaları yaz.
+                  {isEn
+                    ? "The clearer your instructions, the more accurate the AI output — write the topic, offer, and highlights."
+                    : "Ne kadar net olursan AI de o kadar isabetli üretir — konuyu, teklifi ve öne çıkması gereken noktaları yaz."}
                 </p>
               </div>
             </div>
@@ -857,19 +889,31 @@ export default function WeeklyPackForm({
                 step === "generating" ||
                 Boolean(campaignRange && selectedDayOffsets.length === 0)
               }
-              className="flex items-center gap-2.5 rounded-full bg-ink px-6 py-3 font-body text-sm font-semibold text-bg shadow-sm transition-all hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex items-center gap-2.5 rounded-full bg-ink px-6 py-3 font-body text-sm font-semibold text-bg shadow-sm transition-all hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
             >
               {step === "generating" ? (
                 <>
                   <span className="h-4 w-4 rounded-full border-2 border-bg border-t-transparent animate-spin" />
-                  <span>{campaignRange ? "Kampanya İçerik Planı Üretiliyor…" : "5 Günlük İçerik Paketi Üretiliyor…"}</span>
+                  <span>
+                    {campaignRange
+                      ? isEn
+                        ? "Generating Campaign Content Plan…"
+                        : "Kampanya İçerik Planı Üretiliyor…"
+                      : isEn
+                        ? "Generating 5-Day Content Pack…"
+                        : "5 Günlük İçerik Paketi Üretiliyor…"}
+                  </span>
                 </>
               ) : (
                 <>
                   <span>
                     {campaignRange
-                      ? `✨ ${campaignRange.daySpan} Günlük Kampanya Planını AI ile Üret`
-                      : "✨ 5 Günlük İçerik Paketini AI ile Üret"}
+                      ? isEn
+                        ? `✨ Generate ${campaignRange.daySpan}-Day Campaign Plan with AI`
+                        : `✨ ${campaignRange.daySpan} Günlük Kampanya Planını AI ile Üret`
+                      : isEn
+                        ? "✨ Generate 5-Day Content Pack with AI"
+                        : "✨ 5 Günlük İçerik Paketini AI ile Üret"}
                   </span>
                 </>
               )}
@@ -881,3 +925,4 @@ export default function WeeklyPackForm({
     </div>
   );
 }
+

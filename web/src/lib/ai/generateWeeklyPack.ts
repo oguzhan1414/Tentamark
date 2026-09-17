@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { MODEL, callGroq } from "./groqModel";
+import { MODEL, callGroq, estimateGroqCost } from "./groqModel";
 import { PLATFORM_LABEL, PLATFORM_RULE, type LaunchPlatform } from "./platforms";
 
 import { MAX_ITEM_COUNT } from "./weeklyPackConstants";
@@ -224,6 +224,7 @@ ${jsonShapeExample(platforms)}`;
   let errorMessage: string | null = null;
   let inputTokens = 0;
   let outputTokens = 0;
+  let modelUsed: string = MODEL;
   let items: WeeklyPackItem[] = [];
 
   try {
@@ -244,6 +245,7 @@ ${jsonShapeExample(platforms)}`;
     );
     inputTokens = result.inputTokens;
     outputTokens = result.outputTokens;
+    modelUsed = result.model;
     items = parsePack(result.content, platforms, itemCount, validOffsets);
   } catch (err) {
     status = "ERROR";
@@ -254,10 +256,10 @@ ${jsonShapeExample(platforms)}`;
     brand_id: brandId,
     stage: "weekly_pack",
     prompt_version: PROMPT_VERSION,
-    model: MODEL,
+    model: modelUsed,
     input_tokens: inputTokens,
     output_tokens: outputTokens,
-    cost_estimate_usd: 0,
+    cost_estimate_usd: estimateGroqCost(modelUsed, inputTokens, outputTokens),
     latency_ms: Date.now() - startedAt,
     status,
     error: errorMessage,

@@ -2,20 +2,17 @@
 
 import { useEffect, useState } from "react";
 import type { WooCommerceProduct } from "@/lib/woocommerce/client";
+import { useLanguage } from "@/context/LanguageContext";
 
 type Props = {
   onSelect: (product: WooCommerceProduct) => void;
   onClose: () => void;
 };
 
-/*
-  Not tested against a real store yet (see the Bluesky/WooCommerce rollout
-  conversation — no live WooCommerce site was available while building
-  this). The fetch/search/select flow itself is straightforward; what needs
-  real verification is whether real product payloads match the field shapes
-  assumed in @/lib/woocommerce/client.
-*/
 export default function WooCommerceProductPicker({ onSelect, onClose }: Props) {
+  const { locale } = useLanguage();
+  const isEn = locale === "en";
+
   const [products, setProducts] = useState<WooCommerceProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,10 +30,10 @@ export default function WooCommerceProductPicker({ onSelect, onClose }: Props) {
         const res = await fetch(url);
         const data = await res.json();
         if (ignore) return;
-        if (!res.ok) throw new Error(data.error || "Ürünler alınamadı.");
+        if (!res.ok) throw new Error(data.error || (isEn ? "Products could not be retrieved." : "Ürünler alınamadı."));
         setProducts(data.products ?? []);
       } catch (err) {
-        if (!ignore) setError(err instanceof Error ? err.message : "Ürünler alınamadı.");
+        if (!ignore) setError(err instanceof Error ? err.message : (isEn ? "Products could not be retrieved." : "Ürünler alınamadı."));
       } finally {
         if (!ignore) setLoading(false);
       }
@@ -44,18 +41,21 @@ export default function WooCommerceProductPicker({ onSelect, onClose }: Props) {
     return () => {
       ignore = true;
     };
-  }, [search]);
+  }, [search, isEn]);
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
       <div className="absolute inset-0" onClick={onClose} />
       <div className="relative z-10 flex max-h-[80vh] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
         <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-3.5">
-          <span className="text-sm font-bold text-slate-900">WooCommerce Ürünü Seç</span>
+          <span className="text-sm font-bold text-slate-900">
+            {isEn ? "Select WooCommerce Product" : "WooCommerce Ürünü Seç"}
+          </span>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition"
+            aria-label={isEn ? "Close" : "Kapat"}
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition cursor-pointer"
           >
             ✕
           </button>
@@ -66,18 +66,18 @@ export default function WooCommerceProductPicker({ onSelect, onClose }: Props) {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Ürün ara..."
+            placeholder={isEn ? "Search products..." : "Ürün ara..."}
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:border-rose-300 focus:outline-none"
           />
         </div>
 
         <div className="flex-1 overflow-y-auto p-5">
           {loading ? (
-            <p className="text-center text-xs text-slate-400">Yükleniyor...</p>
+            <p className="text-center text-xs text-slate-400">{isEn ? "Loading..." : "Yükleniyor..."}</p>
           ) : error ? (
             <p className="text-center text-xs text-red-600">{error}</p>
           ) : products.length === 0 ? (
-            <p className="text-center text-xs text-slate-400">Ürün bulunamadı.</p>
+            <p className="text-center text-xs text-slate-400">{isEn ? "No products found." : "Ürün bulunamadı."}</p>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {products.map((product) => (
@@ -96,7 +96,7 @@ export default function WooCommerceProductPicker({ onSelect, onClose }: Props) {
                       <img src={product.images[0].src} alt="" className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-400">
-                        Görsel yok
+                        {isEn ? "No image" : "Görsel yok"}
                       </div>
                     )}
                   </div>

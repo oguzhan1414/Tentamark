@@ -3,6 +3,8 @@ import { timingSafeEqual } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptToken, encryptToken } from "@/lib/crypto/tokenCipher";
 import { getProviderFor } from "@/lib/social/registry";
+import { stripHashtagsFromCaption } from "@/lib/social/firstCommentHashtags";
+import { getEmbedding } from "@/lib/ai/embeddings";
 import type { PublishMediaItem, SocialAccountRecord, SocialPlatform } from "@/lib/social/types";
 
 /*
@@ -55,7 +57,7 @@ export async function POST(req: NextRequest) {
   const { data: cp, error: cpError } = await supabase
     .from("content_platforms")
     .select(
-      "id, content_id, platform, caption, attempt_count, media_override:media_override_id(file_url, file_type), content:content!inner(brand_id, content_media(position, media(file_url, file_type)))"
+      "id, content_id, platform, caption, hashtags, hashtags_as_first_comment, attempt_count, media_override:media_override_id(file_url, file_type), content:content!inner(brand_id, content_media(position, media(file_url, file_type)))"
     )
     .eq("id", contentPlatformId)
     .single();
@@ -152,12 +154,51 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const hashtags = Array.isArray(cp.hashtags) ? (cp.hashtags as string[]) : [];
+    const useFirstCommentHashtags =
+      Boolean(cp.hashtags_as_first_comment) &&
+      hashtags.length > 0 &&
+      (cp.platform === "instagram" || cp.platform === "facebook");
+    const captionForPublish = useFirstCommentHashtags
+      ? stripHashtagsFromCaption(cp.caption, hashtags)
+      : cp.caption;
+
     const result = await provider.publish({
       account: accountRecord,
       freshToken,
-      caption: cp.caption,
+      caption: captionForPublish,
       media,
     });
+
+    // Best-effort, deliberately never fatal — the real post already went
+    // out above, a failed comment shouldn't turn a successful publish into
+    // a FAILED/retried content_platforms row (which would risk a duplicate
+    // post). Same endpoints sendInboxReply.ts already uses successfully.
+    if (useFirstCommentHashtags) {
+      try {
+        const commentsUrl =
+          cp.platform === "instagram"
+            ? `https://graph.instagram.com/v21.0/${result.remoteId}/comments`
+            : `https://graph.facebook.com/v21.0/${result.remoteId}/comments`;
+        const commentRes = await fetch(commentsUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ message: hashtags.join(" "), access_token: freshToken }),
+        });
+        if (!commentRes.ok) {
+          const errJson = await commentRes.json().catch(() => null);
+          console.error(
+            `İlk yorum hashtag'leri gönderilemedi (cp.id=${cp.id}):`,
+            errJson?.error?.message ?? `HTTP ${commentRes.status}`
+          );
+        }
+      } catch (commentErr) {
+        console.error(
+          `İlk yorum hashtag'leri gönderilirken hata (cp.id=${cp.id}):`,
+          commentErr instanceof Error ? commentErr.message : commentErr
+        );
+      }
+    }
 
     // Deliberately NOT thrown into the catch block below on failure here —
     // the platform-side publish already happened and can't be undone; a
@@ -189,6 +230,23 @@ export async function POST(req: NextRequest) {
     if (attemptInsertError) console.error("publish_attempts kaydı eklenemedi:", attemptInsertError.message);
 
     await recomputeContentStatus(supabase, cp.content_id);
+
+    // Best-effort, never fatal — feeds the Brand Voice Consistency Score
+    // (getBrandVoiceConsistency.ts). Embeds the real, published caption
+    // (hashtags and all — this is what the brand actually said), not the
+    // hashtag-stripped platform version. Silently no-ops without
+    // OPENAI_API_KEY configured; the score just stays hidden until it is.
+    if (cp.caption?.trim()) {
+      try {
+        const embedding = await getEmbedding(cp.caption);
+        const { error: embeddingError } = await supabase
+          .from("content_embeddings")
+          .upsert({ brand_id: brandId, content_platform_id: cp.id, embedding }, { onConflict: "content_platform_id" });
+        if (embeddingError) console.error(`Embedding kaydedilemedi (cp.id=${cp.id}):`, embeddingError.message);
+      } catch (embedErr) {
+        console.error(`Embedding üretilemedi (cp.id=${cp.id}):`, embedErr instanceof Error ? embedErr.message : embedErr);
+      }
+    }
 
     return NextResponse.json({ ok: true, remoteId: result.remoteId });
   } catch (err) {

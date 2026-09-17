@@ -56,10 +56,10 @@ export default function RegisterPage() {
         return;
       }
 
-      router.push("/dashboard/calendar");
+      router.push("/dashboard");
     } catch (err) {
       console.error("Sign up error:", err);
-      router.push("/dashboard/calendar");
+      router.push("/dashboard");
     } finally {
       setLoading(false);
     }
@@ -80,7 +80,7 @@ export default function RegisterPage() {
         setLoading(false);
       }
     } catch {
-      router.push("/dashboard/calendar");
+      router.push("/dashboard");
     }
   };
 

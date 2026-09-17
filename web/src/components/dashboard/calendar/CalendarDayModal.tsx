@@ -28,6 +28,8 @@ type Props = {
   with real room instead of a cramped internal scrollbar that broke down as
   more content piled up.
 */
+import { useLanguage } from "@/context/LanguageContext";
+
 export default function CalendarDayModal({
   dateKey,
   posts,
@@ -43,7 +45,9 @@ export default function CalendarDayModal({
   onNoteColorChange,
   onDeleteNote,
 }: Props) {
-  const dateLabel = new Date(`${dateKey}T00:00:00`).toLocaleDateString("tr-TR", {
+  const { locale } = useLanguage();
+  const isEn = locale === "en";
+  const dateLabel = new Date(`${dateKey}T00:00:00`).toLocaleDateString(isEn ? "en-US" : "tr-TR", {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -74,7 +78,7 @@ export default function CalendarDayModal({
                 className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition"
               >
                 <span>✨</span>
-                <span>AI ile Doldur</span>
+                <span>{isEn ? "AI Smart Fill" : "AI ile Doldur"}</span>
               </button>
             )}
             <button
@@ -82,14 +86,14 @@ export default function CalendarDayModal({
               onClick={() => onAddNote(dateKey)}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-amber-50 hover:text-amber-700 transition"
             >
-              + Not
+              {isEn ? "+ Note" : "+ Not"}
             </button>
             <button
               type="button"
               onClick={() => onAddPostAtDate(dateKey)}
               className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-slate-800 transition"
             >
-              + Gönderi Planla
+              {isEn ? "+ Schedule Post" : "+ Gönderi Planla"}
             </button>
           </div>
         )}
@@ -119,7 +123,9 @@ export default function CalendarDayModal({
           )}
 
           {posts.length === 0 ? (
-            <p className="py-10 text-center text-xs text-slate-400">Bu tarihte henüz bir gönderi yok.</p>
+            <p className="py-10 text-center text-xs text-slate-400">
+              {isEn ? "No posts scheduled for this date yet." : "Bu tarihte henüz bir gönderi yok."}
+            </p>
           ) : (
             <div className="grid grid-cols-2 gap-3">
               {groupCalendarPosts(posts).map((g) => (

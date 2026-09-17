@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import PlatformIcon, { type PlatformName } from "@/components/PlatformIcon";
 import { TentamarkIcon } from "@/components/TentamarkLogo";
+import { useLanguage } from "@/context/LanguageContext";
 import {
   HiOutlineCalendarDays,
   HiOutlineSquare3Stack3D,
@@ -15,25 +16,37 @@ import {
   HiOutlineCog6Tooth,
 } from "react-icons/hi2";
 
-export interface NavItem {
+export type NavItemKey =
+  | "calendar"
+  | "posts"
+  | "inbox"
+  | "campaigns"
+  | "brand"
+  | "assistant"
+  | "analytics"
+  | "settings";
+
+export type NavGroupKey = "content" | "intelligence" | "account";
+
+export interface NavItemConfig {
+  key: NavItemKey;
   href: string;
-  label: string;
   icon: React.ComponentType<{ className?: string }>;
-  group: "İçerik" | "Zeka" | "Hesap" | null;
+  group: NavGroupKey | null;
 }
 
-export const NAV: NavItem[] = [
-  { href: "/dashboard/calendar", label: "Takvim", icon: HiOutlineCalendarDays, group: null },
-  { href: "/dashboard/posts", label: "Gönderiler", icon: HiOutlineSquare3Stack3D, group: "İçerik" },
-  { href: "/dashboard/inbox", label: "Gelen Kutu", icon: HiOutlineInbox, group: "İçerik" },
-  { href: "/dashboard/campaigns", label: "Kampanyalar", icon: HiOutlineMegaphone, group: "İçerik" },
-  { href: "/dashboard/brand", label: "Marka Profili", icon: HiOutlineFingerPrint, group: "Zeka" },
-  { href: "/dashboard/assistant", label: "AI Önerileri", icon: HiOutlineSparkles, group: "Zeka" },
-  { href: "/dashboard/analytics", label: "Analiz", icon: HiOutlineChartBar, group: "Zeka" },
-  { href: "/settings", label: "Ayarlar", icon: HiOutlineCog6Tooth, group: "Hesap" },
+export const NAV_ITEMS: NavItemConfig[] = [
+  { key: "calendar", href: "/dashboard/calendar", icon: HiOutlineCalendarDays, group: null },
+  { key: "posts", href: "/dashboard/posts", icon: HiOutlineSquare3Stack3D, group: "content" },
+  { key: "inbox", href: "/dashboard/inbox", icon: HiOutlineInbox, group: "content" },
+  { key: "campaigns", href: "/dashboard/campaigns", icon: HiOutlineMegaphone, group: "content" },
+  { key: "brand", href: "/dashboard/brand", icon: HiOutlineFingerPrint, group: "intelligence" },
+  { key: "assistant", href: "/dashboard/assistant", icon: HiOutlineSparkles, group: "intelligence" },
+  { key: "analytics", href: "/dashboard/analytics", icon: HiOutlineChartBar, group: "intelligence" },
+  { key: "settings", href: "/settings", icon: HiOutlineCog6Tooth, group: "account" },
 ];
 
-const NAV_GROUP_ORDER = ["İçerik", "Zeka", "Hesap"] as const;
+export const NAV_GROUP_ORDER: NavGroupKey[] = ["content", "intelligence", "account"];
 
 export default function DashboardSidebar({
   connectedPlatforms,
@@ -45,6 +58,8 @@ export default function DashboardSidebar({
   unreadInboxCount: number;
 }) {
   const pathname = usePathname();
+  const { t } = useLanguage();
+  const navT = t.dashboard.nav;
 
   return (
     <aside
@@ -59,8 +74,8 @@ export default function DashboardSidebar({
 
       {/* Navigation List */}
       <nav className="mt-4 flex flex-col gap-2">
-        {/* Standalone items (Takvim) */}
-        {NAV.filter((item) => item.group === null).map((item) => {
+        {/* Standalone items (Calendar) */}
+        {NAV_ITEMS.filter((item) => item.group === null).map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + "/");
           const Icon = item.icon;
           return (
@@ -83,19 +98,19 @@ export default function DashboardSidebar({
                   active ? "font-bold text-slate-900" : "font-medium text-slate-500 group-hover:text-slate-800"
                 }`}
               >
-                {item.label}
+                {navT[item.key]}
               </span>
             </Link>
           );
         })}
 
-        {/* Grouped sections (İçerik, Zeka, Hesap) */}
+        {/* Grouped sections (Content, Intelligence, Account) */}
         {NAV_GROUP_ORDER.map((group) => (
           <div key={group} className="flex flex-col gap-1.5 pt-1">
             <span className="text-center text-[9px] font-bold uppercase tracking-wider text-slate-400">
-              {group}
+              {navT.groups[group]}
             </span>
-            {NAV.filter((item) => item.group === group).map((item) => {
+            {NAV_ITEMS.filter((item) => item.group === group).map((item) => {
               const active = pathname === item.href || pathname.startsWith(item.href + "/");
               const Icon = item.icon;
               return (
@@ -132,7 +147,7 @@ export default function DashboardSidebar({
                       active ? "font-bold text-slate-900" : "font-medium text-slate-500 group-hover:text-slate-800"
                     }`}
                   >
-                    {item.label}
+                    {navT[item.key]}
                   </span>
                 </Link>
               );
@@ -141,10 +156,7 @@ export default function DashboardSidebar({
         ))}
       </nav>
 
-      {/* Bottom Connected Accounts Card — kept as-is per explicit request:
-          the same connected-platform icons also show larger and roomier in
-          the profile dropdown (top right) now, but this small-icon version
-          stays here too rather than being replaced. */}
+      {/* Bottom Connected Accounts Card */}
       <div className="mt-auto flex shrink-0 flex-col items-center gap-1.5 rounded-xl border border-slate-200/80 bg-slate-50/70 p-2 text-center">
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
         {connectedPlatforms.length === 0 ? (
@@ -152,7 +164,7 @@ export default function DashboardSidebar({
             href="/settings?tab=baglantilar"
             className="font-body text-[9px] font-semibold leading-tight text-rose-600 hover:text-rose-700"
           >
-            + Bağla
+            {navT.connectAction}
           </Link>
         ) : (
           <div className="flex flex-wrap items-center justify-center gap-1">

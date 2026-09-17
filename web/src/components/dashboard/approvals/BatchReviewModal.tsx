@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import PlatformIcon from "@/components/PlatformIcon";
 import ConfirmDiscardDialog from "@/components/dashboard/ConfirmDiscardDialog";
+import { useLanguage } from "@/context/LanguageContext";
 import type { ApprovalItem } from "./types";
 
 type Props = {
@@ -21,6 +22,8 @@ export default function BatchReviewModal({
   onApprove,
   onAddComment,
 }: Props) {
+  const { t } = useLanguage();
+  const p = t.dashboard.posts;
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [quickComment, setQuickComment] = useState("");
   const [completed, setCompleted] = useState(false);
@@ -91,16 +94,16 @@ export default function BatchReviewModal({
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-3xl text-emerald-600 mb-4">
             🎉
           </div>
-          <h2 className="text-xl font-bold text-slate-900">Tüm İncelemeler Tamamlandı!</h2>
+          <h2 className="text-xl font-bold text-slate-900">{p.actions.batchDoneTitle}</h2>
           <p className="mt-2 text-sm text-slate-500">
-            Kuyruktaki tüm gönderileri başarıyla gözden geçirdiniz.
+            {p.actions.batchDoneDesc}
           </p>
           <button
             type="button"
             onClick={onClose}
             className="mt-6 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-bold text-white shadow-md hover:bg-blue-700 transition"
           >
-            Panoya Dön
+            {p.actions.backToBoard}
           </button>
         </div>
       </div>
@@ -129,11 +132,11 @@ export default function BatchReviewModal({
           </div>
         </div>
 
-        {/* Close button: dark rounded with white X */}
+        {/* Close button */}
         <button
           type="button"
           onClick={requestClose}
-          aria-label="Kapat"
+          aria-label={t.dashboard.common.close}
           className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white hover:bg-white/20 transition cursor-pointer backdrop-blur-xs"
         >
           ✕
@@ -145,7 +148,7 @@ export default function BatchReviewModal({
         <button
           type="button"
           onClick={handlePrev}
-          aria-label="Önceki"
+          aria-label={t.dashboard.calendar.prev}
           className="fixed left-4 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition cursor-pointer backdrop-blur-xs"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -159,7 +162,7 @@ export default function BatchReviewModal({
         <button
           type="button"
           onClick={handleNext}
-          aria-label="Sonraki"
+          aria-label={t.dashboard.calendar.next}
           className="fixed right-4 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition cursor-pointer backdrop-blur-xs"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -217,7 +220,7 @@ export default function BatchReviewModal({
               type="text"
               value={quickComment}
               onChange={(e) => setQuickComment(e.target.value)}
-              placeholder="Bir şey söylemek..."
+              placeholder={p.actions.quickCommentPlaceholder}
               className="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
             />
             {quickComment.trim() && (
@@ -225,21 +228,21 @@ export default function BatchReviewModal({
                 type="submit"
                 className="rounded-lg bg-blue-600 px-2 py-1 text-[11px] font-bold text-white hover:bg-blue-700"
               >
-                Ekle
+                {p.actions.add}
               </button>
             )}
           </form>
         </div>
       </div>
 
-      {/* Bottom Floating Action Bar: Atlamak & Gönderiyi Onayla (matching screenshot 4) */}
+      {/* Bottom Floating Action Bar: Skip & Approve */}
       <footer className="flex items-center gap-3 pb-2">
         <button
           type="button"
           onClick={handleNext}
           className="rounded-xl bg-white px-10 py-3 text-sm font-semibold text-slate-800 shadow-md hover:bg-slate-50 transition cursor-pointer"
         >
-          Atlamak
+          {p.actions.skip}
         </button>
         <button
           type="button"
@@ -249,7 +252,7 @@ export default function BatchReviewModal({
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
           </svg>
-          <span>Gönderiyi onayla</span>
+          <span>{p.actions.approvePost}</span>
         </button>
       </footer>
 

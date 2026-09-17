@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { MODEL, callGroq } from "./groqModel";
+import { MODEL, callGroq, estimateGroqCost } from "./groqModel";
 import { getBrandContext } from "../brand/getBrandContext";
 
 const PROMPT_VERSION = "brand-strategy-v1";
@@ -299,9 +299,10 @@ Notlar:
       brand_id: brandId,
       stage: "positioning_and_strategy",
       prompt_version: PROMPT_VERSION,
-      model: MODEL,
+      model: groqRes.model,
       input_tokens: groqRes.inputTokens,
       output_tokens: groqRes.outputTokens,
+      cost_estimate_usd: estimateGroqCost(groqRes.model, groqRes.inputTokens, groqRes.outputTokens),
       latency_ms: latency,
       status: "SUCCESS",
     });

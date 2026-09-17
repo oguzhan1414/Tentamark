@@ -276,7 +276,7 @@ export default function SiteHeader() {
 
           {/* Fiyatlandırma Link */}
           <Link
-            href="/#fiyatlandirma"
+            href="/fiyatlandirma"
             className="font-body text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
           >
             Fiyatlandırma
@@ -339,7 +339,7 @@ export default function SiteHeader() {
               <span>→</span>
             </Link>
             <Link
-              href="/#fiyatlandirma"
+              href="/fiyatlandirma"
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center justify-between rounded-xl p-2.5 text-xs font-bold text-slate-800 hover:bg-slate-50"
             >

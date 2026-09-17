@@ -10,7 +10,6 @@ import HeroSpotlight from "@/components/HeroSpotlight";
 import FinalCta from "@/components/FinalCta";
 import LoopSection from "@/components/LoopSection";
 import PositioningStrip from "@/components/PositioningStrip";
-import PricingTeaser from "@/components/PricingTeaser";
 import ProductShowcase from "@/components/ProductShowcase";
 import ScrollRefresher from "@/components/ScrollRefresher";
 import SiteFooter from "@/components/SiteFooter";
@@ -40,7 +39,6 @@ function LandingPageContent() {
         <WhoUsesSection />
         <FeaturesGrid />
         <AnalyticsTeaser />
-        <PricingTeaser />
         <FaqSection />
         <FinalCta />
       </main>

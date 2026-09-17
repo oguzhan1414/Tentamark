@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useBrand } from "@/components/dashboard/BrandProvider";
+import { useLanguage } from "@/context/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
 import { sendInboxReply } from "@/lib/social/sendInboxReply";
 import { generateInboxReply, type InboxSmartReply } from "@/lib/ai/generateInboxReply";
@@ -40,19 +41,21 @@ function toSocialMessage(d: (typeof DEMO_INBOX_MESSAGES)[number]): SocialMessage
   };
 }
 
-function timeAgo(iso: string) {
+function timeAgo(iso: string, inboxT: any) {
   const diffMs = Date.now() - new Date(iso).getTime();
   const mins = Math.round(diffMs / 60000);
-  if (mins < 1) return "şimdi";
-  if (mins < 60) return `${mins} dk önce`;
+  if (mins < 1) return inboxT.time.justNow;
+  if (mins < 60) return `${mins} ${inboxT.time.mAgo}`;
   const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours} sa önce`;
+  if (hours < 24) return `${hours} ${inboxT.time.hAgo}`;
   const days = Math.round(hours / 24);
-  return `${days} gün önce`;
+  return `${days} ${inboxT.time.dAgo}`;
 }
 
 export default function InboxPage() {
   const brand = useBrand();
+  const { t } = useLanguage();
+  const inboxT = t.dashboard.inbox;
   const supabase = useMemo(() => createClient(), []);
 
   // Same real/demo split used in Approvals and Calendar: demo items only
@@ -161,7 +164,7 @@ export default function InboxPage() {
       setAiReplyResult(res);
       setReplyText(res.recommended);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "AI yanıtı üretilemedi.");
+      setError(err instanceof Error ? err.message : inboxT.errorAi);
     } finally {
       setGeneratingAiReply(false);
     }
@@ -215,7 +218,7 @@ export default function InboxPage() {
       setRealMessages((prev) => prev.map((m) => (m.id === selected.id ? { ...m, status: "done" } : m)));
       setReplyText("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Yanıt gönderilemedi.");
+      setError(err instanceof Error ? err.message : inboxT.errorSend);
     } finally {
       setSending(false);
     }
@@ -227,87 +230,112 @@ export default function InboxPage() {
     <div className="flex h-full flex-col p-6">
       <div className="mb-5 flex shrink-0 items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold text-slate-900">Sosyal Gelen Kutusu</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Instagram ve Facebook üzerinden gelen yorum ve mesajları buradan yanıtla.
-          </p>
+          <h1 className="font-display text-2xl font-bold text-slate-900">{inboxT.title}</h1>
+          <p className="mt-1 text-sm text-slate-500">{inboxT.subtitle}</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Demo-data preview toggle intentionally hidden for now —
-              showDemo still defaults to false and the messages merge logic
-              above is untouched, so it's a one-line JSX re-add away from
-              coming back later. */}
+          {/* Demo-data preview toggle intentionally hidden for now */}
           <button
             type="button"
             onClick={() => setRefreshKey((k) => k + 1)}
             className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 shadow-xs transition hover:bg-slate-50 cursor-pointer"
           >
-            Yenile
+            {inboxT.refresh}
           </button>
         </div>
       </div>
 
       {!loading && !hasAnyConnection && (
         <div className="mb-5 rounded-2xl border border-dashed border-amber-200 bg-amber-50/50 px-5 py-4 text-sm text-amber-900">
-          Henüz bağlı bir hesabın yok. Gelen kutusunun çalışması için önce{" "}
+          {inboxT.noConnection.split(inboxT.connectionsLink)[0]}
           <a href="/settings?tab=baglantilar" className="font-semibold underline">
-            Bağlantılar
-          </a>{" "}
-          sayfasından bir hesap bağla.
+            {inboxT.connectionsLink}
+          </a>
+          {inboxT.noConnection.split(inboxT.connectionsLink)[1] || ""}
         </div>
       )}
 
       <div className="flex min-h-0 flex-1 gap-5">
         {/* Message list */}
-        <div className="flex w-full max-w-sm shrink-0 flex-col rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
-            <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/80 p-0.5 text-xs font-semibold">
-              {(
-                [
-                  { key: "all", label: "Tümü" },
-                  { key: "comment", label: "Yorum" },
-                  { key: "dm", label: "Mesaj" },
-                ] as const
-              ).map((f) => (
-                <button
-                  key={f.key}
-                  type="button"
-                  onClick={() => setKindFilter(f.key)}
-                  className={`rounded-md px-2.5 py-1 transition cursor-pointer ${
-                    kindFilter === f.key ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-800"
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
+        <div className="flex w-full max-w-sm shrink-0 flex-col rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="flex shrink-0 flex-col gap-2.5 border-b border-slate-100 p-3.5">
+            {/* Status Segmented Control (Open / Answered / All) */}
+            <div className="grid grid-cols-3 gap-1 rounded-xl bg-slate-100/90 p-1 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setStatusFilter("open")}
+                className={`flex items-center justify-center gap-1.5 rounded-lg py-1.5 transition cursor-pointer ${
+                  statusFilter === "open"
+                    ? "bg-white text-slate-900 shadow-2xs font-bold"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <span className="truncate">{inboxT.filters.open}</span>
+                {openCount > 0 && (
+                  <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white leading-none shrink-0">
+                    {openCount}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("done")}
+                className={`flex items-center justify-center rounded-lg py-1.5 transition cursor-pointer ${
+                  statusFilter === "done"
+                    ? "bg-white text-slate-900 shadow-2xs font-bold"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <span className="truncate">{inboxT.filters.done}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("all")}
+                className={`flex items-center justify-center rounded-lg py-1.5 transition cursor-pointer ${
+                  statusFilter === "all"
+                    ? "bg-white text-slate-900 shadow-2xs font-bold"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <span className="truncate">{inboxT.filters.all}</span>
+              </button>
             </div>
-            <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/80 p-0.5 text-xs font-semibold">
-              {(
-                [
-                  { key: "open", label: `Açık${openCount > 0 ? ` (${openCount})` : ""}` },
-                  { key: "done", label: "Yanıtlandı" },
-                  { key: "all", label: "Tümü" },
-                ] as const
-              ).map((f) => (
-                <button
-                  key={f.key}
-                  type="button"
-                  onClick={() => setStatusFilter(f.key)}
-                  className={`rounded-md px-2.5 py-1 transition cursor-pointer ${
-                    statusFilter === f.key ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-800"
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
+
+            {/* Kind Filter Pills (All / Comment / DM) */}
+            <div className="flex items-center justify-between gap-1 pt-0.5">
+              <div className="flex items-center gap-1">
+                {(
+                  [
+                    { key: "all", label: inboxT.filters.all },
+                    { key: "comment", label: inboxT.filters.comment },
+                    { key: "dm", label: inboxT.filters.dm },
+                  ] as const
+                ).map((f) => (
+                  <button
+                    key={f.key}
+                    type="button"
+                    onClick={() => setKindFilter(f.key)}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
+                      kindFilter === f.key
+                        ? "bg-slate-900 text-white"
+                        : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-800 border border-slate-200/60"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+              <span className="text-[11px] font-medium text-slate-400">
+                {filtered.length}
+              </span>
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto">
             {loading ? (
-              <p className="px-4 py-6 text-center text-xs text-slate-400">Yükleniyor...</p>
+              <p className="px-4 py-6 text-center text-xs text-slate-400">{inboxT.loading}</p>
             ) : filtered.length === 0 ? (
-              <p className="px-4 py-6 text-center text-xs text-slate-400">Bu filtreye uyan mesaj yok.</p>
+              <p className="px-4 py-6 text-center text-xs text-slate-400">{inboxT.emptyFilter}</p>
             ) : (
               filtered.map((m) => (
                 <button
@@ -322,18 +350,18 @@ export default function InboxPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate text-xs font-semibold text-slate-800">
-                        {m.author_name || "Bilinmeyen kullanıcı"}
+                        {m.author_name || inboxT.unknownUser}
                       </span>
-                      <span className="shrink-0 text-[10px] text-slate-400">{timeAgo(m.created_at)}</span>
+                      <span className="shrink-0 text-[10px] text-slate-400">{timeAgo(m.created_at, inboxT)}</span>
                     </div>
                     <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{m.body || "—"}</p>
                     <div className="mt-1 flex items-center gap-1.5">
                       <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-slate-500">
-                        {m.kind === "comment" ? "Yorum" : "Mesaj"}
+                        {m.kind === "comment" ? inboxT.filters.comment : inboxT.filters.dm}
                       </span>
                       {m.isDemo && (
                         <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-rose-700">
-                          Örnek
+                          {inboxT.sampleBadge}
                         </span>
                       )}
                       {m.status === "open" && <span className="h-1.5 w-1.5 rounded-full bg-red-500" />}
@@ -349,7 +377,7 @@ export default function InboxPage() {
         <div className="flex min-w-0 flex-1 flex-col rounded-2xl border border-slate-200 bg-white shadow-sm">
           {!selected ? (
             <div className="flex flex-1 items-center justify-center text-sm text-slate-400">
-              Görüntülemek için soldan bir mesaj seç.
+              {inboxT.emptySelect}
             </div>
           ) : (
             <>
@@ -357,10 +385,10 @@ export default function InboxPage() {
                 <div className="flex items-center gap-3">
                   <PlatformIcon name={selected.platform} className="h-9 w-9 rounded-lg" />
                   <div>
-                    <p className="text-sm font-bold text-slate-900">{selected.author_name || "Bilinmeyen kullanıcı"}</p>
+                    <p className="text-sm font-bold text-slate-900">{selected.author_name || inboxT.unknownUser}</p>
                     <p className="text-[11px] text-slate-400">
-                      {selected.kind === "comment" ? "Gönderi yorumu" : "Direkt mesaj"} · {timeAgo(selected.created_at)}
-                      {selected.isDemo && " · örnek veri"}
+                      {selected.kind === "comment" ? inboxT.postComment : inboxT.directMessage} · {timeAgo(selected.created_at, inboxT)}
+                      {selected.isDemo && ` · ${inboxT.sampleData}`}
                     </p>
                   </div>
                 </div>
@@ -370,7 +398,7 @@ export default function InboxPage() {
                     onClick={() => handleMarkDone(selected.id, selected.isDemo)}
                     className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
                   >
-                    Yanıtlanmış olarak işaretle
+                    {inboxT.markDone}
                   </button>
                 )}
               </div>
@@ -404,12 +432,12 @@ export default function InboxPage() {
                       {generatingAiReply ? (
                         <>
                           <span className="h-3 w-3 animate-spin rounded-full border-2 border-rose-500 border-t-transparent" />
-                          <span>AI Yanıt Yazıyor…</span>
+                          <span>{inboxT.aiGenerating}</span>
                         </>
                       ) : (
                         <>
                           <span>✨</span>
-                          <span>Marka Tonunda AI Yanıtı Üret</span>
+                          <span>{inboxT.aiGenerateBtn}</span>
                         </>
                       )}
                     </button>
@@ -417,27 +445,27 @@ export default function InboxPage() {
 
                   {aiReplyResult && (
                     <div className="flex items-center gap-1 text-[11px]">
-                      <span className="text-slate-400 font-medium text-[10px] mr-1">Ton Alternatifi:</span>
+                      <span className="text-slate-400 font-medium text-[10px] mr-1">{inboxT.toneLabel}</span>
                       <button
                         type="button"
                         onClick={() => setReplyText(aiReplyResult.options.friendly)}
                         className="rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 font-medium text-slate-700 hover:bg-rose-50 hover:text-rose-700 transition cursor-pointer"
                       >
-                        😊 Samimi
+                        {inboxT.tones.friendly}
                       </button>
                       <button
                         type="button"
                         onClick={() => setReplyText(aiReplyResult.options.concise)}
                         className="rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 font-medium text-slate-700 hover:bg-rose-50 hover:text-rose-700 transition cursor-pointer"
                       >
-                        👔 Kısa & Net
+                        {inboxT.tones.concise}
                       </button>
                       <button
                         type="button"
                         onClick={() => setReplyText(aiReplyResult.options.converting)}
                         className="rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 font-medium text-slate-700 hover:bg-rose-50 hover:text-rose-700 transition cursor-pointer"
                       >
-                        🚀 Satış Odaklı
+                        {inboxT.tones.sales}
                       </button>
                     </div>
                   )}
@@ -448,7 +476,7 @@ export default function InboxPage() {
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
                     rows={2}
-                    placeholder="Bir yanıt yazın veya yukarıdaki 'AI Yanıtı Üret'e basın..."
+                    placeholder={inboxT.replyPlaceholder}
                     className="flex-1 resize-none rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-500/15"
                   />
                   <button
@@ -457,7 +485,7 @@ export default function InboxPage() {
                     disabled={!replyText.trim() || sending}
                     className="rounded-xl bg-[#FA5252] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-rose-600 disabled:opacity-40 cursor-pointer"
                   >
-                    {sending ? "Gönderiliyor..." : "Gönder"}
+                    {sending ? inboxT.sending : inboxT.send}
                   </button>
                 </div>
               </div>

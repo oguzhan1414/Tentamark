@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useBrand } from "@/components/dashboard/BrandProvider";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/context/LanguageContext";
 
 type TeamMemberAvatar = { id: string; initial: string; name: string };
 
@@ -42,6 +43,8 @@ export default function CalendarHeader({
 }: Props) {
   const brand = useBrand();
   const supabase = useMemo(() => createClient(), []);
+  const { t } = useLanguage();
+  const c = t.dashboard.calendar;
   const [teamMembers, setTeamMembers] = useState<TeamMemberAvatar[]>([]);
 
   useEffect(() => {
@@ -80,9 +83,9 @@ export default function CalendarHeader({
             <span className="flex h-5 w-5 items-center justify-center rounded bg-gradient-to-tr from-rose-500 to-[#FA5252] text-[10px] font-bold text-white">
               {(brand.name || "M").charAt(0).toLowerCase()}
             </span>
-            <span className="font-semibold text-slate-900">{brand.name || "Örnek çalışma alanı"}</span>
+            <span className="font-semibold text-slate-900">{brand.name || "Workspace"}</span>
             <span className="text-slate-300">/</span>
-            <span className="font-semibold text-slate-900">Takvim</span>
+            <span className="font-semibold text-slate-900">{t.dashboard.nav.calendar}</span>
           </div>
 
           <div className="h-4 w-px bg-slate-200 hidden md:block" />
@@ -98,7 +101,7 @@ export default function CalendarHeader({
                   : "text-slate-500 hover:text-slate-800"
               }`}
             >
-              Ay
+              {c.month}
             </button>
             <button
               type="button"
@@ -109,7 +112,7 @@ export default function CalendarHeader({
                   : "text-slate-500 hover:text-slate-800"
               }`}
             >
-              Hafta
+              {c.week}
             </button>
           </div>
 
@@ -118,7 +121,7 @@ export default function CalendarHeader({
             <button
               type="button"
               onClick={onPrev}
-              title="Önceki"
+              title={c.prev}
               className="flex h-7 w-7 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 transition cursor-pointer"
             >
               ‹
@@ -129,7 +132,7 @@ export default function CalendarHeader({
             <button
               type="button"
               onClick={onNext}
-              title="Sonraki"
+              title={c.next}
               className="flex h-7 w-7 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 transition cursor-pointer"
             >
               ›
@@ -157,25 +160,25 @@ export default function CalendarHeader({
 
           <Link
             href="/dashboard/posts?filter=draft"
-            title="Onaya gönderilmemiş taslakları görüntüle"
+            title={t.dashboard.posts.tabs.drafts}
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
           >
             <svg className="h-3.5 w-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-6 4h6m2 5H7a2 2 0 01-2-2V4a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V20a2 2 0 01-2 2z" />
             </svg>
-            <span className="hidden sm:inline">Taslaklar</span>
+            <span className="hidden sm:inline">{t.dashboard.posts.tabs.drafts}</span>
           </Link>
 
           <button
             type="button"
             onClick={onOpenMedia}
-            title="Medya kütüphanesi — daha önce yüklenmiş fotoğraf/videoları görüntüle, yeni dosya yükle"
+            title={c.media}
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
           >
             <svg className="h-3.5 w-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            <span className="hidden sm:inline">Medya</span>
+            <span className="hidden sm:inline">{c.media}</span>
           </button>
 
           <button
@@ -191,7 +194,7 @@ export default function CalendarHeader({
                 d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
               />
             </svg>
-            <span className="hidden sm:inline">AI Yapılacaklar</span>
+            <span className="hidden sm:inline">{c.aiTodo}</span>
             {aiTodoCount > 0 && (
               <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#FA5252] text-[10px] font-bold text-white">
                 {aiTodoCount}
@@ -203,11 +206,11 @@ export default function CalendarHeader({
             <button
               type="button"
               onClick={onOpenSmartFill}
-              title="Bugün veya seçilen boş gün için AI gönderi oluştur"
+              title={c.aiFill}
               className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50/80 px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition cursor-pointer"
             >
               <span>✨</span>
-              <span className="hidden sm:inline">AI ile Doldur</span>
+              <span className="hidden sm:inline">{c.aiFill}</span>
             </button>
           )}
 
@@ -221,7 +224,7 @@ export default function CalendarHeader({
             <svg className="h-3.5 w-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
             </svg>
-            <span className="hidden sm:inline">Filtrele</span>
+            <span className="hidden sm:inline">{t.dashboard.common.filter}</span>
             {filterCount > 0 && (
               <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#FA5252] text-[10px] font-bold text-white">
                 {filterCount}
@@ -237,21 +240,19 @@ export default function CalendarHeader({
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
             </svg>
-            <span>İçerik Oluştur</span>
+            <span>{c.newPost}</span>
           </button>
         </div>
       </div>
 
-      {/* Subheader: only "Bugün" — Request approvals / calendar count / Saved
-          were all decorative dead ends (no onClick, or a drawer that could
-          never show anything real) copied in from the Planable reference. */}
+      {/* Subheader */}
       <div className="flex h-10 items-center border-t border-slate-100 bg-[#FAFAFA] px-6 text-xs text-slate-600">
         <button
           type="button"
           onClick={onToday}
           className="text-xs font-semibold text-slate-600 hover:text-slate-900 transition cursor-pointer"
         >
-          Bugün
+          {c.today}
         </button>
       </div>
     </header>

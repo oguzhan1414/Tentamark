@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import PlatformIcon, { type PlatformName } from "@/components/PlatformIcon";
+import { useLanguage } from "@/context/LanguageContext";
 import {
   HiOutlineUser,
   HiOutlineCog6Tooth,
@@ -12,6 +13,7 @@ import {
   HiOutlineArrowRightOnRectangle,
   HiChevronDown,
   HiOutlineLink,
+  HiOutlineGlobeAlt,
 } from "react-icons/hi2";
 
 function initials(name: string) {
@@ -32,6 +34,7 @@ export default function UserProfileDropdown({
   brandName,
   connectedPlatforms = [],
 }: UserProfileDropdownProps) {
+  const { locale, setLocale, t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -65,6 +68,7 @@ export default function UserProfileDropdown({
   async function handleSignOut() {
     if (isLoggingOut) return;
     setIsLoggingOut(true);
+    const m = t.dashboard.userMenu;
 
     try {
       const supabase = createClient();
@@ -72,12 +76,14 @@ export default function UserProfileDropdown({
       // Also post to server route to ensure all server cookies are destroyed
       await fetch("/api/auth/signout", { method: "POST" }).catch(() => {});
     } catch (err) {
-      console.error("Çıkış yapılırken bir hata oluştu:", err);
+      console.error("Sign out error:", err);
     } finally {
       // Force hard navigation to login page to reset all server & client contexts
       window.location.href = "/giris";
     }
   }
+
+  const m = t.dashboard.userMenu;
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -123,26 +129,31 @@ export default function UserProfileDropdown({
             </div>
 
             {brandName && (
-              <div className="mt-2.5 flex items-center gap-1.5 pt-2 border-t border-slate-200/60">
+              <Link
+                href="/calisma-alanlari"
+                onClick={() => setIsOpen(false)}
+                className="mt-2.5 flex items-center gap-1.5 pt-2 border-t border-slate-200/60 group"
+              >
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-                <span className="text-[10px] text-slate-400 font-medium">Çalışma Alanı:</span>
-                <span className="text-[10px] font-bold text-slate-700 truncate">{brandName}</span>
-              </div>
+                <span className="text-[10px] text-slate-400 font-medium">{m.workspace}</span>
+                <span className="text-[10px] font-bold text-slate-700 truncate group-hover:text-slate-900">
+                  {brandName}
+                </span>
+                <span className="ml-auto text-[10px] font-semibold text-slate-400 group-hover:text-slate-700 shrink-0">
+                  {m.switchWorkspace}
+                </span>
+              </Link>
             )}
 
-            {/* Connected platforms — moved here from the sidebar's bottom
-                card, which had to cram these into a 96px-wide column as
-                16px icons wrapping across rows once more than a couple of
-                platforms were connected. This dropdown has real width, so
-                every icon gets room to actually be legible. */}
+            {/* Connected platforms */}
             <Link
               href="/settings?tab=baglantilar"
               onClick={() => setIsOpen(false)}
               className="mt-2 flex items-center gap-2 pt-2 border-t border-slate-200/60"
             >
-              <span className="text-[10px] text-slate-400 font-medium shrink-0">Bağlı Kanallar:</span>
+              <span className="text-[10px] text-slate-400 font-medium shrink-0">{m.connectedChannels}</span>
               {connectedPlatforms.length === 0 ? (
-                <span className="text-[10px] font-bold text-rose-600 hover:underline">+ Bağla</span>
+                <span className="text-[10px] font-bold text-rose-600 hover:underline">{m.connect}</span>
               ) : (
                 <div className="flex flex-wrap items-center gap-1.5">
                   {connectedPlatforms.map((name) => (
@@ -162,7 +173,7 @@ export default function UserProfileDropdown({
               role="menuitem"
             >
               <HiOutlineUser className="h-4 w-4 text-slate-500 stroke-[1.75]" />
-              <span>Profil & Genel Ayarlar</span>
+              <span>{m.profileSettings}</span>
             </Link>
 
             <Link
@@ -172,7 +183,7 @@ export default function UserProfileDropdown({
               role="menuitem"
             >
               <HiOutlineSparkles className="h-4 w-4 text-slate-500 stroke-[1.75]" />
-              <span>Abonelik & Plan</span>
+              <span>{m.subscriptionPlan}</span>
             </Link>
 
             <Link
@@ -182,7 +193,7 @@ export default function UserProfileDropdown({
               role="menuitem"
             >
               <HiOutlineUserGroup className="h-4 w-4 text-slate-500 stroke-[1.75]" />
-              <span>Ekip Üyeleri & Roller</span>
+              <span>{m.teamMembers}</span>
             </Link>
 
             <Link
@@ -192,8 +203,46 @@ export default function UserProfileDropdown({
               role="menuitem"
             >
               <HiOutlineLink className="h-4 w-4 text-slate-500 stroke-[1.75]" />
-              <span>Sosyal Medya Bağlantıları</span>
+              <span>{m.socialConnections}</span>
             </Link>
+          </div>
+
+          {/* Language Selector Row */}
+          <div className="flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium text-slate-700 bg-slate-50/80 border border-slate-100 my-1">
+            <span className="flex items-center gap-2 text-slate-600">
+              <HiOutlineGlobeAlt className="h-4 w-4 text-slate-500 stroke-[1.75]" />
+              <span>{m.language}</span>
+            </span>
+            <div className="flex items-center rounded-lg bg-slate-200/70 p-0.5 text-[11px] font-bold">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLocale("tr");
+                }}
+                className={`rounded-md px-2 py-0.5 transition cursor-pointer ${
+                  locale === "tr"
+                    ? "bg-white text-slate-900 shadow-xs"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                TR
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLocale("en");
+                }}
+                className={`rounded-md px-2 py-0.5 transition cursor-pointer ${
+                  locale === "en"
+                    ? "bg-white text-slate-900 shadow-xs"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                EN
+              </button>
+            </div>
           </div>
 
           {/* Divider */}
@@ -213,7 +262,7 @@ export default function UserProfileDropdown({
               ) : (
                 <HiOutlineArrowRightOnRectangle className="h-4 w-4 stroke-[2]" />
               )}
-              <span>{isLoggingOut ? "Çıkış Yapılıyor…" : "Oturumu Kapat"}</span>
+              <span>{isLoggingOut ? m.signingOut : m.signOut}</span>
             </span>
             <span className="text-[10px] font-mono text-slate-400">Esc</span>
           </button>

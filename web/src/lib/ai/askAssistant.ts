@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { MODEL, callGroq } from "./groqModel";
+import { MODEL, callGroq, estimateGroqCost } from "./groqModel";
 import { generateImage } from "./generateImage";
 import { getBrandContext } from "../brand/getBrandContext";
 import { ALL_PLATFORMS, PLATFORM_LABEL, type LaunchPlatform } from "./platforms";
@@ -104,6 +104,7 @@ Kurallar:
   let errorMessage: string | null = null;
   let inputTokens = 0;
   let outputTokens = 0;
+  let modelUsed: string = MODEL;
   let result: AssistantReply = {
     message: "Yanıt oluşturulamadı, lütfen tekrar deneyin.",
     draft: null,
@@ -119,6 +120,7 @@ Kurallar:
     });
     inputTokens = groqRes.inputTokens;
     outputTokens = groqRes.outputTokens;
+    modelUsed = groqRes.model;
 
     const cleaned = groqRes.content
       .replace(/^```json\s*/i, "")
@@ -156,10 +158,10 @@ Kurallar:
     brand_id: brandId,
     stage: "assistant_chat",
     prompt_version: PROMPT_VERSION,
-    model: MODEL,
+    model: modelUsed,
     input_tokens: inputTokens,
     output_tokens: outputTokens,
-    cost_estimate_usd: 0,
+    cost_estimate_usd: estimateGroqCost(modelUsed, inputTokens, outputTokens),
     latency_ms: Date.now() - startedAt,
     status,
     error: errorMessage,

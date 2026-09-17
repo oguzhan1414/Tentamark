@@ -1,6 +1,6 @@
 "use server";
 
-import { callGroq } from "./groqModel";
+import { callGroq, FAST_MODEL } from "./groqModel";
 import { getBrandContext } from "../brand/getBrandContext";
 
 export type InboxSmartReply = {
@@ -47,6 +47,7 @@ Kurallar:
   const userMessage = `Platform: ${platform}\nTür: ${kind}\nMüşteri: ${authorName || "Bilinmiyor"}\nGelen Mesaj: "${customerMessage}"`;
 
   const groqResult = await callGroq(systemPrompt, userMessage, {
+    model: FAST_MODEL,
     temperature: 0.6,
     maxTokens: 1500,
     jsonMode: true,

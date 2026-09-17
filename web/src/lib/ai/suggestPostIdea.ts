@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { MODEL, callGroq } from "./groqModel";
+import { FAST_MODEL, callGroq, estimateGroqCost } from "./groqModel";
 import { getBrandContext } from "../brand/getBrandContext";
 
 const PROMPT_VERSION = "suggest-post-idea-v1";
@@ -47,10 +47,12 @@ ${brandContext}`;
   let errorMessage: string | null = null;
   let inputTokens = 0;
   let outputTokens = 0;
+  let modelUsed: string = FAST_MODEL;
   let idea = "";
 
   try {
     const result = await callGroq(systemPrompt, "Bir gönderi fikri öner.", {
+      model: FAST_MODEL,
       temperature: 0.9,
       maxTokens: 200,
       jsonMode: false,
@@ -59,6 +61,7 @@ ${brandContext}`;
     idea = result.content.trim().replace(/^["']|["']$/g, "");
     inputTokens = result.inputTokens;
     outputTokens = result.outputTokens;
+    modelUsed = result.model;
   } catch (err) {
     status = "ERROR";
     errorMessage = err instanceof Error ? err.message : "Bilinmeyen hata";
@@ -68,10 +71,10 @@ ${brandContext}`;
     brand_id: brandId,
     stage: "suggest_post_idea",
     prompt_version: PROMPT_VERSION,
-    model: MODEL,
+    model: modelUsed,
     input_tokens: inputTokens,
     output_tokens: outputTokens,
-    cost_estimate_usd: 0,
+    cost_estimate_usd: estimateGroqCost(modelUsed, inputTokens, outputTokens),
     latency_ms: Date.now() - startedAt,
     status,
     error: errorMessage,

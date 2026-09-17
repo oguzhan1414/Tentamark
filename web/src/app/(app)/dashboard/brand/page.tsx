@@ -19,6 +19,7 @@ import PlatformIcon from "@/components/PlatformIcon";
 import BrandStrategyTab from "@/components/dashboard/BrandStrategyTab";
 import BrandKpiStrip from "@/components/dashboard/brand/BrandKpiStrip";
 import BrandLiveSidebar from "@/components/dashboard/brand/BrandLiveSidebar";
+import { useLanguage } from "@/context/LanguageContext";
 import {
   HiOutlineBuildingOffice2,
   HiOutlineFingerPrint,
@@ -50,6 +51,8 @@ type FormState = {
   target_audience: string;
   competitors: string;
   raw_notes: string;
+  founder_name: string;
+  founder_voice: string;
 };
 
 const INPUT_CLASS =
@@ -181,6 +184,8 @@ const TRAIT_LABELS: Record<TraitKey, string> = {
 export default function BrandPage() {
   const brand = useBrand();
   const supabase = useMemo(() => createClient(), []);
+  const { locale, t } = useLanguage();
+  const b = t.dashboard.brand;
 
   const [tab, setTab] = useState<Tab>("genel");
   const [form, setForm] = useState<FormState | null>(null);
@@ -269,7 +274,7 @@ export default function BrandPage() {
       const { data: dnaRow } = await supabase
         .from("brand_dna")
         .select(
-          "industry, tone_of_voice, brand_traits, forbidden_words, color_palette, target_audience, competitors, competitor_analysis, trait_scores, tone_position, audience_persona, audience_pain_points, audience_motivations, market_comparison, raw_notes"
+          "industry, tone_of_voice, brand_traits, forbidden_words, color_palette, target_audience, competitors, competitor_analysis, trait_scores, tone_position, audience_persona, audience_pain_points, audience_motivations, market_comparison, raw_notes, founder_name, founder_voice"
         )
         .eq("brand_id", brand.id)
         .maybeSingle();
@@ -287,6 +292,8 @@ export default function BrandPage() {
         target_audience: fromArray(dnaRow?.target_audience),
         competitors: fromArray(dnaRow?.competitors),
         raw_notes: dnaRow?.raw_notes ?? "",
+        founder_name: dnaRow?.founder_name ?? "",
+        founder_voice: dnaRow?.founder_voice ?? "",
       });
 
       if (dnaRow?.tone_position && typeof dnaRow.tone_position === "object") {
@@ -501,6 +508,8 @@ export default function BrandPage() {
         audience_motivations: toLineList(motivations),
         market_comparison: marketComparison,
         raw_notes: form.raw_notes || null,
+        founder_name: form.founder_name || null,
+        founder_voice: form.founder_voice || null,
       })
       .eq("brand_id", brand.id);
 
@@ -540,19 +549,19 @@ export default function BrandPage() {
             <span className="flex h-4 w-4 items-center justify-center rounded bg-gradient-to-tr from-rose-500 to-[#FA5252] text-[8px] font-bold text-white">
               .j
             </span>
-            <span className="font-semibold text-slate-900">{form?.name || brand.name || "Örnek çalışma alanı"}</span>
+            <span className="font-semibold text-slate-900">{form?.name || brand.name || (locale === "en" ? "Sample workspace" : "Örnek çalışma alanı")}</span>
             <span className="text-[10px] text-slate-400">˅</span>
             <span className="text-slate-300">/</span>
-            <span className="text-slate-600">Marka Zekası</span>
+            <span className="text-slate-600">{b.breadcrumb.intelligence}</span>
             <span className="text-slate-300">/</span>
-            <span className="font-bold text-slate-900">Marka Profili</span>
+            <span className="font-bold text-slate-900">{b.breadcrumb.profile}</span>
           </div>
 
           <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-            Marka Profili & DNA
+            {b.title}
           </h1>
           <p className="mt-0.5 text-xs text-slate-500 font-medium">
-            Tentamark markanızı, hedef kitlenizi, rakiplerinizi ve içerik stratejinizi sürekli öğrenip optimize eder.
+            {b.subtitle}
           </p>
         </div>
 
@@ -560,7 +569,7 @@ export default function BrandPage() {
         <div className="flex items-center gap-2.5">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            AI Motoru Aktif
+            {b.aiActive}
           </span>
 
           <button
@@ -569,7 +578,7 @@ export default function BrandPage() {
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-2xs transition"
           >
             <HiOutlineSparkles className="h-4 w-4 stroke-[2] text-rose-600" />
-            <span>Web Sitesinden Analiz Et</span>
+            <span>{b.analyzeWebBtn}</span>
           </button>
         </div>
       </div>
@@ -585,7 +594,13 @@ export default function BrandPage() {
         <div className="lg:col-span-8 space-y-5">
           {/* Horizontal Pill Tabs */}
           <div className="flex flex-wrap items-center gap-2 border-b border-slate-200/80 pb-3">
-            {TABS.map((t) => {
+            {[
+              { key: "genel" as Tab, label: b.tabs.general, icon: HiOutlineBuildingOffice2 },
+              { key: "dna" as Tab, label: b.tabs.dna, icon: HiOutlineFingerPrint },
+              { key: "hedef" as Tab, label: b.tabs.audience, icon: HiOutlineUserGroup },
+              { key: "rakipler" as Tab, label: b.tabs.competitors, icon: HiOutlineScale },
+              { key: "strateji" as Tab, label: b.tabs.strategy, icon: HiOutlineSparkles },
+            ].map((t) => {
               const active = tab === t.key;
               const Icon = t.icon;
               const badge =
@@ -625,7 +640,7 @@ export default function BrandPage() {
           {/* Tab Content Panels */}
           {!form ? (
             <div className="flex h-64 items-center justify-center rounded-2xl border border-slate-200 bg-white text-xs text-slate-400">
-              Marka bilgileri yükleniyor...
+              {locale === "en" ? "Loading brand information..." : "Marka bilgileri yükleniyor..."}
             </div>
           ) : tab === "strateji" ? (
             <BrandStrategyTab key={`${brand.id}-${strategyVersion}`} brandId={brand.id} brandName={form.name} />
@@ -844,6 +859,33 @@ export default function BrandPage() {
                       </Field>
                     </div>
                   </div>
+
+                  <div className="space-y-4 rounded-2xl border border-slate-200/90 bg-white p-6 shadow-xs">
+                    <div>
+                      <h3 className="font-display text-sm font-bold text-slate-900">Kurucu Sesi (Ghostwriter Modu)</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Doldurursan, Compose&apos;da &quot;Kurucu Adına Yaz&quot; seçeneği açılır — gönderi marka
+                        kimliği yerine kurucunun kişisel, birinci tekil şahıs sesiyle yazılır.
+                      </p>
+                    </div>
+                    <Field label="Kurucu Adı">
+                      <input
+                        value={form.founder_name}
+                        onChange={(e) => set("founder_name", e.target.value)}
+                        placeholder="Örn. Ahmet Yılmaz"
+                        className={INPUT_CLASS}
+                      />
+                    </Field>
+                    <Field label="Kişisel Üslup" hint="İsteğe bağlı — boş bırakırsan sadece isim yeterli">
+                      <textarea
+                        rows={3}
+                        value={form.founder_voice}
+                        onChange={(e) => set("founder_voice", e.target.value)}
+                        placeholder="Örn: Doğrudan konuşur, yaşadığı hatalardan ders çıkarır, kısa cümleler kurar, esprili ama saygılı bir dili var..."
+                        className={`${INPUT_CLASS} resize-y`}
+                      />
+                    </Field>
+                  </div>
                 </>
               )}
 
@@ -934,7 +976,7 @@ export default function BrandPage() {
                         </div>
                         <p className="text-xs leading-relaxed text-slate-700">{audienceInsight.text}</p>
                         <p className="mt-2 text-[10px] text-slate-400 font-mono">
-                          Kaynak: son 30 günde {audienceInsight.sampleSize} içerik · Plan %{audienceInsight.plannedPercentage} · Gerçekleşen %{audienceInsight.actualPercentage}
+                          Kaynak: son 30 günde {audienceInsight.sampleSize} içerik · Plan %{audienceInsight.plannedPercentage} · Gerçekleşen %{audienceInsight.actualPercentage} · p={audienceInsight.pValue.toFixed(3)}
                         </p>
                       </>
                     ) : (
@@ -1176,7 +1218,9 @@ export default function BrandPage() {
               {/* Secondary Inline Save Button at the bottom of forms */}
               <div className="flex items-center justify-between rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xs">
                 <p className="text-xs text-slate-500">
-                  Değişikliklerin kaydedilmesi AI içerik önerilerini ve haftalık takvimi anında günceller.
+                  {locale === "en"
+                    ? "Saving changes immediately updates AI content suggestions and weekly schedule."
+                    : "Değişikliklerin kaydedilmesi AI içerik önerilerini ve haftalık takvimi anında günceller."}
                 </p>
                 <button
                   type="button"
@@ -1184,7 +1228,7 @@ export default function BrandPage() {
                   disabled={saving}
                   className="rounded-xl bg-slate-900 px-5 py-2 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition disabled:opacity-50 cursor-pointer shrink-0"
                 >
-                  {saving ? "Kaydediliyor..." : "Kaydet"}
+                  {saving ? b.saving : b.saveBtn}
                 </button>
               </div>
             </div>

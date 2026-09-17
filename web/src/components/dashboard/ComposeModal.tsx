@@ -7,17 +7,17 @@ import type { MediaLibraryItem } from "@/lib/media/useMediaLibrary";
 
 /*
   The one real content studio, as an overlay — reachable from anywhere via
-  useComposeModal() (see ComposeModalProvider.tsx). Used to be one of two
-  ways to reach ComposeForm (the other being the standalone /dashboard/compose
-  page); now it's the only one, sized as a near-fullscreen modal so the full
-  two-column studio (form + live preview) has room to breathe.
+  useComposeModal() (see ComposeModalProvider.tsx). Sized as a small, fixed-
+  width popup (not a near-fullscreen panel) on purpose — ComposeForm itself
+  is a single compact column now, so a wide modal would just leave dead
+  backdrop on both sides instead of framing it.
 
-  The form box is max-w-6xl, not full-width — on any wider screen there's
-  real clickable backdrop to either side of it, and that backdrop used to
-  close the whole modal on a single click with zero confirmation. A stray
-  click there (or Escape) instantly threw away a typed idea, generated
-  drafts, or an attached photo. isDirty is lifted from ComposeForm so this
-  can ask before discarding anything real.
+  The form box is capped at max-w-xl, not full-width — on any wider screen
+  there's real clickable backdrop around it, and that backdrop used to close
+  the whole modal on a single click with zero confirmation. A stray click
+  there (or Escape) instantly threw away a typed idea, generated drafts, or
+  an attached photo. isDirty is lifted from ComposeForm so this can ask
+  before discarding anything real.
 */
 export default function ComposeModal({
   onClose,
@@ -65,7 +65,7 @@ export default function ComposeModal({
         onClick={requestClose}
         className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm"
       />
-      <div className="relative z-10 my-4 w-full max-w-6xl rounded-[28px] bg-[#F8FAFC] p-4 shadow-2xl sm:p-6 lg:p-8">
+      <div className="relative z-10 my-4 w-full max-w-xl rounded-[28px] bg-[#F8FAFC] p-3 shadow-2xl sm:p-4">
         <button
           type="button"
           onClick={requestClose}

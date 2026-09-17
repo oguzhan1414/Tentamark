@@ -3,20 +3,16 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { useBrand } from "@/components/dashboard/BrandProvider";
 import { createClient } from "@/lib/supabase/client";
 import PlatformIcon, { platformLabel, type PlatformName } from "@/components/PlatformIcon";
 import { useCanvaConnection } from "@/lib/canva/useCanvaConnection";
 import { useWooCommerceConnection } from "@/lib/woocommerce/useWooCommerceConnection";
+import { useLanguage } from "@/context/LanguageContext";
 import { HiOutlineShieldCheck, HiOutlineArrowRightOnRectangle } from "react-icons/hi2";
 
 type SettingsTab = "genel" | "plan" | "ekip" | "bildirimler" | "baglantilar";
-
-const ROLE_LABEL: Record<string, string> = {
-  owner: "Sahip (Owner)",
-  admin: "Yönetici (Admin)",
-  member: "Üye",
-};
 
 type TeamMember = { id: string; userId: string; role: string; name: string; email: string };
 type TeamInvite = { id: string; email: string; role: string; token: string; expires_at: string };
@@ -31,96 +27,23 @@ type ConnectedAccount = {
   last_health_check_at: string | null;
 };
 
-// Ported from the old standalone /dashboard/connections page (now folded
-// into this tab) — same static integration catalog, same copy.
-const AVAILABLE_INTEGRATIONS: {
-  id: string;
-  name: string;
-  desc: string;
-  icon: PlatformName;
-  href: string;
-  available: boolean;
-}[] = [
-  {
-    id: "instagram",
-    name: "Instagram Professional",
-    desc: "Gönderi, Reels ve Hikayeleri doğrudan profesyonel hesabınızda yayınlayın.",
-    icon: "instagram",
-    href: "/api/connections/instagram/start",
-    available: true,
-  },
-  {
-    id: "facebook",
-    name: "Facebook Sayfası",
-    desc: "Topluluk paylaşımlarını ve Facebook gönderilerini otomatik senkronize edin.",
-    icon: "facebook",
-    href: "/api/connections/meta/start",
-    available: true,
-  },
-  {
-    id: "threads",
-    name: "Threads",
-    desc: "Metin ve fotoğraf gönderilerinizi doğrudan Threads akışında paylaşın.",
-    icon: "threads",
-    href: "/api/connections/threads/start",
-    available: true,
-  },
-  {
-    id: "linkedin",
-    name: "LinkedIn Şirket Sayfası",
-    desc: "B2B makalelerinizi ve profesyonel içeriklerinizi yayınlayın.",
-    icon: "linkedin",
-    href: "#",
-    available: false,
-  },
-  {
-    id: "x",
-    name: "X (Twitter)",
-    desc: "Anlık tweet ve flood serilerinizi otomatik zamanlayın.",
-    icon: "x",
-    href: "#",
-    available: false,
-  },
-  {
-    id: "tiktok",
-    name: "TikTok",
-    desc: "Dikey video ve kısa kliplerinizi doğrudan TikTok hesabınıza aktarın. TikTok onayı tamamlanana kadar paylaşımlar yalnızca hesabınızda (gizli) görünür.",
-    icon: "tiktok",
-    href: "/api/connections/tiktok/start",
-    available: true,
-  },
-  {
-    id: "pinterest",
-    name: "Pinterest",
-    desc: "Görsellerinizi doğrudan bir panoya Pin olarak paylaşın. Video Pin desteği henüz yok, yalnızca görsel gönderiler.",
-    icon: "pinterest",
-    href: "/api/connections/pinterest/start",
-    available: true,
-  },
-  {
-    id: "youtube",
-    name: "YouTube",
-    desc: "Videolarınızı doğrudan kanalınıza yükleyin. Yalnızca video — fotoğraf veya metinle paylaşım yapılamıyor.",
-    icon: "youtube",
-    href: "/api/connections/youtube/start",
-    available: true,
-  },
-];
-
-function accountStatusLabel(status: string): { text: string; className: string } {
+function accountStatusLabel(
+  status: string,
+  labels: { active: string; needs_reauth: string; disconnected: string }
+): { text: string; className: string } {
   switch (status) {
     case "active":
-      return { text: "Aktif", className: "font-semibold text-emerald-600" };
+      return { text: labels.active, className: "font-semibold text-emerald-600" };
     case "needs_reauth":
-      return { text: "Yeniden bağlantı gerekiyor", className: "font-semibold text-amber-600" };
+      return { text: labels.needs_reauth, className: "font-semibold text-amber-600" };
     case "disconnected":
-      return { text: "Bağlantı kesildi", className: "font-semibold text-red-600" };
+      return { text: labels.disconnected, className: "font-semibold text-red-600" };
     default:
       return { text: status, className: "font-semibold text-slate-500" };
   }
 }
 
-function connectErrorMessage(code: string) {
+function connectErrorMessage(code: string, isEn: boolean) {
   const provider = code.startsWith("threads_")
     ? "Threads"
     : code.startsWith("instagram_")
@@ -135,6 +58,33 @@ function connectErrorMessage(code: string) {
               ? "Canva"
               : "Facebook";
   const reason = code.replace(/^(threads|instagram|tiktok|pinterest|youtube|canva)_/, "");
+
+  if (isEn) {
+    switch (reason) {
+      case "denied":
+        return "Connection was cancelled.";
+      case "state":
+        return "Security verification failed, please try again.";
+      case "token":
+        return `Could not establish connection with ${provider}.`;
+      case "pages":
+        return "Could not retrieve your pages.";
+      case "no-pages":
+        return "No Facebook Page found linked to your account — please create a Page first.";
+      case "no-board":
+        return "No board found in your Pinterest account and could not create one automatically.";
+      case "no-channel":
+        return "No YouTube channel found associated with this Google account.";
+      case "no-refresh-token":
+        return "Google did not grant the required permissions — please retry and re-authorize.";
+      case "config":
+        return `${provider} connection is not configured yet.`;
+      case "save":
+        return "Account was verified but could not be saved to the database.";
+      default:
+        return "An error occurred during connection.";
+    }
+  }
 
   switch (reason) {
     case "denied":
@@ -167,6 +117,10 @@ function connectErrorMessage(code: string) {
 // POSTs to /api/connections/telegram/connect instead (see that route for
 // what actually gets validated before anything is saved).
 function TelegramConnectCard({ isConnected, onConnected }: { isConnected: boolean; onConnected: () => void }) {
+  const { t, locale } = useLanguage();
+  const c = t.dashboard.settings.integrationCards.telegram;
+  const conn = t.dashboard.settings.connectionsTab;
+
   const [open, setOpen] = useState(false);
   const [botToken, setBotToken] = useState("");
   const [channelUsername, setChannelUsername] = useState("");
@@ -184,13 +138,13 @@ function TelegramConnectCard({ isConnected, onConnected }: { isConnected: boolea
         body: JSON.stringify({ botToken, channelUsername }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Bağlantı kurulamadı.");
+      if (!res.ok) throw new Error(data.error || (locale === "en" ? "Could not connect." : "Bağlantı kurulamadı."));
       setBotToken("");
       setChannelUsername("");
       setOpen(false);
       onConnected();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Bağlantı kurulamadı.");
+      setError(err instanceof Error ? err.message : (locale === "en" ? "Could not connect." : "Bağlantı kurulamadı."));
     } finally {
       setSubmitting(false);
     }
@@ -203,33 +157,33 @@ function TelegramConnectCard({ isConnected, onConnected }: { isConnected: boolea
           <PlatformIcon name="telegram" className="h-9 w-9 rounded-xl shadow-xs" />
           {isConnected ? (
             <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
-              Bağlı ✓
+              {conn.connectedBadge}
             </span>
           ) : (
             <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-100">
-              Hazır
+              {conn.readyBadge}
             </span>
           )}
         </div>
 
         <div>
-          <h4 className="font-display text-sm font-bold text-slate-900">Telegram Kanalı</h4>
+          <h4 className="font-display text-sm font-bold text-slate-900">{c.title}</h4>
           <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-            OAuth yerine bot token ile bağlanır — @BotFather&apos;dan bir bot oluşturup kanalına yönetici olarak ekle.
+            {c.desc}
           </p>
         </div>
       </div>
 
       <div className="mt-5 border-t border-slate-100 pt-3.5">
         {isConnected ? (
-          <span className="text-xs font-semibold text-slate-400">Aktif ve yetkilendirildi</span>
+          <span className="text-xs font-semibold text-slate-400">{conn.statusActive}</span>
         ) : !open ? (
           <button
             type="button"
             onClick={() => setOpen(true)}
             className="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition cursor-pointer"
           >
-            Telegram Kanalı Bağla →
+            {c.connectBtn}
           </button>
         ) : (
           <form onSubmit={handleConnect} className="space-y-2">
@@ -237,7 +191,7 @@ function TelegramConnectCard({ isConnected, onConnected }: { isConnected: boolea
               type="text"
               value={botToken}
               onChange={(e) => setBotToken(e.target.value)}
-              placeholder="Bot token (@BotFather'dan)"
+              placeholder={c.tokenPlaceholder}
               required
               className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs text-slate-800 focus:border-slate-400 focus:outline-none"
             />
@@ -245,7 +199,7 @@ function TelegramConnectCard({ isConnected, onConnected }: { isConnected: boolea
               type="text"
               value={channelUsername}
               onChange={(e) => setChannelUsername(e.target.value)}
-              placeholder="Kanal kullanıcı adı (ör. tentamark)"
+              placeholder={c.channelPlaceholder}
               required
               className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs text-slate-800 focus:border-slate-400 focus:outline-none"
             />
@@ -259,14 +213,14 @@ function TelegramConnectCard({ isConnected, onConnected }: { isConnected: boolea
                 }}
                 className="flex-1 rounded-lg border border-slate-200 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
               >
-                Vazgeç
+                {conn.cancel}
               </button>
               <button
                 type="submit"
                 disabled={submitting}
                 className="flex-1 rounded-lg bg-slate-900 py-2 text-xs font-bold text-white hover:bg-slate-800 transition disabled:opacity-50 cursor-pointer"
               >
-                {submitting ? "Bağlanıyor..." : "Bağla"}
+                {submitting ? conn.connecting : conn.connect}
               </button>
             </div>
           </form>
@@ -276,10 +230,11 @@ function TelegramConnectCard({ isConnected, onConnected }: { isConnected: boolea
   );
 }
 
-// Bluesky has no OAuth either — same inline-form shape as Telegram, a
-// credential (app password) instead of a redirect. See
-// /api/connections/bluesky/connect for what gets validated before saving.
 function BlueskyConnectCard({ isConnected, onConnected }: { isConnected: boolean; onConnected: () => void }) {
+  const { t, locale } = useLanguage();
+  const c = t.dashboard.settings.integrationCards.bluesky;
+  const conn = t.dashboard.settings.connectionsTab;
+
   const [open, setOpen] = useState(false);
   const [handle, setHandle] = useState("");
   const [appPassword, setAppPassword] = useState("");
@@ -297,13 +252,13 @@ function BlueskyConnectCard({ isConnected, onConnected }: { isConnected: boolean
         body: JSON.stringify({ handle, appPassword }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Bağlantı kurulamadı.");
+      if (!res.ok) throw new Error(data.error || (locale === "en" ? "Could not connect." : "Bağlantı kurulamadı."));
       setHandle("");
       setAppPassword("");
       setOpen(false);
       onConnected();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Bağlantı kurulamadı.");
+      setError(err instanceof Error ? err.message : (locale === "en" ? "Could not connect." : "Bağlantı kurulamadı."));
     } finally {
       setSubmitting(false);
     }
@@ -316,33 +271,33 @@ function BlueskyConnectCard({ isConnected, onConnected }: { isConnected: boolean
           <PlatformIcon name="bluesky" className="h-9 w-9 rounded-xl shadow-xs" />
           {isConnected ? (
             <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
-              Bağlı ✓
+              {conn.connectedBadge}
             </span>
           ) : (
             <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-100">
-              Hazır
+              {conn.readyBadge}
             </span>
           )}
         </div>
 
         <div>
-          <h4 className="font-display text-sm font-bold text-slate-900">Bluesky</h4>
+          <h4 className="font-display text-sm font-bold text-slate-900">{c.title}</h4>
           <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-            OAuth yerine app password ile bağlanır — Bluesky hesap ayarlarından bir app password oluştur (gerçek şifreni asla kullanma).
+            {c.desc}
           </p>
         </div>
       </div>
 
       <div className="mt-5 border-t border-slate-100 pt-3.5">
         {isConnected ? (
-          <span className="text-xs font-semibold text-slate-400">Aktif ve yetkilendirildi</span>
+          <span className="text-xs font-semibold text-slate-400">{conn.statusActive}</span>
         ) : !open ? (
           <button
             type="button"
             onClick={() => setOpen(true)}
             className="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition cursor-pointer"
           >
-            Bluesky&apos;ı Bağla →
+            {c.connectBtn}
           </button>
         ) : (
           <form onSubmit={handleConnect} className="space-y-2">
@@ -350,7 +305,7 @@ function BlueskyConnectCard({ isConnected, onConnected }: { isConnected: boolean
               type="text"
               value={handle}
               onChange={(e) => setHandle(e.target.value)}
-              placeholder="Handle (ör. tentamark.bsky.social)"
+              placeholder={c.handlePlaceholder}
               required
               className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs text-slate-800 focus:border-slate-400 focus:outline-none"
             />
@@ -358,7 +313,7 @@ function BlueskyConnectCard({ isConnected, onConnected }: { isConnected: boolean
               type="password"
               value={appPassword}
               onChange={(e) => setAppPassword(e.target.value)}
-              placeholder="App password"
+              placeholder={c.appPasswordPlaceholder}
               required
               className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs text-slate-800 focus:border-slate-400 focus:outline-none"
             />
@@ -372,14 +327,14 @@ function BlueskyConnectCard({ isConnected, onConnected }: { isConnected: boolean
                 }}
                 className="flex-1 rounded-lg border border-slate-200 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
               >
-                Vazgeç
+                {conn.cancel}
               </button>
               <button
                 type="submit"
                 disabled={submitting}
                 className="flex-1 rounded-lg bg-slate-900 py-2 text-xs font-bold text-white hover:bg-slate-800 transition disabled:opacity-50 cursor-pointer"
               >
-                {submitting ? "Bağlanıyor..." : "Bağla"}
+                {submitting ? conn.connecting : conn.connect}
               </button>
             </div>
           </form>
@@ -396,6 +351,9 @@ function BlueskyConnectCard({ isConnected, onConnected }: { isConnected: boolean
 // component simply remounts with the right state after connecting; no
 // onConnected plumbing needed the way Telegram's inline form requires.
 function CanvaConnectCard({ brandId }: { brandId: string }) {
+  const { t } = useLanguage();
+  const c = t.dashboard.settings.integrationCards.canva;
+  const conn = t.dashboard.settings.connectionsTab;
   const { connected, loading } = useCanvaConnection(brandId);
 
   return (
@@ -407,34 +365,34 @@ function CanvaConnectCard({ brandId }: { brandId: string }) {
           </div>
           {connected ? (
             <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
-              Bağlı ✓
+              {conn.connectedBadge}
             </span>
           ) : (
             <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-100">
-              Hazır
+              {conn.readyBadge}
             </span>
           )}
         </div>
 
         <div>
-          <h4 className="font-display text-sm font-bold text-slate-900">Canva</h4>
+          <h4 className="font-display text-sm font-bold text-slate-900">{c.title}</h4>
           <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-            Medya kütüphanesinden doğrudan Canva&apos;da tasarım açın, bitirince görsel otomatik gönderinize aktarılır.
+            {c.desc}
           </p>
         </div>
       </div>
 
       <div className="mt-5 border-t border-slate-100 pt-3.5">
         {connected ? (
-          <span className="text-xs font-semibold text-slate-400">Aktif ve yetkilendirildi</span>
+          <span className="text-xs font-semibold text-slate-400">{conn.statusActive}</span>
         ) : loading ? (
-          <span className="text-xs font-semibold text-slate-300">Kontrol ediliyor...</span>
+          <span className="text-xs font-semibold text-slate-300">{conn.statusChecking}</span>
         ) : (
           <a
             href="/api/canva/connect/start"
             className="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition"
           >
-            Canva&apos;yı Bağla →
+            {c.connectBtn}
           </a>
         )}
       </div>
@@ -447,6 +405,9 @@ function CanvaConnectCard({ brandId }: { brandId: string }) {
 // same inline-form shape as Telegram/Bluesky. Not a publish target: it's a
 // product data source Compose pulls from, see useWooCommerceConnection.
 function WooCommerceConnectCard({ brandId }: { brandId: string }) {
+  const { t, locale } = useLanguage();
+  const c = t.dashboard.settings.integrationCards.woocommerce;
+  const conn = t.dashboard.settings.connectionsTab;
   const { connected, storeName, loading } = useWooCommerceConnection(brandId);
   const [open, setOpen] = useState(false);
   const [storeUrl, setStoreUrl] = useState("");
@@ -467,7 +428,7 @@ function WooCommerceConnectCard({ brandId }: { brandId: string }) {
         body: JSON.stringify({ storeUrl, consumerKey, consumerSecret }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Bağlantı kurulamadı.");
+      if (!res.ok) throw new Error(data.error || (locale === "en" ? "Could not connect." : "Bağlantı kurulamadı."));
       setStoreUrl("");
       setConsumerKey("");
       setConsumerSecret("");
@@ -477,7 +438,7 @@ function WooCommerceConnectCard({ brandId }: { brandId: string }) {
       // form-based flow doesn't navigate anywhere, so it needs its own nudge.
       setJustConnected(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Bağlantı kurulamadı.");
+      setError(err instanceof Error ? err.message : (locale === "en" ? "Could not connect." : "Bağlantı kurulamadı."));
     } finally {
       setSubmitting(false);
     }
@@ -494,19 +455,19 @@ function WooCommerceConnectCard({ brandId }: { brandId: string }) {
           </div>
           {isConnected ? (
             <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
-              Bağlı ✓
+              {conn.connectedBadge}
             </span>
           ) : (
             <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-100">
-              Hazır
+              {conn.readyBadge}
             </span>
           )}
         </div>
 
         <div>
-          <h4 className="font-display text-sm font-bold text-slate-900">WooCommerce</h4>
+          <h4 className="font-display text-sm font-bold text-slate-900">{c.title}</h4>
           <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-            Mağazandaki ürünleri Compose&apos;a çekip gerçek ürün verisinden içerik fikri üretmek için bağlan — kendi WooCommerce panelinden bir Consumer Key/Secret oluştur.
+            {c.desc}
           </p>
         </div>
       </div>
@@ -514,17 +475,17 @@ function WooCommerceConnectCard({ brandId }: { brandId: string }) {
       <div className="mt-5 border-t border-slate-100 pt-3.5">
         {isConnected ? (
           <span className="text-xs font-semibold text-slate-400">
-            Aktif ve yetkilendirildi{storeName ? ` · ${storeName}` : ""}
+            {conn.statusActive}{storeName ? ` · ${storeName}` : ""}
           </span>
         ) : loading ? (
-          <span className="text-xs font-semibold text-slate-300">Kontrol ediliyor...</span>
+          <span className="text-xs font-semibold text-slate-300">{conn.statusChecking}</span>
         ) : !open ? (
           <button
             type="button"
             onClick={() => setOpen(true)}
             className="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition cursor-pointer"
           >
-            WooCommerce&apos;i Bağla →
+            {c.connectBtn}
           </button>
         ) : (
           <form onSubmit={handleConnect} className="space-y-2">
@@ -532,7 +493,7 @@ function WooCommerceConnectCard({ brandId }: { brandId: string }) {
               type="text"
               value={storeUrl}
               onChange={(e) => setStoreUrl(e.target.value)}
-              placeholder="Mağaza URL'si (ör. magazam.com)"
+              placeholder={c.urlPlaceholder}
               required
               className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs text-slate-800 focus:border-slate-400 focus:outline-none"
             />
@@ -562,14 +523,14 @@ function WooCommerceConnectCard({ brandId }: { brandId: string }) {
                 }}
                 className="flex-1 rounded-lg border border-slate-200 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
               >
-                Vazgeç
+                {conn.cancel}
               </button>
               <button
                 type="submit"
                 disabled={submitting}
                 className="flex-1 rounded-lg bg-slate-900 py-2 text-xs font-bold text-white hover:bg-slate-800 transition disabled:opacity-50 cursor-pointer"
               >
-                {submitting ? "Bağlanıyor..." : "Bağla"}
+                {submitting ? conn.connecting : conn.connect}
               </button>
             </div>
           </form>
@@ -581,6 +542,8 @@ function WooCommerceConnectCard({ brandId }: { brandId: string }) {
 
 function SettingsPageContent() {
   const brand = useBrand();
+  const { t, locale } = useLanguage();
+  const st = t.dashboard.settings;
   const supabase = useMemo(() => createClient(), []);
   const searchParams = useSearchParams();
 
@@ -633,7 +596,88 @@ function SettingsPageContent() {
   const [teamActionError, setTeamActionError] = useState<string | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
+  // Workspace (brand) count vs. the org's real, DB-tracked limit
+  // (supabase/patches/0034) — the one real number in an otherwise-placeholder
+  // Plan tab, since billing itself isn't wired up yet.
+  const [workspaceCount, setWorkspaceCount] = useState<number | null>(null);
+  const [maxBrands, setMaxBrands] = useState<number | null>(null);
+
   const isOwner = myRole === "owner";
+
+  const availableIntegrations = useMemo(() => [
+    {
+      id: "instagram",
+      name: st.integrationCards.instagram.name,
+      desc: st.integrationCards.instagram.desc,
+      icon: "instagram" as PlatformName,
+      href: "/api/connections/instagram/start",
+      available: true,
+    },
+    {
+      id: "facebook",
+      name: st.integrationCards.facebook.name,
+      desc: st.integrationCards.facebook.desc,
+      icon: "facebook" as PlatformName,
+      href: "/api/connections/meta/start",
+      available: true,
+    },
+    {
+      id: "threads",
+      name: st.integrationCards.threads.name,
+      desc: st.integrationCards.threads.desc,
+      icon: "threads" as PlatformName,
+      href: "/api/connections/threads/start",
+      available: true,
+    },
+    {
+      id: "linkedin",
+      name: st.integrationCards.linkedin.name,
+      desc: st.integrationCards.linkedin.desc,
+      icon: "linkedin" as PlatformName,
+      href: "#",
+      available: false,
+    },
+    {
+      id: "x",
+      name: st.integrationCards.x.name,
+      desc: st.integrationCards.x.desc,
+      icon: "x" as PlatformName,
+      href: "#",
+      available: false,
+    },
+    {
+      id: "tiktok",
+      name: st.integrationCards.tiktok.name,
+      desc: st.integrationCards.tiktok.desc,
+      icon: "tiktok" as PlatformName,
+      href: "/api/connections/tiktok/start",
+      available: true,
+    },
+    {
+      id: "pinterest",
+      name: st.integrationCards.pinterest.name,
+      desc: st.integrationCards.pinterest.desc,
+      icon: "pinterest" as PlatformName,
+      href: "/api/connections/pinterest/start",
+      available: true,
+    },
+    {
+      id: "youtube",
+      name: st.integrationCards.youtube.name,
+      desc: st.integrationCards.youtube.desc,
+      icon: "youtube" as PlatformName,
+      href: "/api/connections/youtube/start",
+      available: true,
+    },
+  ], [st]);
+
+  const tabItems = useMemo(() => [
+    { key: "genel" as const, label: st.tabs.general, icon: "⚙️" },
+    { key: "plan" as const, label: st.tabs.plan, icon: "💎" },
+    { key: "ekip" as const, label: st.tabs.team, icon: "👥" },
+    { key: "baglantilar" as const, label: st.tabs.connections, icon: "🔗" },
+    { key: "bildirimler" as const, label: st.tabs.notifications, icon: "🔔" },
+  ], [st]);
 
   useEffect(() => {
     let ignore = false;
@@ -665,6 +709,23 @@ function SettingsPageContent() {
     if (!organizationId) return;
     let ignore = false;
     (async () => {
+      const [{ data: org }, { count }] = await Promise.all([
+        supabase.from("organizations").select("max_brands").eq("id", organizationId).maybeSingle(),
+        supabase.from("brands").select("id", { count: "exact", head: true }).eq("organization_id", organizationId),
+      ]);
+      if (ignore) return;
+      setMaxBrands(org?.max_brands ?? 1);
+      setWorkspaceCount(count ?? 0);
+    })();
+    return () => {
+      ignore = true;
+    };
+  }, [supabase, organizationId]);
+
+  useEffect(() => {
+    if (!organizationId) return;
+    let ignore = false;
+    (async () => {
       const { data: memberRows } = await supabase
         .from("organization_members")
         .select("id, user_id, role, profiles(full_name, email)")
@@ -679,7 +740,7 @@ function SettingsPageContent() {
             id: m.id,
             userId: m.user_id,
             role: m.role,
-            name: p?.full_name || p?.email?.split("@")[0] || "Kullanıcı",
+            name: p?.full_name || p?.email?.split("@")[0] || st.teamTab.defaultUser,
             email: p?.email ?? "",
           };
         })
@@ -699,7 +760,7 @@ function SettingsPageContent() {
     return () => {
       ignore = true;
     };
-  }, [supabase, organizationId, teamRefreshKey]);
+  }, [supabase, organizationId, teamRefreshKey, st.teamTab.defaultUser]);
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -721,7 +782,7 @@ function SettingsPageContent() {
 
     setInviting(false);
     if (error || !data) {
-      setInviteError(error?.message ?? "Davet oluşturulamadı.");
+      setInviteError(error?.message ?? st.teamTab.inviteError);
       return;
     }
     setNewInviteLink(`${window.location.origin}/davet/${data.token}`);
@@ -791,7 +852,7 @@ function SettingsPageContent() {
 
     setSaving(false);
     if (profileError || brandError) {
-      setSaveError("Kaydedilemedi, lütfen tekrar deneyin.");
+      setSaveError(st.generalForm.saveError);
       return;
     }
     setSavedNotice(true);
@@ -811,41 +872,41 @@ function SettingsPageContent() {
     }
   }
 
+  function getRoleText(role: string) {
+    if (role === "owner") return st.roles.owner;
+    if (role === "admin") return st.roles.admin;
+    return st.roles.member;
+  }
+
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
       {/* 1. Header */}
       <div>
         <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-          Ayarlar & Organizasyon
+          {st.title}
         </h1>
         <p className="mt-1 text-sm text-slate-500 font-medium">
-          Hesap tercihlerinizi, abonelik planınızı, bildirimleri ve ekip üyelerinizi yönetin.
+          {st.subtitle}
         </p>
       </div>
 
       {/* 2. Subnav Tabs */}
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-200/80 pb-3">
-        {[
-          { key: "genel", label: "Genel Tercihler", icon: "⚙️" },
-          { key: "plan", label: "Abonelik & Plan", icon: "💎" },
-          { key: "ekip", label: "Ekip Üyeleri", icon: "👥" },
-          { key: "baglantilar", label: "Bağlantılar", icon: "🔗" },
-          { key: "bildirimler", label: "Bildirimler", icon: "🔔" },
-        ].map((t) => {
-          const active = activeTab === t.key;
+        {tabItems.map((tab) => {
+          const active = activeTab === tab.key;
           return (
             <button
-              key={t.key}
+              key={tab.key}
               type="button"
-              onClick={() => setActiveTab(t.key as SettingsTab)}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition ${
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition cursor-pointer ${
                 active
                   ? "bg-slate-900 text-white shadow-xs"
                   : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900"
               }`}
             >
-              <span>{t.icon}</span>
-              <span>{t.label}</span>
+              <span>{tab.icon}</span>
+              <span>{tab.label}</span>
             </button>
           );
         })}
@@ -856,12 +917,12 @@ function SettingsPageContent() {
       {activeTab === "genel" && (
         <div className="space-y-6">
           <form onSubmit={handleSave} className="rounded-[24px] border border-slate-100 bg-white p-6 sm:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.03)] space-y-6">
-            <h3 className="font-display text-base font-bold text-slate-900">Kullanıcı & Bölge Ayarları</h3>
+            <h3 className="font-display text-base font-bold text-slate-900">{st.generalForm.title}</h3>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Ad Soyad
+                  {st.generalForm.fullName}
                 </label>
                 <input
                   type="text"
@@ -873,20 +934,20 @@ function SettingsPageContent() {
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  E-posta Adresi
+                  {st.generalForm.email}
                 </label>
                 <input
                   type="email"
                   value={email}
                   disabled
-                  title="E-posta adresini değiştirmek için giriş yaptığınız e-posta ile destek@tentamark.com adresine yazın"
+                  title={st.generalForm.emailHint}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-500 cursor-not-allowed"
                 />
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Saat Dilimi
+                  {st.generalForm.timezone}
                 </label>
                 <select
                   value={timezone}
@@ -901,15 +962,15 @@ function SettingsPageContent() {
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Panel Dili
+                  {st.generalForm.language}
                 </label>
                 <select
-                  value="tr"
+                  value={locale}
                   disabled
-                  title="Çoklu dil desteği yakında"
+                  title={st.generalForm.languageHint}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-500 cursor-not-allowed"
                 >
-                  <option value="tr">Türkçe (Yakında: diğer diller)</option>
+                  <option value={locale}>{locale === "en" ? "English" : st.generalForm.trOption}</option>
                 </select>
               </div>
             </div>
@@ -920,12 +981,12 @@ function SettingsPageContent() {
                 disabled={saving || !userId}
                 className="rounded-xl bg-slate-900 px-6 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition disabled:opacity-50 cursor-pointer"
               >
-                {saving ? "Kaydediliyor..." : "Tercihleri Kaydet"}
+                {saving ? st.saving : st.save}
               </button>
 
               {savedNotice && (
                 <span className="text-xs font-semibold text-emerald-600 flex items-center gap-1.5">
-                  <span>✓</span> Ayarlar başarıyla kaydedildi!
+                  <span>✓</span> {st.saved}
                 </span>
               )}
               {saveError && (
@@ -942,39 +1003,39 @@ function SettingsPageContent() {
                   <HiOutlineShieldCheck className="h-5 w-5 stroke-[1.75]" />
                 </div>
                 <div>
-                  <h3 className="font-display text-base font-bold text-slate-900">Aktif Oturum ve Güvenlik</h3>
-                  <p className="text-xs text-slate-500">Mevcut tarayıcı oturumunuzu görüntüleyin ve yönetin</p>
+                  <h3 className="font-display text-base font-bold text-slate-900">{st.security.title}</h3>
+                  <p className="text-xs text-slate-500">{st.security.subtitle}</p>
                 </div>
               </div>
 
               <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 w-fit">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Korumalı Oturum (Aktif)</span>
+                <span>{st.security.protectedSession}</span>
               </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Oturum Açılan E-posta</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{st.security.email}</span>
                 <p className="text-xs font-bold text-slate-800 font-mono truncate">{email || "—"}</p>
               </div>
 
               <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Yetki / Rol</span>
-                <p className="text-xs font-bold text-slate-800">{myRole === "owner" ? "Organizasyon Sahibi" : myRole === "admin" ? "Yönetici" : "Üye"}</p>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{st.security.role}</span>
+                <p className="text-xs font-bold text-slate-800">{myRole === "owner" ? st.security.roleOwner : myRole === "admin" ? st.security.roleAdmin : st.security.roleMember}</p>
               </div>
 
               <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Oturum Tipi</span>
-                <p className="text-xs font-bold text-slate-800">Şifreli JWT / SSL</p>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{st.security.sessionType}</span>
+                <p className="text-xs font-bold text-slate-800">{st.security.sessionTypeValue}</p>
               </div>
             </div>
 
             <div className="rounded-2xl border border-rose-100 bg-rose-50/40 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="space-y-0.5">
-                <h4 className="text-xs font-bold text-slate-900">Hesap Oturumunu Kapat</h4>
+                <h4 className="text-xs font-bold text-slate-900">{st.security.logoutTitle}</h4>
                 <p className="text-[11px] text-slate-500 leading-relaxed max-w-xl">
-                  Bu tarayıcıdaki tüm oturum anahtarlarını güvenle temizler ve giriş ekranına yönlendirir. Ortak veya herkese açık bilgisayarlarda işiniz bittiğinde oturumu kapatmanız önerilir.
+                  {st.security.logoutDesc}
                 </p>
               </div>
 
@@ -989,7 +1050,7 @@ function SettingsPageContent() {
                 ) : (
                   <HiOutlineArrowRightOnRectangle className="h-4 w-4 stroke-[2]" />
                 )}
-                <span>{isLoggingOut ? "Çıkış Yapılıyor..." : "Oturumu Kapat"}</span>
+                <span>{isLoggingOut ? st.security.loggingOut : st.security.logoutBtn}</span>
               </button>
             </div>
           </div>
@@ -1003,13 +1064,13 @@ function SettingsPageContent() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-5">
               <div>
                 <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-bold text-rose-700 border border-rose-100">
-                  Mevcut Plan
+                  {st.planTab.currentPlan}
                 </span>
                 <h3 className="font-display text-2xl font-bold text-slate-900 mt-2">
-                  Tentamark Pro Plan
+                  {st.planTab.planName}
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Fatura ve yenileme yönetimi yakında burada aktif olacak.
+                  {st.planTab.planDesc}
                 </p>
               </div>
 
@@ -1019,37 +1080,47 @@ function SettingsPageContent() {
                   disabled
                   className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-400 cursor-not-allowed"
                 >
-                  Fatura Geçmişi (Yakında)
+                  {st.planTab.billingHistorySoon}
                 </button>
                 <button
                   type="button"
                   disabled
                   className="rounded-xl bg-slate-200 px-4 py-2 text-xs font-bold text-slate-500 cursor-not-allowed"
                 >
-                  Planı Yükselt (Yakında)
+                  {st.planTab.upgradePlanSoon}
                 </button>
               </div>
             </div>
 
             {/* Plan limits */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
               <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 space-y-2">
-                <span className="text-xs font-semibold text-slate-500">AI Gönderi Üretimi</span>
-                <div className="text-sm font-bold text-slate-900">100 gönderi / ay</div>
+                <span className="text-xs font-semibold text-slate-500">{st.planTab.workspaces}</span>
+                <div className="text-sm font-bold text-slate-900">
+                  {workspaceCount ?? "…"} / {maxBrands ?? "…"} {st.planTab.used}
+                </div>
+                <Link href="/calisma-alanlari" className="text-[11px] font-semibold text-rose-600 hover:underline">
+                  {st.planTab.manage}
+                </Link>
               </div>
 
               <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 space-y-2">
-                <span className="text-xs font-semibold text-slate-500">Görsel Üretim Motoru</span>
-                <div className="text-sm font-bold text-slate-900">50 görsel / ay</div>
+                <span className="text-xs font-semibold text-slate-500">{st.planTab.aiPostGen}</span>
+                <div className="text-sm font-bold text-slate-900">{st.planTab.postsPerMonth}</div>
               </div>
 
               <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 space-y-2">
-                <span className="text-xs font-semibold text-slate-500">Bağlı Sosyal Kanallar</span>
-                <div className="text-sm font-bold text-slate-900">10 kanal</div>
+                <span className="text-xs font-semibold text-slate-500">{st.planTab.imageGenEngine}</span>
+                <div className="text-sm font-bold text-slate-900">{st.planTab.imagesPerMonth}</div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 space-y-2">
+                <span className="text-xs font-semibold text-slate-500">{st.planTab.connectedChannels}</span>
+                <div className="text-sm font-bold text-slate-900">{st.planTab.channelsCount}</div>
               </div>
             </div>
             <p className="text-[11px] text-slate-400 italic">
-              Kullanım takibi yakında aktif olacak — şu an yalnızca plan limitleriniz gösteriliyor.
+              {st.planTab.limitsNotice}
             </p>
           </div>
         </div>
@@ -1060,8 +1131,8 @@ function SettingsPageContent() {
         <div className="space-y-6">
           <div className="rounded-[24px] border border-slate-100 bg-white p-6 sm:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.03)] space-y-5">
             <div className="border-b border-slate-100 pb-4">
-              <h3 className="font-display text-base font-bold text-slate-900">Ekip ve İzinler</h3>
-              <p className="text-xs text-slate-400">{brand.name} panosuna erişimi olan kullanıcılar</p>
+              <h3 className="font-display text-base font-bold text-slate-900">{st.teamTab.title}</h3>
+              <p className="text-xs text-slate-400">{brand.name} {st.teamTab.subtitle}</p>
             </div>
 
             {teamActionError && <p className="text-xs font-semibold text-red-600">{teamActionError}</p>}
@@ -1084,14 +1155,14 @@ function SettingsPageContent() {
                       <select
                         value={m.role}
                         onChange={(e) => handleChangeRole(m.id, e.target.value)}
-                        className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[10px] font-semibold text-slate-700 focus:border-slate-400 focus:outline-none"
+                        className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[10px] font-semibold text-slate-700 focus:border-slate-400 focus:outline-none cursor-pointer"
                       >
-                        <option value="admin">Yönetici (Admin)</option>
-                        <option value="member">Üye</option>
+                        <option value="admin">{st.teamTab.adminOption}</option>
+                        <option value="member">{st.teamTab.memberOption}</option>
                       </select>
                     ) : (
                       <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-700">
-                        {ROLE_LABEL[m.role] ?? m.role}
+                        {getRoleText(m.role)}
                       </span>
                     )}
 
@@ -1099,7 +1170,7 @@ function SettingsPageContent() {
                       <button
                         type="button"
                         onClick={() => handleRemoveMember(m.id)}
-                        title="Ekipten çıkar"
+                        title={st.teamTab.removeTooltip}
                         className="rounded-full p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 transition cursor-pointer"
                       >
                         ✕
@@ -1114,38 +1185,38 @@ function SettingsPageContent() {
           {isOwner && (
             <div className="rounded-[24px] border border-slate-100 bg-white p-6 sm:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.03)] space-y-5">
               <h3 className="font-display text-base font-bold text-slate-900 border-b border-slate-100 pb-4">
-                Yeni Üye Davet Et
+                {st.teamTab.inviteTitle}
               </h3>
 
               <form onSubmit={handleInvite} className="flex flex-col gap-3 sm:flex-row sm:items-end">
                 <div className="flex-1 space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">E-posta</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">{st.teamTab.emailLabel}</label>
                   <input
                     type="email"
                     required
                     value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)}
-                    placeholder="ekip.arkadasi@ornek.com"
+                    placeholder={st.teamTab.emailPlaceholder}
                     className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 focus:border-slate-400 focus:outline-none"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Rol</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">{st.teamTab.roleLabel}</label>
                   <select
                     value={inviteRole}
                     onChange={(e) => setInviteRole(e.target.value as "admin" | "member")}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 focus:border-slate-400 focus:outline-none sm:w-40"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 focus:border-slate-400 focus:outline-none sm:w-40 cursor-pointer"
                   >
-                    <option value="member">Üye</option>
-                    <option value="admin">Yönetici (Admin)</option>
+                    <option value="member">{st.teamTab.memberOption}</option>
+                    <option value="admin">{st.teamTab.adminOption}</option>
                   </select>
                 </div>
                 <button
                   type="submit"
                   disabled={inviting || !inviteEmail.trim()}
-                  className="rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition disabled:opacity-50"
+                  className="rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition disabled:opacity-50 cursor-pointer"
                 >
-                  {inviting ? "Oluşturuluyor..." : "Davet Bağlantısı Oluştur"}
+                  {inviting ? st.teamTab.creatingInvite : st.teamTab.createInviteBtn}
                 </button>
               </form>
 
@@ -1159,13 +1230,12 @@ function SettingsPageContent() {
                     onClick={() => navigator.clipboard.writeText(newInviteLink)}
                     className="shrink-0 rounded-lg bg-emerald-600 px-3 py-1.5 font-bold text-white hover:bg-emerald-700 transition cursor-pointer"
                   >
-                    Kopyala
+                    {st.teamTab.copyBtn}
                   </button>
                 </div>
               )}
               <p className="text-[11px] text-slate-400 italic">
-                Bu bağlantıyı kendin paylaşıyorsun (WhatsApp, e-posta vb.) — otomatik e-posta gönderimi henüz yok.
-                Bağlantı 14 gün geçerlidir ve yalnızca bu davetin gönderildiği e-posta ile kabul edilebilir.
+                {st.teamTab.inviteNote}
               </p>
 
               {invites.length > 0 && (
@@ -1174,7 +1244,7 @@ function SettingsPageContent() {
                     <div key={inv.id} className="flex items-center justify-between py-2.5 text-xs">
                       <div>
                         <span className="font-semibold text-slate-800">{inv.email}</span>
-                        <span className="ml-2 text-slate-400">{ROLE_LABEL[inv.role] ?? inv.role} · bekliyor</span>
+                        <span className="ml-2 text-slate-400">{getRoleText(inv.role)} · {st.teamTab.pending}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
@@ -1182,14 +1252,14 @@ function SettingsPageContent() {
                           onClick={() => navigator.clipboard.writeText(`${window.location.origin}/davet/${inv.token}`)}
                           className="rounded-lg border border-slate-200 px-2.5 py-1 font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
                         >
-                          Bağlantıyı Kopyala
+                          {st.teamTab.copyLink}
                         </button>
                         <button
                           type="button"
                           onClick={() => handleRevokeInvite(inv.id)}
                           className="rounded-lg border border-slate-200 px-2.5 py-1 font-semibold text-red-600 hover:bg-red-50 transition cursor-pointer"
                         >
-                          İptal Et
+                          {st.teamTab.cancelInvite}
                         </button>
                       </div>
                     </div>
@@ -1205,14 +1275,14 @@ function SettingsPageContent() {
       {activeTab === "bildirimler" && (
         <div className="rounded-[24px] border border-slate-100 bg-white p-6 sm:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.03)] space-y-5">
           <h3 className="font-display text-base font-bold text-slate-900 border-b border-slate-100 pb-3">
-            E-posta ve Sistem Bildirimleri
+            {st.notificationsTab.title}
           </h3>
 
           <div className="space-y-4">
             <label className="flex items-start justify-between cursor-pointer p-3 rounded-xl border border-slate-100 hover:bg-slate-50 transition">
               <div>
-                <p className="text-xs font-bold text-slate-900">Yayınlama ve Zamanlama Uyarıları</p>
-                <p className="text-[11px] text-slate-500">Gönderileriniz başarıyla yayınlandığında veya onay beklediğinde bildirim alın.</p>
+                <p className="text-xs font-bold text-slate-900">{st.notificationsTab.publishTitle}</p>
+                <p className="text-[11px] text-slate-500">{st.notificationsTab.publishDesc}</p>
               </div>
               <input
                 type="checkbox"
@@ -1224,9 +1294,9 @@ function SettingsPageContent() {
 
             <label className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 cursor-pointer">
               <div>
-                <p className="text-xs font-semibold text-slate-800">Haftalık Performans Özeti</p>
+                <p className="text-xs font-semibold text-slate-800">{st.notificationsTab.weeklyTitle}</p>
                 <p className="text-[11px] text-slate-400">
-                  Her Pazartesi sabahı haftalık etkileşim ve takipçi büyümesi raporu al.
+                  {st.notificationsTab.weeklyDesc}
                 </p>
               </div>
               <input
@@ -1239,8 +1309,8 @@ function SettingsPageContent() {
 
             <label className="flex items-start justify-between cursor-pointer p-3 rounded-xl border border-slate-100 hover:bg-slate-50 transition">
               <div>
-                <p className="text-xs font-bold text-slate-900">AI Büyüme Önerileri</p>
-                <p className="text-[11px] text-slate-500">Algoritmada yeni bir kitle fırsatı yakalandığında hemen haberdar olun.</p>
+                <p className="text-xs font-bold text-slate-900">{st.notificationsTab.growthTitle}</p>
+                <p className="text-[11px] text-slate-500">{st.notificationsTab.growthDesc}</p>
               </div>
               <input
                 type="checkbox"
@@ -1253,91 +1323,93 @@ function SettingsPageContent() {
         </div>
       )}
 
-      {/* TAB 5: BAĞLANTILAR — ported from the old standalone
-          /dashboard/connections page. */}
+      {/* TAB 5: BAĞLANTILAR */}
       {activeTab === "baglantilar" && (
         <div className="space-y-6">
           {connectedParam && (
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-semibold text-emerald-800 flex items-center gap-2">
               <span>✓</span>
-              <span>Sosyal medya hesabı başarıyla bağlandı ve kullanıma hazır!</span>
+              <span>{st.connectionsTab.connectedSuccess}</span>
             </div>
           )}
           {connectErrorParam && (
             <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-xs font-semibold text-red-700 flex items-center gap-2">
               <span>✕</span>
-              <span>{connectErrorMessage(connectErrorParam)}</span>
+              <span>{connectErrorMessage(connectErrorParam, locale === "en")}</span>
             </div>
           )}
 
           <div className="rounded-[24px] border border-slate-100 bg-white p-6 sm:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.03)] space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
-                <h3 className="font-display text-base font-bold text-slate-900">Aktif Bağlantılar</h3>
-                <p className="text-xs text-slate-400">Halihazırda bağlı ve yetkilendirilmiş hesaplar</p>
+                <h3 className="font-display text-base font-bold text-slate-900">{st.connectionsTab.activeTitle}</h3>
+                <p className="text-xs text-slate-400">{st.connectionsTab.activeDesc}</p>
               </div>
               <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
-                {accounts.length} Hesap Bağlı
+                {accounts.length} {st.connectionsTab.accountsConnected}
               </span>
             </div>
 
             {accountsLoading ? (
-              <p className="py-8 text-center text-xs text-slate-400">Yükleniyor...</p>
+              <p className="py-8 text-center text-xs text-slate-400">{st.connectionsTab.loading}</p>
             ) : accounts.length === 0 ? (
               <div className="py-8 text-center">
-                <p className="text-xs text-slate-400">Henüz bağlı bir sosyal medya hesabı bulunmuyor.</p>
+                <p className="text-xs text-slate-400">{st.connectionsTab.noAccounts}</p>
                 <p className="text-xs text-slate-500 mt-1 font-medium">
-                  Aşağıdaki entegrasyon kartlarını kullanarak hesaplarınızı birkaç tıkla bağlayabilirsiniz.
+                  {st.connectionsTab.noAccountsSub}
                 </p>
               </div>
             ) : (
               <div className="divide-y divide-slate-100">
-                {accounts.map((acc) => (
-                  <div key={acc.id} className="flex items-center justify-between py-3.5 first:pt-1 last:pb-1">
-                    <div className="flex items-center gap-3">
-                      {acc.avatar_url ? (
-                        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-slate-200">
-                          <Image src={acc.avatar_url} alt="" fill className="object-cover" />
+                {accounts.map((acc) => {
+                  const statusInfo = accountStatusLabel(acc.status, st.connectionsTab.statusLabels);
+                  return (
+                    <div key={acc.id} className="flex items-center justify-between py-3.5 first:pt-1 last:pb-1">
+                      <div className="flex items-center gap-3">
+                        {acc.avatar_url ? (
+                          <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-slate-200">
+                            <Image src={acc.avatar_url} alt="" fill className="object-cover" />
+                          </div>
+                        ) : (
+                          <PlatformIcon name={acc.platform as PlatformName} className="h-10 w-10 rounded-xl" />
+                        )}
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-900">{acc.display_name ?? acc.username}</h4>
+                          <p className="text-[11px] text-slate-400">
+                            {platformLabel(acc.platform as PlatformName)} · {st.connectionsTab.status}:{" "}
+                            <span className={statusInfo.className}>
+                              {statusInfo.text}
+                            </span>
+                            {acc.last_health_check_at && (
+                              <span> · {st.connectionsTab.lastSync}: {new Date(acc.last_health_check_at).toLocaleDateString(locale === "tr" ? "tr-TR" : "en-US")}</span>
+                            )}
+                          </p>
                         </div>
-                      ) : (
-                        <PlatformIcon name={acc.platform as PlatformName} className="h-10 w-10 rounded-xl" />
-                      )}
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-900">{acc.display_name ?? acc.username}</h4>
-                        <p className="text-[11px] text-slate-400">
-                          {platformLabel(acc.platform as PlatformName)} · Durum:{" "}
-                          <span className={accountStatusLabel(acc.status).className}>
-                            {accountStatusLabel(acc.status).text}
-                          </span>
-                          {acc.last_health_check_at && (
-                            <span> · Son Senkron: {new Date(acc.last_health_check_at).toLocaleDateString("tr-TR")}</span>
-                          )}
-                        </p>
                       </div>
-                    </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleDisconnect(acc.id)}
-                      className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-500 hover:border-red-200 hover:text-red-600 transition cursor-pointer"
-                    >
-                      Bağlantıyı Kes
-                    </button>
-                  </div>
-                ))}
+                      <button
+                        type="button"
+                        onClick={() => handleDisconnect(acc.id)}
+                        className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-500 hover:border-red-200 hover:text-red-600 transition cursor-pointer"
+                      >
+                        {st.connectionsTab.disconnect}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
 
           <div className="space-y-4">
             <div>
-              <h3 className="font-display text-lg font-bold text-slate-900">Kullanılabilir Entegrasyonlar</h3>
-              <p className="text-xs text-slate-500">Hesaplarınızı bağlayarak AI ile tek tıkla doğrudan yayınlayın.</p>
+              <h3 className="font-display text-lg font-bold text-slate-900">{st.connectionsTab.availableTitle}</h3>
+              <p className="text-xs text-slate-500">{st.connectionsTab.availableDesc}</p>
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {AVAILABLE_INTEGRATIONS.map((item) => {
+              {availableIntegrations.map((item) => {
                 const isConnected = accounts.some((a) => a.platform === item.icon && a.status === "active");
                 return (
                   <div
@@ -1349,15 +1421,15 @@ function SettingsPageContent() {
                         <PlatformIcon name={item.icon} className="h-9 w-9 rounded-xl shadow-xs" />
                         {isConnected ? (
                           <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
-                            Bağlı ✓
+                            {st.connectionsTab.connectedBadge}
                           </span>
                         ) : item.available ? (
                           <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-100">
-                            Hazır
+                            {st.connectionsTab.readyBadge}
                           </span>
                         ) : (
                           <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-400">
-                            Çok Yakında
+                            {st.connectionsTab.comingSoonBadge}
                           </span>
                         )}
                       </div>
@@ -1370,13 +1442,13 @@ function SettingsPageContent() {
 
                     <div className="mt-5 border-t border-slate-100 pt-3.5">
                       {isConnected ? (
-                        <span className="text-xs font-semibold text-slate-400">Aktif ve yetkilendirildi</span>
+                        <span className="text-xs font-semibold text-slate-400">{st.connectionsTab.statusActive}</span>
                       ) : item.available ? (
                         <a
                           href={item.href}
-                          className="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition"
+                          className="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition cursor-pointer"
                         >
-                          {item.name} Hesabını Bağla →
+                          {item.name} {st.connectionsTab.connectAccount}
                         </a>
                       ) : (
                         <button
@@ -1384,7 +1456,7 @@ function SettingsPageContent() {
                           disabled
                           className="w-full rounded-xl border border-slate-200 py-2 text-xs font-semibold text-slate-400 cursor-not-allowed"
                         >
-                          Entegrasyon Yakında
+                          {st.connectionsTab.soon}
                         </button>
                       )}
                     </div>
@@ -1418,7 +1490,7 @@ export default function SettingsPage() {
   return (
     <Suspense
       fallback={
-        <div className="p-8 text-center text-xs text-slate-400">Yükleniyor...</div>
+        <div className="p-8 text-center text-xs text-slate-400">...</div>
       }
     >
       <SettingsPageContent />

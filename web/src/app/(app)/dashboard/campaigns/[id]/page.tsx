@@ -13,6 +13,7 @@ import CampaignPlannerModal from "@/components/dashboard/CampaignPlannerModal";
 import { STATUS_LABEL, type UIStatus } from "@/lib/contentStatus";
 import { ALL_PLATFORMS, type LaunchPlatform } from "@/lib/ai/platforms";
 import PlatformIcon, { type PlatformName } from "@/components/PlatformIcon";
+import { useLanguage } from "@/context/LanguageContext";
 
 type Campaign = {
   id: string;
@@ -68,10 +69,12 @@ export default function CampaignDetailPage() {
   const params = useParams<{ id: string }>();
   const brand = useBrand();
   const supabase = useMemo(() => createClient(), []);
+  const { locale, t } = useLanguage();
+  const cmp = t.dashboard.campaigns;
 
   const [campaign, setCampaign] = useState<Campaign | null | undefined>(undefined);
   const [contents, setContents] = useState<ContentRow[] | null>(null);
-  const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("overview");
+  const [tab, setTab] = useState<"overview" | "contents" | "analytics">("overview");
   const [refreshKey, setRefreshKey] = useState(0);
   const [connectedPlatforms, setConnectedPlatforms] = useState<LaunchPlatform[]>([]);
   const [showEdit, setShowEdit] = useState(false);
@@ -151,7 +154,7 @@ export default function CampaignDetailPage() {
   }
 
   async function saveCampaign(values: CampaignFormValues): Promise<string | null> {
-    if (!campaign) return "Kampanya bulunamadı.";
+    if (!campaign) return locale === "en" ? "Campaign not found." : "Kampanya bulunamadı.";
     const { error } = await supabase
       .from("campaigns")
       .update({
@@ -184,17 +187,23 @@ export default function CampaignDetailPage() {
   }, [contents]);
 
   const statTiles = [
-    { label: "Toplam İçerik", value: stats.total },
-    { label: "Yayınlandı", value: stats.published },
-    { label: "Zamanlandı", value: stats.scheduled },
-    { label: "Onay Bekliyor", value: stats.review },
+    { label: locale === "en" ? "Total Content" : "Toplam İçerik", value: stats.total },
+    { label: cmp.status.completed, value: stats.published },
+    { label: t.dashboard.posts.tabs.scheduled, value: stats.scheduled },
+    { label: t.dashboard.posts.tabs.needsReview, value: stats.review },
+  ];
+
+  const detailTabs = [
+    { key: "overview" as const, label: cmp.detail.overview },
+    { key: "contents" as const, label: cmp.detail.contents },
+    { key: "analytics" as const, label: cmp.detail.analytics },
   ];
 
   if (campaign === undefined || contents === null) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
         <div className="flex h-64 items-center justify-center rounded-[22px] border border-slate-100 bg-white text-sm text-slate-400">
-          Kampanya yükleniyor...
+          {cmp.loading}
         </div>
       </div>
     );
@@ -204,9 +213,9 @@ export default function CampaignDetailPage() {
     return (
       <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
         <div className="flex flex-col items-center gap-3 rounded-[22px] border border-slate-100 bg-white p-12 text-center">
-          <h3 className="font-display text-base font-bold text-slate-800">Kampanya bulunamadı</h3>
+          <h3 className="font-display text-base font-bold text-slate-800">{locale === "en" ? "Campaign not found" : "Kampanya bulunamadı"}</h3>
           <Link href="/dashboard/campaigns" className="text-xs font-semibold text-rose-600 hover:underline">
-            ← Kampanyalara dön
+            ← {cmp.detail.backLink}
           </Link>
         </div>
       </div>
@@ -214,6 +223,7 @@ export default function CampaignDetailPage() {
   }
 
   const cfg = STATUS_CONFIG[campaign.status];
+  const dateLocale = locale === "en" ? "en-US" : "tr-TR";
 
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
@@ -223,7 +233,7 @@ export default function CampaignDetailPage() {
           href="/dashboard/campaigns"
           className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 hover:text-slate-700"
         >
-          ← Kampanyalar
+          ← {cmp.title}
         </Link>
         <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -232,13 +242,13 @@ export default function CampaignDetailPage() {
                 {campaign.name}
               </h1>
               <span className={`rounded-full border px-2.5 py-0.5 font-mono text-[10px] uppercase font-bold ${cfg.className}`}>
-                {cfg.label}
+                {cmp.status[campaign.status]}
               </span>
             </div>
             {(campaign.start_date || campaign.end_date) && (
               <p className="mt-1.5 font-mono text-xs text-slate-400">
-                {campaign.start_date ? new Date(campaign.start_date).toLocaleDateString("tr-TR") : "—"} →{" "}
-                {campaign.end_date ? new Date(campaign.end_date).toLocaleDateString("tr-TR") : "—"}
+                {campaign.start_date ? new Date(campaign.start_date).toLocaleDateString(dateLocale) : "—"} →{" "}
+                {campaign.end_date ? new Date(campaign.end_date).toLocaleDateString(dateLocale) : "—"}
               </p>
             )}
             {campaign.platforms.length > 0 && (
@@ -257,7 +267,7 @@ export default function CampaignDetailPage() {
                 onClick={() => setShowPlanner(true)}
                 className="rounded-xl bg-[#FA5252] px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-[#E03131] transition"
               >
-                + İçerik Planla
+                + {cmp.detail.plannerBtn}
               </button>
             )}
             <button
@@ -265,7 +275,7 @@ export default function CampaignDetailPage() {
               onClick={() => setShowEdit(true)}
               className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
             >
-              Düzenle
+              {cmp.detail.edit}
             </button>
           </div>
         </div>
@@ -273,7 +283,7 @@ export default function CampaignDetailPage() {
 
       {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-slate-200 pb-px">
-        {TABS.map((t) => (
+        {detailTabs.map((t) => (
           <button
             key={t.key}
             type="button"
@@ -294,7 +304,7 @@ export default function CampaignDetailPage() {
           <div className="rounded-[22px] border border-slate-100 bg-white p-5 sm:p-7 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Kampanya Brief&apos;i
+                {cmp.detail.objectiveTitle}
               </label>
               {brief !== (campaign.objective ?? "") && (
                 <button
@@ -303,7 +313,7 @@ export default function CampaignDetailPage() {
                   disabled={savingBrief}
                   className="rounded-lg bg-slate-900 px-3 py-1 text-[11px] font-bold text-white hover:bg-slate-800 disabled:opacity-50"
                 >
-                  {savingBrief ? "Kaydediliyor..." : "Kaydet"}
+                  {savingBrief ? cmp.detail.savingBrief : cmp.detail.saveBrief}
                 </button>
               )}
             </div>
@@ -312,7 +322,7 @@ export default function CampaignDetailPage() {
               onChange={(e) => setBrief(e.target.value)}
               onBlur={saveBrief}
               rows={14}
-              placeholder="Bu kampanyanın hedefini, temasını ve fazlarını buraya yaz — Compose ve haftalık paket üretimi bu metni referans alacak."
+              placeholder={cmp.detail.briefPlaceholder}
               className="mt-3 w-full resize-y rounded-xl border border-slate-200 bg-slate-50/60 p-4 font-body text-sm leading-relaxed text-slate-800 placeholder-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none"
             />
           </div>
@@ -332,17 +342,28 @@ export default function CampaignDetailPage() {
         <div className="space-y-3">
           {contents.length === 0 ? (
             <div className="flex flex-col items-center gap-3 rounded-[22px] border border-dashed border-slate-200 bg-white p-12 text-center">
-              <p className="text-sm font-semibold text-slate-600">Bu kampanyaya bağlı içerik yok.</p>
+              <p className="text-sm font-semibold text-slate-600">{cmp.detail.emptyContents}</p>
               <p className="text-xs text-slate-400">
                 {campaign.start_date && campaign.end_date
-                  ? "Yukarıdaki \"+ İçerik Planla\" ile başlayabilirsin."
-                  : "Kampanyaya bir tarih aralığı ekleyip toplu planlama açabilirsin."}
+                  ? locale === "en"
+                    ? `You can start with "+ ${cmp.detail.plannerBtn}" above.`
+                    : `Yukarıdaki "+ ${cmp.detail.plannerBtn}" ile başlayabilirsin.`
+                  : locale === "en"
+                    ? "Add a date range to enable batch planning."
+                    : "Kampanyaya bir tarih aralığı ekleyip toplu planlama açabilirsin."}
               </p>
             </div>
           ) : (
             contents.map((row) => {
               const status = overallStatus(row);
               const firstScheduled = row.content_platforms?.[0]?.scheduled_at;
+              const statusLabelMap: Record<UIStatus, string> = {
+                draft: t.dashboard.posts.tabs.drafts,
+                review: t.dashboard.posts.tabs.needsReview,
+                scheduled: t.dashboard.posts.tabs.scheduled,
+                published: t.dashboard.posts.tabs.published,
+                failed: t.dashboard.posts.tabs.failed,
+              };
               return (
                 <div
                   key={row.id}
@@ -358,7 +379,7 @@ export default function CampaignDetailPage() {
                       </div>
                       {firstScheduled && (
                         <span className="font-mono text-[11px] text-slate-400">
-                          {new Date(firstScheduled).toLocaleDateString("tr-TR", {
+                          {new Date(firstScheduled).toLocaleDateString(dateLocale, {
                             day: "numeric",
                             month: "short",
                             hour: "2-digit",
@@ -371,7 +392,7 @@ export default function CampaignDetailPage() {
                   <span
                     className={`shrink-0 rounded-full px-2.5 py-0.5 font-mono text-[10px] uppercase font-bold ${STATUS_LABEL[status].className}`}
                   >
-                    {STATUS_LABEL[status].label}
+                    {statusLabelMap[status]}
                   </span>
                 </div>
               );
@@ -392,9 +413,13 @@ export default function CampaignDetailPage() {
           </div>
 
           <div className="rounded-[22px] border border-slate-100 bg-white p-5">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Platform Dağılımı</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              {locale === "en" ? "Platform Breakdown" : "Platform Dağılımı"}
+            </span>
             {stats.perPlatform.size === 0 ? (
-              <p className="mt-2 text-xs text-slate-400">Henüz platforma atanmış içerik yok.</p>
+              <p className="mt-2 text-xs text-slate-400">
+                {locale === "en" ? "No content assigned to platforms yet." : "Henüz platforma atanmış içerik yok."}
+              </p>
             ) : (
               <div className="mt-3 space-y-2">
                 {Array.from(stats.perPlatform.entries()).map(([platform, count]) => (
@@ -413,8 +438,9 @@ export default function CampaignDetailPage() {
             )}
           </div>
           <p className="text-[11px] text-slate-400">
-            Gerçek etkileşim (beğeni/erişim) metrikleri, ilgili platform bağlantısı yayın sonrası veri döndürünce burada
-            görünecek.
+            {locale === "en"
+              ? "Live engagement metrics (likes/reach) will appear here once connected platform APIs return post-publish data."
+              : "Gerçek etkileşim (beğeni/erişim) metrikleri, ilgili platform bağlantısı yayın sonrası veri döndürünce burada görünecek."}
           </p>
         </div>
       )}

@@ -1,13 +1,13 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { MODEL, VISION_MODEL, callGroq, callGroqVision } from "./groqModel";
+import { MODEL, callGroq, callGroqVision, estimateGroqCost } from "./groqModel";
 import { PLATFORM_LABEL, PLATFORM_RULE, type LaunchPlatform } from "./platforms";
 
 export type { LaunchPlatform };
 export type GeneratedDrafts = Partial<Record<LaunchPlatform, string>>;
 
-const PROMPT_VERSION = "draft-v4-vision-aware";
+const PROMPT_VERSION = "draft-v5-founder-voice";
 
 function parseDrafts(raw: string, platforms: LaunchPlatform[]): GeneratedDrafts & { needsRewrite: boolean } {
   const parsed = JSON.parse(raw);
@@ -83,7 +83,11 @@ export async function generateDrafts(
   // describes what's in it instead of writing generic text next to media
   // it never saw. Omitted (or a video) falls back to the original
   // text-only call exactly as before.
-  mediaUrl?: string
+  mediaUrl?: string,
+  // "founder" only ever does anything if brand_dna.founder_name is actually
+  // set (Compose only offers the toggle in that case) — falls back to the
+  // normal brand voice otherwise rather than writing as an unnamed "founder".
+  voiceMode: "brand" | "founder" = "brand"
 ): Promise<GeneratedDrafts> {
   if (platforms.length === 0) {
     throw new Error("En az bir platform seçilmeli.");
@@ -100,6 +104,13 @@ export async function generateDrafts(
     ? `\n\nEkli bir görsel/fotoğraf var — önce onu dikkatle incele (ürün, ortam, renkler, kompozisyon, görünen yazılar, genel ruh hali) ve gönderi metinlerinde görselde GERÇEKTEN görülenlere somut şekilde değin. Görseli görmezden gelip fikir metnine dayalı genel geçer bir şey yazma; görsel neyi gösteriyorsa metin ona atıfta bulunmalı.`
     : "";
 
+  const useFounderVoice = voiceMode === "founder" && Boolean(brandCtx.founderName);
+  const voiceInstruction = useFounderVoice
+    ? `\n\nÖNEMLİ — SES: Bu gönderi markanın kurumsal hesabından değil, kurucusu ${brandCtx.founderName}'ın kişisel sesinden yazılacak. Birinci tekil şahıs kullan ("ben", "bugün yaşadığım", "öğrendiğim"), kurumsal/reklam dilinden tamamen kaçın — samimi, kişisel bir anı/ders/gözlem anlatır gibi yaz. ${
+        brandCtx.founderVoice ? `Kurucunun kişisel üslubu: ${brandCtx.founderVoice}.` : ""
+      } Marka bağlamını sadece arka plan bilgisi olarak kullan, marka gibi değil bir İNSAN gibi konuş.`
+    : "";
+
   const systemPrompt = `Sen Tentamark için çalışan bir sosyal medya metin yazarısın. Verilen marka bağlamını ve fikri kullanarak ${platformList} için ayrı, birbirinden farklı gönderi metinleri yaz.
 
 İçerik Formatı: ${FORMAT_RULE[format]}
@@ -108,7 +119,7 @@ Kurallar:
 - Türkçe yaz, doğal ve akıcı, çeviri gibi durmasın.
 ${platformRules}
 - Klişe AI ifadelerinden kaçın ("harika bir fırsat", "hayatınızı değiştirecek" gibi).
-- Marka kimliğine (varsa yasaklı konular, ton) sadık kal.${visionInstruction}
+- Marka kimliğine (varsa yasaklı konular, ton) sadık kal.${visionInstruction}${voiceInstruction}
 
 Marka bağlamı: ${brandContext}
 
@@ -131,10 +142,10 @@ needsRewrite: kendi ürettiğin metinler klişe, tekrar eden veya zayıfsa true,
       brand_id: brandId,
       stage: "idea_and_platform_adapt",
       prompt_version: PROMPT_VERSION,
-      model: mediaUrl ? VISION_MODEL : MODEL,
+      model: result.model,
       input_tokens: result.inputTokens,
       output_tokens: result.outputTokens,
-      cost_estimate_usd: 0,
+      cost_estimate_usd: estimateGroqCost(result.model, result.inputTokens, result.outputTokens),
       latency_ms: Date.now() - firstStart,
       status: "SUCCESS",
       error: null,
@@ -151,10 +162,10 @@ needsRewrite: kendi ürettiğin metinler klişe, tekrar eden veya zayıfsa true,
           brand_id: brandId,
           stage: "quality_pass",
           prompt_version: PROMPT_VERSION,
-          model: MODEL,
+          model: critique.model,
           input_tokens: critique.inputTokens,
           output_tokens: critique.outputTokens,
-          cost_estimate_usd: 0,
+          cost_estimate_usd: estimateGroqCost(critique.model, critique.inputTokens, critique.outputTokens),
           latency_ms: Date.now() - secondStart,
           status: "SUCCESS",
           error: null,

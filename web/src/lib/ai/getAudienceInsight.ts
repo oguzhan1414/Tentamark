@@ -1,12 +1,15 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { MODEL, callGroq } from "./groqModel";
+import { FAST_MODEL, callGroq, estimateGroqCost } from "./groqModel";
 import { getLatestStrategy } from "./generateStrategy";
+import { oneProportionZTest } from "../statistics";
 
-const PROMPT_VERSION = "audience-insight-v1";
-const MIN_SAMPLE = 3;
-const MIN_GAP = 10;
+const PROMPT_VERSION = "audience-insight-v2-ztest";
+// A one-proportion z-test needs a few data points per category to mean
+// anything at all — 5 is the conventional floor for this approximation
+// (roughly "np and n(1-p) both >= a handful"), not just a round number.
+const MIN_SAMPLE = 5;
 
 export type AudienceInsight = {
   text: string;
@@ -14,6 +17,9 @@ export type AudienceInsight = {
   plannedPercentage: number;
   actualPercentage: number;
   sampleSize: number;
+  /** Two-tailed p-value from the significance test — how likely this gap is
+   *  to be sampling noise rather than a real adherence drift. */
+  pValue: number;
 };
 
 /*
@@ -48,17 +54,25 @@ export async function getAudienceInsight(brandId: string): Promise<AudienceInsig
     counts[cat] = (counts[cat] ?? 0) + 1;
   }
 
-  let biggest: { name: string; planned: number; actual: number; gap: number } | null = null;
+  // For each pillar: is the observed share a real, statistically significant
+  // drift from the planned share, or could it plausibly be noise from a
+  // small sample? A flat "gap > 10 points" threshold used to answer this
+  // the same way regardless of whether items.length was 5 or 500 — a
+  // one-proportion z-test naturally requires a bigger gap to count as
+  // significant when the sample is small, which is the actually-correct
+  // behavior, not an arbitrary rule.
+  let biggest: { name: string; planned: number; actual: number; pValue: number } | null = null;
   for (const pillar of pillars) {
     const actualCount = counts[pillar.name] ?? 0;
-    const actual = Math.round((actualCount / items.length) * 100);
-    const gap = Math.abs(pillar.percentage - actual);
-    if (!biggest || gap > biggest.gap) {
-      biggest = { name: pillar.name, planned: pillar.percentage, actual, gap };
+    const test = oneProportionZTest(actualCount, items.length, pillar.percentage / 100);
+    if (!test.significant) continue;
+    if (!biggest || test.pValue < biggest.pValue) {
+      const actual = Math.round((actualCount / items.length) * 100);
+      biggest = { name: pillar.name, planned: pillar.percentage, actual, pValue: test.pValue };
     }
   }
 
-  if (!biggest || biggest.gap < MIN_GAP) return null;
+  if (!biggest) return null;
 
   const direction = biggest.actual < biggest.planned ? "hedefin altında kalıyor" : "hedefin üzerinde";
   const fallbackText = `"${biggest.name}" sütunu stratejinizde %${biggest.planned} olarak planlanmış, ancak son 30 günde üretilen içeriğin %${biggest.actual}'i bu kategoride (${items.length} içerik incelendi) — ${direction}.`;
@@ -68,6 +82,7 @@ export async function getAudienceInsight(brandId: string): Promise<AudienceInsig
   let status: "SUCCESS" | "ERROR" = "SUCCESS";
   let inputTokens = 0;
   let outputTokens = 0;
+  let modelUsed: string = FAST_MODEL;
 
   try {
     const system =
@@ -83,6 +98,7 @@ export async function getAudienceInsight(brandId: string): Promise<AudienceInsig
     ].join("\n");
 
     const result = await callGroq(system, userMsg, {
+      model: FAST_MODEL,
       temperature: 0.3,
       maxTokens: 200,
       jsonMode: false,
@@ -90,6 +106,7 @@ export async function getAudienceInsight(brandId: string): Promise<AudienceInsig
     });
     inputTokens = result.inputTokens;
     outputTokens = result.outputTokens;
+    modelUsed = result.model;
     text = result.content.trim() || fallbackText;
   } catch {
     status = "ERROR";
@@ -100,10 +117,10 @@ export async function getAudienceInsight(brandId: string): Promise<AudienceInsig
     brand_id: brandId,
     stage: "audience_insight",
     prompt_version: PROMPT_VERSION,
-    model: MODEL,
+    model: modelUsed,
     input_tokens: inputTokens,
     output_tokens: outputTokens,
-    cost_estimate_usd: 0,
+    cost_estimate_usd: estimateGroqCost(modelUsed, inputTokens, outputTokens),
     latency_ms: Date.now() - startedAt,
     status,
   });
@@ -114,5 +131,6 @@ export async function getAudienceInsight(brandId: string): Promise<AudienceInsig
     plannedPercentage: biggest.planned,
     actualPercentage: biggest.actual,
     sampleSize: items.length,
+    pValue: biggest.pValue,
   };
 }

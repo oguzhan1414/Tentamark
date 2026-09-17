@@ -29,6 +29,9 @@ export default function SiteFooter() {
           <Link href="/platformlar" className="hover:text-ink transition">
             Platformlar
           </Link>
+          <Link href="/fiyatlandirma" className="hover:text-ink transition">
+            Fiyatlandırma
+          </Link>
           <Link href="/gizlilik" className="hover:text-ink transition">
             {t.footer.privacy}
           </Link>

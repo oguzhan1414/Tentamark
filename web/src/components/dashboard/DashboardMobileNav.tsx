@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NAV } from "./DashboardSidebar";
+import { NAV_ITEMS } from "./DashboardSidebar";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function DashboardMobileNav() {
   const pathname = usePathname();
+  const { t } = useLanguage();
+  const navT = t.dashboard.nav;
 
   return (
     <nav className="flex gap-2 overflow-x-auto border-b border-line bg-surface px-4 py-2.5 lg:hidden print:hidden">
-      {NAV.map((item) => {
+      {NAV_ITEMS.map((item) => {
         const active = pathname === item.href || pathname.startsWith(item.href + "/");
         return (
           <Link
@@ -19,7 +22,7 @@ export default function DashboardMobileNav() {
               active ? "border-ink bg-ink text-bg" : "border-line bg-bg text-muted"
             }`}
           >
-            {item.label}
+            {navT[item.key]}
           </Link>
         );
       })}

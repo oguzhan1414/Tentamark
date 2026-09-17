@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { useBrand } from "@/components/dashboard/BrandProvider";
+import { useLanguage } from "@/context/LanguageContext";
 import { analyzeContentBalance } from "@/lib/ai/analyzeContentBalance";
 import type { CalendarPost } from "./types";
 
@@ -24,6 +25,8 @@ export default function CalendarAiTodoDrawer({
   onSmartFill,
 }: Props) {
   const brand = useBrand();
+  const { locale } = useLanguage();
+  const isEn = locale === "en";
 
   const balance = useMemo(() => {
     return analyzeContentBalance(posts);
@@ -37,12 +40,14 @@ export default function CalendarAiTodoDrawer({
       <div className="flex h-14 items-center justify-between border-b border-slate-100 px-5 shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-base">✨</span>
-          <h3 className="font-semibold text-sm text-slate-900">AI Danışman & Yapılacaklar</h3>
+          <h3 className="font-semibold text-sm text-slate-900">
+            {isEn ? "AI Advisor & Action Items" : "AI Danışman & Yapılacaklar"}
+          </h3>
         </div>
         <button
           type="button"
           onClick={onClose}
-          aria-label="Kapat"
+          aria-label={isEn ? "Close" : "Kapat"}
           className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
         >
           ✕
@@ -55,7 +60,7 @@ export default function CalendarAiTodoDrawer({
           <div className="flex items-center justify-between">
             <span className="font-display text-xs font-bold text-slate-900 flex items-center gap-1.5">
               <span>🎯</span>
-              <span>İçerik Dengesi Radarı</span>
+              <span>{isEn ? "Content Balance Radar" : "İçerik Dengesi Radarı"}</span>
             </span>
             <span
               className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
@@ -67,10 +72,10 @@ export default function CalendarAiTodoDrawer({
               }`}
             >
               {balance.status === "warning"
-                ? "⚠️ Denge Uyarısı"
+                ? (isEn ? "⚠️ Balance Warning" : "⚠️ Denge Uyarısı")
                 : balance.status === "balanced"
-                ? "✓ Dengeli"
-                : "Plan Bekleniyor"}
+                ? (isEn ? "✓ Balanced" : "✓ Dengeli")
+                : (isEn ? "Plan Awaited" : "Plan Bekleniyor")}
             </span>
           </div>
 
@@ -123,7 +128,7 @@ export default function CalendarAiTodoDrawer({
               className="w-full rounded-xl bg-[#FA5252] py-2 text-xs font-bold text-white shadow-xs hover:bg-[#E03131] transition flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <span>✨</span>
-              <span>AI ile Eksik Günü Doldur</span>
+              <span>{isEn ? "AI Fill Missing Day" : "AI ile Eksik Günü Doldur"}</span>
             </button>
           )}
         </div>
@@ -131,7 +136,7 @@ export default function CalendarAiTodoDrawer({
         {/* 2. Action Checklist */}
         <div className="space-y-2">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block px-1">
-            Hızlı Aksiyonlar
+            {isEn ? "Quick Actions" : "Hızlı Aksiyonlar"}
           </span>
 
           <Link
@@ -140,7 +145,7 @@ export default function CalendarAiTodoDrawer({
             className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-rose-50/40 hover:border-rose-100 transition group"
           >
             <span className="text-xs font-semibold text-slate-700 group-hover:text-slate-900">
-              {needsReview} onay bekleyen gönderiyi gözden geçir
+              {isEn ? `Review ${needsReview} pending posts` : `${needsReview} onay bekleyen gönderiyi gözden geçir`}
             </span>
             <span className="text-xs text-slate-400 group-hover:text-rose-600">→</span>
           </Link>
@@ -151,7 +156,7 @@ export default function CalendarAiTodoDrawer({
             className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-rose-50/40 hover:border-rose-100 transition group"
           >
             <span className="text-xs font-semibold text-slate-700 group-hover:text-slate-900">
-              Haftalık içerik takvimini tamamla
+              {isEn ? "Complete weekly content calendar" : "Haftalık içerik takvimini tamamla"}
             </span>
             <span className="text-xs text-slate-400 group-hover:text-rose-600">→</span>
           </Link>
@@ -162,7 +167,7 @@ export default function CalendarAiTodoDrawer({
             className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-rose-50/40 hover:border-rose-100 transition group"
           >
             <span className="text-xs font-semibold text-slate-700 group-hover:text-slate-900">
-              {brand.name} kampanya hedeflerini güncelle
+              {isEn ? `Update ${brand.name} campaign objectives` : `${brand.name} kampanya hedeflerini güncelle`}
             </span>
             <span className="text-xs text-slate-400 group-hover:text-rose-600">→</span>
           </Link>
@@ -173,7 +178,7 @@ export default function CalendarAiTodoDrawer({
             className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-rose-50/40 hover:border-rose-100 transition group"
           >
             <span className="text-xs font-semibold text-slate-700 group-hover:text-slate-900">
-              Sosyal medya hesap bağlantılarını doğrula
+              {isEn ? "Verify social media account connections" : "Sosyal medya hesap bağlantılarını doğrula"}
             </span>
             <span className="text-xs text-slate-400 group-hover:text-rose-600">→</span>
           </Link>
@@ -182,7 +187,9 @@ export default function CalendarAiTodoDrawer({
         {/* 3. Daily Briefing */}
         {briefing && (
           <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 text-[11px] text-slate-600 leading-relaxed">
-            <span className="font-bold text-slate-900 block mb-1">📋 Günlük AI Brifingi:</span>
+            <span className="font-bold text-slate-900 block mb-1">
+              {isEn ? "📋 Daily AI Briefing:" : "📋 Günlük AI Brifingi:"}
+            </span>
             <p className="whitespace-pre-line text-slate-700">{briefing}</p>
           </div>
         )}

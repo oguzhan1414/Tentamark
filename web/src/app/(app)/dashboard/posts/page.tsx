@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useBrand } from "@/components/dashboard/BrandProvider";
+import { getBrandTeam } from "@/lib/brandTeam";
 import { useComposeModal } from "@/components/dashboard/ComposeModalProvider";
 import { useLanguage } from "@/context/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
@@ -29,6 +30,7 @@ import {
   setContentApproval,
   setContentTags,
   assignContentRow,
+  assignDraftRow,
   insertContentComment,
   type ContentRow,
 } from "@/lib/content/approvalItems";
@@ -101,7 +103,13 @@ function PostsPageContent() {
   const [feedPlatform, setFeedPlatform] = useState<"instagram" | "tiktok" | "pinterest" | "threads" | "facebook">("instagram");
   const [refreshKey, setRefreshKey] = useState(0);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(() => searchParams.get("post"));
+  useEffect(() => {
+    const linkedPost = searchParams.get("post");
+    if (!linkedPost) return;
+    const timer = window.setTimeout(() => setSelectedId(linkedPost), 0);
+    return () => window.clearTimeout(timer);
+  }, [searchParams]);
   const [searchQuery, setSearchQuery] = useState("");
   const [platformFilter, setPlatformFilter] = useState("all");
   const [campaignFilter, setCampaignFilter] = useState("all");
@@ -119,6 +127,8 @@ function PostsPageContent() {
   const [batchModalOpen, setBatchModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMemberOption[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [canReview, setCanReview] = useState(false);
   // Demo board only ever applies to Kanban — Gönderiler's List view never
   // had sample data and doesn't need it; a real customer's list should
   // never show someone else's brand's sample posts.
@@ -130,19 +140,11 @@ function PostsPageContent() {
   useEffect(() => {
     let ignore = false;
     (async () => {
-      const { data: brandRow } = await supabase.from("brands").select("organization_id").eq("id", brand.id).maybeSingle();
-      if (ignore || !brandRow) return;
-      const { data: memberRows } = await supabase
-        .from("organization_members")
-        .select("user_id, profiles(full_name, email)")
-        .eq("organization_id", brandRow.organization_id);
+      const [memberRows, { data: auth }] = await Promise.all([getBrandTeam(supabase, brand.id), supabase.auth.getUser()]);
       if (ignore) return;
-      setTeamMembers(
-        (memberRows ?? []).map((m) => {
-          const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
-          return { userId: m.user_id, name: p?.full_name || p?.email?.split("@")[0] || "Üye" };
-        })
-      );
+      setCurrentUserId(auth.user?.id ?? null);
+      setCanReview(Boolean(memberRows.some((member) => member.userId === auth.user?.id && ["owner", "admin"].includes(member.role))));
+      setTeamMembers(memberRows.map((member) => ({ userId: member.userId, name: member.name, role: member.role })));
     })();
     return () => {
       ignore = true;
@@ -192,8 +194,8 @@ function PostsPageContent() {
     if (platformFilter !== "all") result = result.filter((i) => i.platforms?.some((p) => p.platform === platformFilter));
     if (campaignFilter !== "all") result = result.filter((i) => i.campaignName === campaignFilter);
     if (tagFilter !== "all") result = result.filter((i) => i.tags.includes(tagFilter));
-    if (assigneeFilter === "unassigned") result = result.filter((i) => !i.assignedTo);
-    else if (assigneeFilter !== "all") result = result.filter((i) => i.assignedTo?.id === assigneeFilter);
+    if (assigneeFilter === "unassigned") result = result.filter((i) => !i.assignedTo && !i.draftAssignedTo);
+    else if (assigneeFilter !== "all") result = result.filter((i) => i.assignedTo?.id === assigneeFilter || i.draftAssignedTo?.id === assigneeFilter);
     const now = new Date();
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     const endOfWeek = startOfDay + 7 * 86400000;
@@ -279,7 +281,7 @@ function PostsPageContent() {
     const { data, error } = await approveContentRow(supabase, id);
     setBusyId(null);
     if (error || !data?.length) {
-      setActionError(`Onaylanamadı: ${error?.message ?? "Kayıt güncellenmedi."}`);
+      setActionError(`Onaylanamadı: ${error?.message ?? "Kayıt güncellenmedi."} Yayın tarihi eksikse gönderi ayrıntısından tamamlayın.`);
       return;
     }
     setRows((prev) => (prev ? prev.map((r) => (r.id === id ? { ...r, status: "APPROVED" } : r)) : prev));
@@ -349,12 +351,12 @@ function PostsPageContent() {
   async function savePlatform(contentId: string, platformId: string, caption: string, scheduledAt: string | null): Promise<string | null> {
     const row = allRows.find((item) => item.id === contentId);
     const platform = row?.content_platforms.find((item) => item.id === platformId);
-    if (!platform || !["PENDING", "NEEDS_USER_ACTION", "FAILED"].includes(platform.status)) return "Bu platform sürümü artık düzenlenemiyor.";
+    if (!platform || !["DRAFT", "NEEDS_REVIEW", "PENDING", "NEEDS_USER_ACTION", "FAILED"].includes(platform.status)) return "Bu platform sürümü artık düzenlenemiyor.";
     if (!caption.trim()) return "Gönderi metni boş olamaz.";
     if (row?.status === "APPROVED" && (!scheduledAt || new Date(scheduledAt).getTime() <= Date.now())) return "Onaylı gönderi için gelecek bir yayın zamanı seçin.";
     const { data, error } = await supabase.from("content_platforms")
       .update({ caption, hashtags: Array.from(new Set(caption.match(/#[\p{L}0-9_]+/gu) ?? [])), scheduled_at: scheduledAt })
-      .eq("id", platformId).eq("content_id", contentId).in("status", ["PENDING", "NEEDS_USER_ACTION", "FAILED"]).select("id");
+      .eq("id", platformId).eq("content_id", contentId).in("status", ["DRAFT", "NEEDS_REVIEW", "PENDING", "NEEDS_USER_ACTION", "FAILED"]).select("id");
     if (error || !data?.length) return error?.message ?? "Gönderi değişti. Sayfayı yenileyip tekrar deneyin.";
     setRefreshKey((key) => key + 1);
     return null;
@@ -403,6 +405,25 @@ function PostsPageContent() {
     assignContentRow(supabase, itemId, userId).then(({ data, error }) => {
       if (error || !data?.length) { setActionError(`Atama kaydedilemedi: ${error?.message ?? "Kayıt güncellenmedi."}`); setRefreshKey((key) => key + 1); }
     });
+  }
+
+  async function handleAssignDraft(itemId: string, userId: string | null) {
+    const { data, error } = await assignDraftRow(supabase, itemId, userId);
+    if (error || !data?.length) {
+      setActionError(`Taslak görevi atanamadı: ${error?.message ?? "Kayıt güncellenmedi."}`);
+      return;
+    }
+    setRefreshKey((key) => key + 1);
+  }
+
+  async function sendForReview(itemId: string) {
+    const { data, error } = await supabase.from("content")
+      .update({ status: "NEEDS_REVIEW" }).eq("id", itemId).eq("status", "DRAFT").select("id");
+    if (error || !data?.length) {
+      setActionError(`Onaya gönderilemedi: ${error?.message ?? "Kayıt güncellenmedi."}`);
+      return;
+    }
+    setRefreshKey((key) => key + 1);
   }
 
   async function approveAll() {
@@ -605,7 +626,7 @@ function PostsPageContent() {
 
               {selectedIds.length > 0 && <div className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs">
                 <span className="font-semibold text-emerald-900">{selectedIds.length} gönderi seçildi</span>
-                <button type="button" onClick={approveAll} disabled={selectedReviewIds.length === 0} className="rounded-lg bg-emerald-600 px-3 py-1.5 font-bold text-white disabled:opacity-40">Seçilenleri onayla ({selectedReviewIds.length})</button>
+                {canReview && <button type="button" onClick={approveAll} disabled={selectedReviewIds.length === 0} className="rounded-lg bg-emerald-600 px-3 py-1.5 font-bold text-white disabled:opacity-40">Seçilenleri onayla ({selectedReviewIds.length})</button>}
                 <button type="button" onClick={() => setSelectedIds([])} className="font-semibold text-slate-600">Seçimi temizle</button>
               </div>}
 
@@ -738,7 +759,7 @@ function PostsPageContent() {
                               )}
                               {scheduledAt && (
                                 <span className="font-mono text-[10px] text-slate-400 ml-1">
-                                  {new Date(scheduledAt).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                  {new Date(scheduledAt).toLocaleString(isEn ? "en-US" : "tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                                 </span>
                               )}
                             </div>
@@ -830,7 +851,7 @@ function PostsPageContent() {
                           </button>
 
                           <div className="flex items-center gap-1.5">
-                            {status === "review" && (
+                            {status === "review" && canReview && (
                               <>
                                 <button
                                   type="button"
@@ -921,7 +942,7 @@ function PostsPageContent() {
                                 </span>
                               </td>
                               <td className="px-5 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                                {status === "review" ? (
+                                {status === "review" && canReview ? (
                                   <div className="flex items-center justify-end gap-1.5">
                                     <button type="button" onClick={() => reject(item.id)} className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-500 hover:text-red-600">
                                       {p.actions.reject}
@@ -969,13 +990,13 @@ function PostsPageContent() {
                   </span>
                 </div>
                 <div className="flex flex-1 flex-col gap-3 overflow-y-auto pr-1 [-ms-overflow-style:none] [scrollbar-width:thin]">
-                  <button
+                  {canReview && <button
                     type="button"
                     onClick={() => setBatchModalOpen(true)}
                     className="flex items-center justify-center rounded-xl border border-slate-200 bg-white p-3.5 text-center text-xs font-bold text-slate-700 shadow-2xs hover:border-blue-400 hover:text-blue-600 transition cursor-pointer"
                   >
                     {p.kanbanColumns.batchButton}
-                  </button>
+                  </button>}
                   {pendingReview.map((item) => (
                     <ApprovalCard key={item.id} item={item} onClick={() => setSelectedId(item.id)} />
                   ))}
@@ -1046,15 +1067,18 @@ function PostsPageContent() {
           onAddComment={addComment}
           teamMembers={teamMembers}
           onAssign={handleAssign}
-          onEditTags={saveTags}
-          onReject={reject}
-          onDelete={deleteContent}
-          onSavePlatform={savePlatform}
-          onRetryPlatform={retryPlatform}
+          onAssignDraft={handleAssignDraft}
+          onSendForReview={selectedItem.realStatus === "draft" && (canReview || selectedItem.createdBy === currentUserId || selectedItem.draftAssignedTo?.id === currentUserId) ? sendForReview : undefined}
+          canReview={canReview}
+          onEditTags={canReview || (selectedItem.realStatus === "draft" || selectedItem.realStatus === "review") && (selectedItem.createdBy === currentUserId || selectedItem.draftAssignedTo?.id === currentUserId) ? saveTags : undefined}
+          onReject={canReview ? reject : undefined}
+          onDelete={canReview ? deleteContent : undefined}
+          onSavePlatform={canReview || (selectedItem.realStatus === "draft" || selectedItem.realStatus === "review") && (selectedItem.createdBy === currentUserId || selectedItem.draftAssignedTo?.id === currentUserId) ? savePlatform : undefined}
+          onRetryPlatform={canReview ? retryPlatform : undefined}
         />
       )}
 
-      {batchModalOpen && (
+      {batchModalOpen && canReview && (
         <BatchReviewModal
           items={pendingReview.length > 0 ? pendingReview : kanbanQueue}
           onClose={() => setBatchModalOpen(false)}

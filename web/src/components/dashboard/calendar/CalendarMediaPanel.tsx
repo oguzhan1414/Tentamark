@@ -5,7 +5,6 @@ import { useDraggable } from "@dnd-kit/core";
 import { useMediaLibrary, type MediaLibraryItem } from "@/lib/media/useMediaLibrary";
 import { useCanvaConnection } from "@/lib/canva/useCanvaConnection";
 import { useCanvaDesignFlow } from "@/lib/canva/useCanvaDesignFlow";
-
 import { useLanguage } from "@/context/LanguageContext";
 
 type Props = {
@@ -31,8 +30,8 @@ function DraggableThumb({
   onToggle: (id: string) => void;
   onRename: (id: string, label: string) => void;
 }) {
-  const { locale } = useLanguage();
-  const isEn = locale === "en";
+  const { t } = useLanguage();
+  const mp = t.dashboard.calendar.mediaPanel;
   const isVideo = item.file_type.startsWith("video/");
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `media:${item.id}`,
@@ -70,7 +69,7 @@ function DraggableThumb({
               e.stopPropagation();
               onToggle(item.id);
             }}
-            aria-label={isSelected ? (isEn ? "Deselect" : "Seçimi kaldır") : (isEn ? "Select" : "Seç")}
+            aria-label={isSelected ? mp.deselect : mp.select}
             className={`absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-bold transition ${
               isSelected
                 ? "border-rose-500 bg-rose-500 text-white"
@@ -84,7 +83,7 @@ function DraggableThumb({
       <input
         type="text"
         defaultValue={item.alt_text ?? ""}
-        placeholder={isEn ? "Add tag..." : "Etiket ekle..."}
+        placeholder={mp.addTag}
         onBlur={(e) => {
           if (e.target.value.trim() !== (item.alt_text ?? "")) onRename(item.id, e.target.value);
         }}
@@ -95,8 +94,8 @@ function DraggableThumb({
 }
 
 export default function CalendarMediaPanel({ brandId, isOpen, onClose }: Props) {
-  const { locale } = useLanguage();
-  const isEn = locale === "en";
+  const { t } = useLanguage();
+  const mp = t.dashboard.calendar.mediaPanel;
   // enabled=isOpen — no fetch until the panel is opened at least once;
   // stays loaded afterwards (see useMediaLibrary), so re-opening is instant.
   const { items, loading, uploading, error, upload, addItem, rename } = useMediaLibrary(brandId, isOpen);
@@ -127,7 +126,7 @@ export default function CalendarMediaPanel({ brandId, isOpen, onClose }: Props) 
     >
       <div className="flex h-full flex-col" style={{ width: PANEL_WIDTH }}>
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-100 px-4">
-          <span className="text-sm font-bold text-slate-900">{isEn ? "Media" : "Medya"}</span>
+          <span className="text-sm font-bold text-slate-900">{mp.title}</span>
           <button
             type="button"
             onClick={onClose}
@@ -139,22 +138,20 @@ export default function CalendarMediaPanel({ brandId, isOpen, onClose }: Props) 
 
         <div className="shrink-0 border-b border-slate-100 px-4 py-3 space-y-2.5">
           <p className="text-[11px] text-slate-400">
-            {isEn
-              ? "Drag and drop onto a date to quickly schedule a post. Check multiple photos and drag them together to create a carousel."
-              : "Bir tarihe sürükleyip bırakarak hızlıca gönderi oluştur. Fotoğrafları işaretleyip birlikte sürükleyerek carousel oluşturabilirsin."}
+            {mp.dragDropHint}
           </p>
 
           {selected.size > 0 && (
             <div className="flex items-center justify-between rounded-lg bg-rose-50 border border-rose-100 px-2.5 py-1.5">
               <span className="text-[11px] font-bold text-rose-700">
-                {selected.size} {isEn ? "selected" : "seçildi"}
+                {selected.size} {mp.selectedCount}
               </span>
               <button
                 type="button"
                 onClick={() => setSelected(new Set())}
                 className="text-[11px] font-semibold text-rose-600 hover:text-rose-800 transition cursor-pointer"
               >
-                {isEn ? "Clear" : "Temizle"}
+                {mp.clear}
               </button>
             </div>
           )}
@@ -163,7 +160,7 @@ export default function CalendarMediaPanel({ brandId, isOpen, onClose }: Props) 
             htmlFor="calendar_media_upload"
             className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 py-2 text-xs font-semibold text-slate-600 hover:border-rose-400 hover:text-rose-600 transition"
           >
-            {uploading ? (isEn ? "Uploading..." : "Yükleniyor...") : (isEn ? "+ Upload New File" : "+ Yeni Dosya Yükle")}
+            {uploading ? mp.uploading : mp.uploadNewFile}
             <input
               id="calendar_media_upload"
               type="file"
@@ -185,7 +182,7 @@ export default function CalendarMediaPanel({ brandId, isOpen, onClose }: Props) 
               disabled={canvaBusy}
               className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-violet-300 bg-violet-50 py-2 text-xs font-semibold text-violet-700 hover:border-violet-400 hover:bg-violet-100 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
-              {canvaBusy ? (isEn ? "Fetching design..." : "Tasarım alınıyor...") : (isEn ? "🎨 Design with Canva" : "🎨 Canva ile Tasarla")}
+              {canvaBusy ? mp.fetchingDesign : mp.designWithCanva}
             </button>
           ) : (
             <a
@@ -193,19 +190,20 @@ export default function CalendarMediaPanel({ brandId, isOpen, onClose }: Props) 
               target="_blank"
               rel="noreferrer"
               className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50 py-2 text-xs font-semibold text-slate-400 hover:border-violet-300 hover:text-violet-600 transition"
-              title={isEn ? "Connect from Settings first to design with Canva" : "Canva ile tasarlamak için önce Ayarlar'dan bağlayın"}
+              title={mp.connectCanvaHint}
             >
-              {isEn ? "🎨 Connect Canva" : "🎨 Canva'yı Bağla"}
+              {mp.connectCanva}
             </a>
           )}
+
           {error && <p className="text-xs text-red-600">{error}</p>}
           {canvaError && <p className="text-xs text-red-600">{canvaError}</p>}
 
           <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50/80 p-0.5 text-xs font-semibold w-fit">
             {([
-              { key: "all", label: isEn ? "All" : "Tümü" },
-              { key: "image", label: isEn ? "Photos" : "Fotoğraf" },
-              { key: "video", label: isEn ? "Videos" : "Video" },
+              { key: "all", label: mp.all },
+              { key: "image", label: mp.photos },
+              { key: "video", label: mp.videos },
             ] as const).map((f) => (
               <button
                 key={f.key}
@@ -223,12 +221,10 @@ export default function CalendarMediaPanel({ brandId, isOpen, onClose }: Props) 
 
         <div className="flex-1 overflow-y-auto p-4">
           {loading ? (
-            <p className="text-center text-xs text-slate-400">{isEn ? "Loading..." : "Yükleniyor..."}</p>
+            <p className="text-center text-xs text-slate-400">{mp.loading}</p>
           ) : filteredItems.length === 0 ? (
             <p className="text-center text-xs text-slate-400">
-              {items.length === 0
-                ? (isEn ? "No uploaded media yet." : "Henüz yüklenmiş medya yok.")
-                : (isEn ? "No media found for this filter." : "Bu filtrede medya yok.")}
+              {items.length === 0 ? mp.emptyUploaded : mp.emptyFilter}
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-3">

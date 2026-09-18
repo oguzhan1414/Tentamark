@@ -1,0 +1,18 @@
+export const enPlatformSummaries = {
+  instagram: { headline: "Plan your Instagram grid before you post.", shortDesc: "Preview your feed, Reels and carousels in one visual calendar.", formats: ["Feed posts", "Carousels", "Reels"] },
+  facebook: { headline: "Plan Facebook content across your pages.", shortDesc: "Prepare page posts and keep your community updated.", formats: ["Page posts", "Images", "Videos"] },
+  linkedin: { headline: "Turn expertise into a consistent LinkedIn presence.", shortDesc: "Plan professional posts, documents and B2B campaigns.", formats: ["Text posts", "Documents", "Carousels"] },
+  tiktok: { headline: "Keep your short-form video pipeline moving.", shortDesc: "Prepare vertical videos, captions and publishing plans.", formats: ["Vertical video", "Captions", "Trends"] },
+  youtube: { headline: "Plan YouTube videos and Shorts together.", shortDesc: "Organize video ideas, Shorts and channel publishing.", formats: ["Videos", "Shorts", "Community"] },
+  threads: { headline: "Make room for timely conversations on Threads.", shortDesc: "Draft text updates and keep your voice consistent.", formats: ["Text posts", "Replies", "Images"] },
+  x: { headline: "Keep your X updates timely and focused.", shortDesc: "Plan short posts, threads and conversations.", formats: ["Posts", "Threads", "Images"] },
+  pinterest: { headline: "Turn visual ideas into lasting discovery.", shortDesc: "Plan Pins and boards that drive visitors to your content.", formats: ["Pins", "Boards", "Product Pins"] },
+  telegram: { headline: "Keep your Telegram community informed.", shortDesc: "Plan channel updates and announcements in one place.", formats: ["Channel posts", "Images", "Videos"] },
+  bluesky: { headline: "Share ideas with your Bluesky community.", shortDesc: "Prepare posts and conversations for an open social network.", formats: ["Text posts", "Images", "Threads"] },
+  woocommerce: { headline: "Bring your WooCommerce catalog into your content plan.", shortDesc: "Build social posts around your products and promotions.", formats: ["Products", "Promotions", "Social posts"] },
+  shopify: { headline: "Turn Shopify products into campaign ideas.", shortDesc: "Connect your catalog to social content and launch plans.", formats: ["Products", "Collections", "Campaigns"] },
+  "google-business": { headline: "Keep your business profile up to date.", shortDesc: "Plan local business updates and offers.", formats: ["Updates", "Offers", "Photos"] },
+  discord: { headline: "Plan updates for your Discord community.", shortDesc: "Coordinate announcements and community content.", formats: ["Announcements", "Events", "Community"] },
+  whatsapp: { headline: "Prepare clearer WhatsApp business updates.", shortDesc: "Organize messages and customer communication.", formats: ["Messages", "Media", "Updates"] },
+  canva: { headline: "Bring content ideas into Canva designs.", shortDesc: "Move visual concepts into editable Canva templates.", formats: ["Social posts", "Stories", "Carousels"] },
+} as const;

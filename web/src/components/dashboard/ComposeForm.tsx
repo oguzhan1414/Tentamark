@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useBrand } from "@/components/dashboard/BrandProvider";
+import { getBrandTeam } from "@/lib/brandTeam";
 import { createClient } from "@/lib/supabase/client";
 import {
   generateDrafts,
@@ -53,6 +54,7 @@ import ComposeMediaSection, {
 } from "./compose/ComposeMediaSection";
 import ComposePublishBar from "./compose/ComposePublishBar";
 import CaptionLabModal from "./compose/CaptionLabModal";
+import ContentMultiplierModal from "./compose/ContentMultiplierModal";
 
 const CHAR_LIMIT: Record<PlatformName, number> = {
   instagram: 2200,
@@ -72,34 +74,6 @@ const CHAR_LIMIT: Record<PlatformName, number> = {
   whatsapp: 1024,
   canva: 1000,
 };
-
-const IDEA_CHIPS_TR = [
-  "🚀 Yeni Ürün / Özellik Lansmanı",
-  "💡 Sektör İpucu & Eğitici İçerik",
-  "💬 Müşteri Başarı Hikayesi",
-  "🔍 Kulis & Kamera Arkası",
-];
-
-const IDEA_CHIPS_EN = [
-  "🚀 New Product / Feature Launch",
-  "💡 Industry Tip & Educational Guide",
-  "💬 Customer Success Story",
-  "🔍 Behind the Scenes & Roastery",
-];
-
-const TONE_OPTIONS_TR = [
-  { id: "natural", label: "Samimi & Doğal", desc: "Sıcak, içten ve bağ kuran ton" },
-  { id: "professional", label: "B2B Profesyonel", desc: "Otoriter, güven veren, net ton" },
-  { id: "energetic", label: "Enerjik & Genç", desc: "Heyecan verici, dinamik tempo" },
-  { id: "curious", label: "Merak Uyandırıcı", desc: "Tıklama ve kaydetme odaklı kanca" },
-];
-
-const TONE_OPTIONS_EN = [
-  { id: "natural", label: "Friendly & Natural", desc: "Warm, genuine, and authentic tone" },
-  { id: "professional", label: "B2B Professional", desc: "Authoritative, confident, and clear" },
-  { id: "energetic", label: "Energetic & Bold", desc: "Exciting, high-tempo engagement" },
-  { id: "curious", label: "Intriguing Hook", desc: "Curiosity and save-driven hook" },
-];
 
 function extractHashtags(text: string): string[] {
   const matches = text.match(/#[\p{L}0-9_]+/gu) ?? [];
@@ -151,6 +125,7 @@ export default function ComposeForm({
   initialCampaignId,
   initialDate,
   initialHour,
+  initialIdea,
   initialMedia,
 }: {
   onSubmitted?: () => void;
@@ -159,13 +134,13 @@ export default function ComposeForm({
   initialCampaignId?: string;
   initialDate?: string;
   initialHour?: number;
+  initialIdea?: string;
   initialMedia?: MediaLibraryItem[];
 } = {}) {
   const brand = useBrand();
-  const { locale } = useLanguage();
-  const isEn = locale === "en";
-  const ideaChips = isEn ? IDEA_CHIPS_EN : IDEA_CHIPS_TR;
-  const toneOptions = isEn ? TONE_OPTIONS_EN : TONE_OPTIONS_TR;
+  const { t, isEn } = useLanguage();
+  const ideaChips = t.dashboard.compose.ideaChips;
+  const toneOptions = t.dashboard.compose.toneOptions;
   const supabase = useMemo(() => createClient(), []);
   const { connected: woocommerceConnected } = useWooCommerceConnection(brand.id);
   const [productPickerOpen, setProductPickerOpen] = useState(false);
@@ -174,7 +149,7 @@ export default function ComposeForm({
   // Autosave hook
   const { hasSavedDraft, saveDraft, getDraft, clearDraft } = useComposeAutosave(brand.id);
 
-  const [mode, setMode] = useState<Mode>("manual");
+  const [mode, setMode] = useState<Mode>(initialIdea ? "ai" : "manual");
   const [founderName, setFounderName] = useState<string | null>(null);
   const [voiceMode, setVoiceMode] = useState<"brand" | "founder">("brand");
   const [hashtagsAsFirstComment, setHashtagsAsFirstComment] = useState(false);
@@ -190,6 +165,9 @@ export default function ComposeForm({
   const [campaignId, setCampaignId] = useState<string>(initialCampaignId ?? "");
   const [selectedTone, setSelectedTone] = useState<string>("natural");
   const [tags, setTags] = useState<string[]>([]);
+  const [draftAssigneeId, setDraftAssigneeId] = useState("");
+  const [draftAssignees, setDraftAssignees] = useState<{ id: string; name: string }[]>([]);
+  const [canAssignDraft, setCanAssignDraft] = useState(false);
 
   const [metadataPanel, setMetadataPanel] = useState<"campaign" | "labels" | "more" | null>(null);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
@@ -198,7 +176,7 @@ export default function ComposeForm({
   const [submitMenuOpen, setSubmitMenuOpen] = useState(false);
   const [scheduleMenuOpen, setScheduleMenuOpen] = useState(false);
 
-  const [idea, setIdea] = useState("");
+  const [idea, setIdea] = useState(initialIdea ?? "");
   const [suggestedIdea, setSuggestedIdea] = useState<string | null>(null);
   const [suggestingIdea, setSuggestingIdea] = useState(false);
   const [suggestionDismissed, setSuggestionDismissed] = useState(false);
@@ -259,6 +237,9 @@ export default function ComposeForm({
   const [captionLabLoading, setCaptionLabLoading] = useState(false);
   const [captionLabError, setCaptionLabError] = useState<string | null>(null);
 
+  // Content Multiplier (1 -> 7) State
+  const [multiplierOpen, setMultiplierOpen] = useState(false);
+
   async function handleOpenCaptionLab() {
     const currentText = drafts?.[activePlatformTab] || idea;
     if (!currentText?.trim()) return;
@@ -291,8 +272,9 @@ export default function ComposeForm({
       tone: selectedTone,
       drafts,
       activePlatformTab,
+      draftAssigneeId,
     });
-  }, [idea, selectedPlatforms, format, selectedTone, drafts, activePlatformTab, state, saveDraft]);
+  }, [idea, selectedPlatforms, format, selectedTone, drafts, activePlatformTab, draftAssigneeId, state, saveDraft]);
 
   function handleRestoreDraft() {
     const saved = getDraft();
@@ -301,6 +283,7 @@ export default function ComposeForm({
     if (saved.selectedPlatforms?.length) setSelectedPlatforms(saved.selectedPlatforms);
     if (saved.format) setFormat(saved.format);
     if (saved.tone) setSelectedTone(saved.tone);
+    if (saved.draftAssigneeId) setDraftAssigneeId(saved.draftAssigneeId);
     if (saved.drafts) {
       setDrafts(saved.drafts);
       setState("ready");
@@ -384,6 +367,19 @@ export default function ComposeForm({
   }, [hasUnsavedChanges, onDirtyChange]);
 
   // Load campaigns, templates, founder name, connected accounts
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      const [{ data: auth }, members] = await Promise.all([
+        supabase.auth.getUser(), getBrandTeam(supabase, brand.id),
+      ]);
+      if (ignore) return;
+      setCanAssignDraft(Boolean(members.some((member) => member.userId === auth.user?.id && ["owner", "admin"].includes(member.role))));
+      setDraftAssignees(members.map((member) => ({ id: member.userId, name: member.name })));
+    })();
+    return () => { ignore = true; };
+  }, [supabase, brand.id]);
+
   useEffect(() => {
     let ignore = false;
     (async () => {
@@ -769,8 +765,8 @@ export default function ComposeForm({
 
   // Submit to Supabase
   async function submit(targetStatus: "DRAFT" | "NEEDS_REVIEW" | "APPROVED", scheduledOverrideIso?: string) {
-    if (!drafts || !scheduledAt) return;
-    if (requiresVideo && !tiktokVideoFile?.type.startsWith("video/")) {
+    if (!drafts || (targetStatus !== "DRAFT" && !scheduledAt)) return;
+    if (targetStatus !== "DRAFT" && requiresVideo && !tiktokVideoFile?.type.startsWith("video/")) {
       setSubmitError(
         isEn
           ? "When TikTok or YouTube is selected, you must upload a video file — neither can post text or photos alone."
@@ -900,7 +896,7 @@ export default function ComposeForm({
 
       const primaryPlatform = selectedPlatforms[0];
       const primaryCaption = drafts[primaryPlatform] || "";
-      const scheduledIso = scheduledOverrideIso || new Date(scheduledAt).toISOString();
+      const scheduledIso = scheduledOverrideIso || (scheduledAt ? new Date(scheduledAt).toISOString() : null);
 
       const { data: contentRow, error: contentError } = await supabase
         .from("content")
@@ -908,11 +904,11 @@ export default function ComposeForm({
           brand_id: brand.id,
           campaign_id: campaignId || null,
           title: hook || idea.slice(0, 60) || "Yeni Gönderi",
-          caption: primaryCaption,
-          content_type: format.toUpperCase(),
+          core_idea: idea.trim() || primaryCaption,
+          format,
           status: targetStatus,
-          scheduled_at: scheduledIso,
           created_by: user?.id,
+          draft_assignee_id: targetStatus === "DRAFT" && canAssignDraft ? draftAssigneeId || null : null,
           tags,
         })
         .select("id")
@@ -932,24 +928,18 @@ export default function ComposeForm({
 
       const platformRows = selectedPlatforms.map((platform) => {
         const platformCaption = drafts[platform] || primaryCaption;
-        const platformStatus = targetStatus === "APPROVED" ? "SCHEDULED" : targetStatus;
+        // The scheduler claims PENDING variants only after the parent is approved.
+        const platformStatus = "PENDING";
         const overriddenMediaId = mediaOverrideByPlatform[platform as PlatformName];
-        const mediaIdList = overriddenMediaId
-          ? [overriddenMediaId, ...mediaIds.slice(1)]
-          : mediaIds;
-        const finalMediaIds = platform === "threads" ? mediaIdList.slice(0, 1) : mediaIdList;
-
         return {
           content_id: contentRow.id,
           platform,
-          custom_caption: platformCaption,
+          caption: platformCaption,
           status: platformStatus,
           scheduled_at: scheduledIso,
-          first_comment:
-            hashtagsAsFirstComment && (platform === "instagram" || platform === "facebook")
-              ? extractHashtags(platformCaption).join(" ") || null
-              : null,
-          media_ids: finalMediaIds,
+          hashtags: extractHashtags(platformCaption),
+          hashtags_as_first_comment: hashtagsAsFirstComment && (platform === "instagram" || platform === "facebook"),
+          media_override_id: overriddenMediaId || null,
         };
       });
 
@@ -981,6 +971,7 @@ export default function ComposeForm({
     setGenError(null);
     setImageError(null);
     setTags([]);
+    setDraftAssigneeId("");
     setHookAnalysis(null);
     setVoiceConsistency(null);
     clearDraft();
@@ -1144,6 +1135,7 @@ export default function ComposeForm({
               onGenerate={generate}
               generating={state === "generating"}
               genError={genError}
+              onOpenMultiplier={() => setMultiplierOpen(true)}
               isEn={isEn}
             />
           )}
@@ -1238,12 +1230,25 @@ export default function ComposeForm({
               analyzingVoice={analyzingVoice}
               handleCheckVoiceConsistency={handleCheckVoiceConsistency}
               onOpenCaptionLab={handleOpenCaptionLab}
+              onOpenMultiplier={() => setMultiplierOpen(true)}
               isEn={isEn}
             />
           )}
 
           {/* Publish / Scheduling Bar */}
           {drafts && (
+            <>
+            {canAssignDraft && (
+              <label className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 text-xs font-medium text-slate-600">
+                <span>{isEn ? "Draft task" : "Taslak görevi"}</span>
+                <select value={draftAssigneeId} onChange={(event) => setDraftAssigneeId(event.target.value)}
+                  className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs text-slate-700">
+                  <option value="">{isEn ? "No assignee" : "Atanmamış"}</option>
+                  {draftAssignees.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
+                </select>
+                <span className="w-full text-[11px] font-normal text-slate-400">{isEn ? "Assigned when saved as draft." : "Taslak olarak kaydedilince atanır."}</span>
+              </label>
+            )}
             <ComposePublishBar
               brandId={brand.id}
               scheduledAt={scheduledAt}
@@ -1269,7 +1274,9 @@ export default function ComposeForm({
               submit={submit}
               submitError={submitError}
               isEn={isEn}
+              canInstantPublish={canAssignDraft}
             />
+            </>
           )}
         </div>
       )}
@@ -1331,6 +1338,36 @@ export default function ComposeForm({
         onRegenerate={handleOpenCaptionLab}
         isEn={isEn}
       />
+
+      {multiplierOpen && <ContentMultiplierModal
+        isOpen={multiplierOpen}
+        onClose={() => setMultiplierOpen(false)}
+        brandId={brand.id}
+        initialText={drafts?.[activePlatformTab] || hook || idea}
+        onApplyAll={(multipliedDrafts, platformsToSelect) => {
+          setDrafts((prev) => ({ ...(prev ?? {}), ...multipliedDrafts }));
+          setSelectedPlatforms((prev) => Array.from(new Set([...prev, ...platformsToSelect])));
+          if (platformsToSelect.length > 0) {
+            setActivePlatformTab(platformsToSelect[0]);
+            setPreviewPlatform(platformsToSelect[0]);
+          }
+          if (state !== "ready") {
+            setState("ready");
+          }
+        }}
+        onApplySingle={(platform, text) => {
+          setDrafts((prev) => ({ ...(prev ?? {}), [platform]: text }));
+          if (!selectedPlatforms.includes(platform)) {
+            setSelectedPlatforms((prev) => [...prev, platform]);
+          }
+          setActivePlatformTab(platform);
+          setPreviewPlatform(platform);
+          if (state !== "ready") {
+            setState("ready");
+          }
+        }}
+        isEn={isEn}
+      />}
     </div>
   );
 }

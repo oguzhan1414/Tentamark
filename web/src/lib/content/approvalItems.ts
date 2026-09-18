@@ -45,6 +45,8 @@ export type ContentRow = {
   content_platforms: PlatformRow[];
   campaignName?: string | null;
   assignedTo?: { id: string; name: string } | null;
+  draftAssignedTo?: { id: string; name: string } | null;
+  createdBy?: string | null;
   comments: ApprovalComment[];
 };
 
@@ -117,6 +119,8 @@ export function rowToApprovalItem(row: ContentRow, brandName: string): ApprovalI
     comments: row.comments,
     isDemo: false,
     assignedTo: row.assignedTo ?? null,
+    draftAssignedTo: row.draftAssignedTo ?? null,
+    createdBy: row.createdBy ?? null,
     realStatus: overallStatus(row),
     platforms: row.content_platforms.map((p) => ({
       platform: p.platform,
@@ -167,6 +171,10 @@ export async function assignContentRow(supabase: SupabaseBrowserClient, id: stri
   return supabase.from("content").update({ assigned_to: userId }).eq("id", id).select("id");
 }
 
+export async function assignDraftRow(supabase: SupabaseBrowserClient, id: string, userId: string | null) {
+  return supabase.from("content").update({ draft_assignee_id: userId }).eq("id", id).eq("status", "DRAFT").select("id");
+}
+
 export async function insertContentComment(
   supabase: SupabaseBrowserClient,
   contentId: string,
@@ -183,7 +191,7 @@ export async function fetchContentRows(supabase: SupabaseBrowserClient, brandId:
     const { data, error } = await supabase
       .from("content")
       .select(
-        "id, title, core_idea, category, status, created_at, tags, format, assigned_to, assignee:profiles!assigned_to(full_name, email), campaigns(name), content_media(media(file_url, file_type)), content_platforms(id, platform, caption, hashtags, status, scheduled_at, permalink_url, last_error)"
+        "id, title, core_idea, category, status, created_at, created_by, draft_assignee_id, tags, format, assigned_to, assignee:profiles!assigned_to(full_name, email), draft_assignee:profiles!draft_assignee_id(full_name, email), campaigns(name), content_media(media(file_url, file_type)), content_platforms(id, platform, caption, hashtags, status, scheduled_at, permalink_url, last_error)"
       )
       .eq("brand_id", brandId)
       .order("created_at", { ascending: false })
@@ -248,6 +256,8 @@ export async function fetchContentRows(supabase: SupabaseBrowserClient, brandId:
     const campaignName = Array.isArray(campaign) ? campaign[0]?.name : campaign?.name;
     const assigneeRow = r.assignee as { full_name?: string | null; email?: string | null } | { full_name?: string | null; email?: string | null }[] | null;
     const assignee = Array.isArray(assigneeRow) ? assigneeRow[0] : assigneeRow;
+    const draftAssigneeRow = r.draft_assignee as { full_name?: string | null; email?: string | null } | { full_name?: string | null; email?: string | null }[] | null;
+    const draftAssignee = Array.isArray(draftAssigneeRow) ? draftAssigneeRow[0] : draftAssigneeRow;
     const assignedTo =
       r.assigned_to && assignee
         ? { id: String(r.assigned_to), name: assignee.full_name || assignee.email?.split("@")[0] || "Üye" }
@@ -271,6 +281,8 @@ export async function fetchContentRows(supabase: SupabaseBrowserClient, brandId:
       content_platforms: (r.content_platforms ?? []) as PlatformRow[],
       campaignName: campaignName ?? null,
       assignedTo,
+      createdBy: r.created_by ? String(r.created_by) : null,
+      draftAssignedTo: r.draft_assignee_id ? { id: String(r.draft_assignee_id), name: draftAssignee?.full_name || draftAssignee?.email?.split("@")[0] || "Üye" } : null,
       comments: commentsByContent.get(String(r.id)) ?? [],
     };
   });

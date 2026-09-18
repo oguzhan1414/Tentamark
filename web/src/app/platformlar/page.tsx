@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { LanguageProvider } from "@/context/LanguageContext";
+import { LanguageProvider, useLanguage } from "@/context/LanguageContext";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import PlatformIcon, { type PlatformName } from "@/components/PlatformIcon";
@@ -19,7 +19,9 @@ import {
 
 type FilterCategory = "all" | "social" | "video" | "messaging" | "creative";
 
-export default function PlatformlarHubPage() {
+function PlatformlarHubContent() {
+  const { t, locale } = useLanguage();
+  const copy = t.pages.platforms;
   const [selectedCategory, setSelectedCategory] = useState<FilterCategory>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -34,21 +36,22 @@ export default function PlatformlarHubPage() {
         !query ||
         p.name.toLowerCase().includes(query) ||
         p.headline.toLowerCase().includes(query) ||
-        p.shortDesc.toLowerCase().includes(query);
+        p.shortDesc.toLowerCase().includes(query) ||
+        t.platformSummaries[p.slug].headline.toLowerCase().includes(query) ||
+        t.platformSummaries[p.slug].shortDesc.toLowerCase().includes(query);
       return matchesCategory && matchesSearch;
     });
-  }, [allPlatforms, selectedCategory, searchQuery]);
+  }, [allPlatforms, selectedCategory, searchQuery, t]);
 
   const categories: { id: FilterCategory; label: string }[] = [
-    { id: "all", label: "Tüm Entegrasyonlar" },
-    { id: "social", label: "Sosyal Medya" },
-    { id: "video", label: "Kısa Video & Shorts" },
-    { id: "creative", label: "Tasarım & Kreatif" },
-    { id: "messaging", label: "Topluluk & E-Ticaret" },
+    { id: "all", label: copy.categories.all },
+    { id: "social", label: copy.categories.social },
+    { id: "video", label: copy.categories.video },
+    { id: "creative", label: copy.categories.creative },
+    { id: "messaging", label: copy.categories.messaging },
   ];
 
   return (
-    <LanguageProvider>
       <div className="flex min-h-screen flex-col bg-bg text-ink selection:bg-accent selection:text-white">
         <SiteHeader />
 
@@ -64,15 +67,15 @@ export default function PlatformlarHubPage() {
             <div className="mx-auto max-w-7xl px-6 text-center lg:px-8">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-accent-text shadow-xs">
                 <HiOutlineSparkles className="h-3.5 w-3.5 text-accent" />
-                ENTEGRASYON MERKEZİ
+                {copy.eyebrow}
               </span>
 
               <h1 className="mt-5 font-display text-4xl font-extrabold tracking-tight text-ink sm:text-5xl lg:text-6xl">
-                Tüm kanallarınızı <span className="spectrum-text">tek merkezden</span> bağlayın.
+                {copy.titleBefore}<span className="spectrum-text">{copy.titleHighlight}</span>{copy.titleAfter}
               </h1>
 
               <p className="mx-auto mt-4 max-w-2xl font-body text-base text-muted sm:text-lg">
-                Instagram, LinkedIn, TikTok, YouTube, WooCommerce, Bluesky ve fazlası. İçeriklerinizi eşzamanlı üretin, görsel ızgaralarda onaylayın ve telefonunuza dokunmadan otonom yayınlayın.
+                {copy.description}
               </p>
 
               {/* Search & Filter Bar */}
@@ -83,7 +86,7 @@ export default function PlatformlarHubPage() {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Platform ara (ör. Instagram, video, karusel, B2B, WooCommerce)..."
+                    placeholder={copy.searchPlaceholder}
                     className="w-full rounded-full border border-line bg-surface py-3.5 pr-4 pl-12 font-body text-sm text-ink shadow-[0_4px_20px_rgba(28,20,48,0.04)] placeholder:text-faint focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/15"
                   />
                   {searchQuery && (
@@ -91,7 +94,7 @@ export default function PlatformlarHubPage() {
                       onClick={() => setSearchQuery("")}
                       className="absolute right-4 text-xs font-semibold text-muted hover:text-ink cursor-pointer"
                     >
-                      Temizle
+                      {copy.clear}
                     </button>
                   )}
                 </div>
@@ -126,16 +129,16 @@ export default function PlatformlarHubPage() {
                 <div>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-100/90 border border-rose-200/80 px-3 py-1 text-[11px] font-bold text-rose-700">
                     <HiOutlineBolt className="h-3.5 w-3.5 text-[#FA5252]" />
-                    ÖNE ÇIKAN ENTEGRASYON
+                    {copy.featured}
                   </span>
                   <h2 className="mt-3 font-display text-2xl font-extrabold tracking-tight text-ink sm:text-3xl lg:text-4xl">
-                    Instagram Izgara Önizlemesi & Otonom Reels
+                    {copy.featuredTitle}
                   </h2>
                   <p className="mt-3 text-sm leading-relaxed text-muted sm:text-base">
-                    Paylaşmadan önce 9 gönderilik feed akışınızı tam görsel dizilimle görün. Sürükleyip bırakın, tek tıkla onaylayın; Tentamark resmi Graph API ile günü gününe yayınlasın.
+                    {copy.featuredDescription}
                   </p>
                   <div className="mt-6 flex items-center gap-2 font-display text-sm font-bold text-[#FA5252] transition-transform group-hover:translate-x-1">
-                    <span>Instagram Entegrasyonunu İncele</span>
+                    <span>{copy.featuredCta}</span>
                     <HiOutlineArrowRight className="h-4 w-4" />
                   </div>
                 </div>
@@ -147,7 +150,7 @@ export default function PlatformlarHubPage() {
                       <PlatformIcon name="instagram" className="h-6 w-6" variant="tile" />
                       <span className="text-xs font-bold text-slate-900">@tastybites.co</span>
                       <span className="ml-auto rounded-full bg-rose-50 border border-rose-200/60 px-2 py-0.5 text-[9px] font-bold text-rose-600">
-                        CANLI IZGARA
+                        {copy.liveGrid}
                       </span>
                     </div>
                     <div className="mt-2.5 grid grid-cols-3 gap-1.5 rounded-xl bg-slate-50 p-1 border border-slate-100">
@@ -161,7 +164,7 @@ export default function PlatformlarHubPage() {
                       </div>
                       <div className="relative aspect-square overflow-hidden rounded-lg">
                         <Image src="/images/mock-data/iced-latte.jpg" alt="" fill className="object-cover" />
-                        <span className="absolute right-0.5 top-0.5 rounded bg-black/60 px-1 text-[6px] font-bold text-white">YENİ</span>
+                        <span className="absolute right-0.5 top-0.5 rounded bg-black/60 px-1 text-[6px] font-bold text-white">{copy.new}</span>
                       </div>
                     </div>
                   </div>
@@ -175,10 +178,10 @@ export default function PlatformlarHubPage() {
             <div className="mx-auto max-w-7xl px-6 lg:px-8">
               <div className="flex items-center justify-between border-b border-line pb-4">
                 <p className="text-sm font-bold text-ink">
-                  {filteredPlatforms.length} Entegrasyon Bulundu
+                  {copy.resultCount.replace("{count}", String(filteredPlatforms.length))}
                 </p>
                 <span className="text-xs font-medium text-muted">
-                  Resmi API Bağlantıları
+                  {copy.officialApis}
                 </span>
               </div>
 
@@ -203,19 +206,19 @@ export default function PlatformlarHubPage() {
                               {platform.name}
                             </h3>
                             <span className="text-[11px] font-medium text-muted">
-                              {platform.categoryBadge.split("·")[0].trim()}
+                              {locale === "en" ? copy.categories[platform.category === "creative" ? "creative" : platform.category === "video" ? "video" : platform.category === "social" ? "social" : "messaging"] : platform.categoryBadge.split("·")[0].trim()}
                             </span>
                           </div>
                         </div>
 
                         <span className="rounded-full bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
-                          Aktif
+                          {copy.active}
                         </span>
                       </div>
 
                       {/* Description */}
                       <p className="mt-4 text-xs leading-relaxed text-muted line-clamp-2">
-                        {platform.headline}
+                        {locale === "en" ? t.platformSummaries[platform.slug].shortDesc : platform.headline}
                       </p>
 
                       {/* Format Pills */}
@@ -225,7 +228,7 @@ export default function PlatformlarHubPage() {
                             key={i}
                             className="rounded-md bg-surface-soft border border-line/60 px-2 py-0.5 text-[10px] font-medium text-muted"
                           >
-                            {card.title}
+                            {locale === "en" ? t.platformSummaries[platform.slug].formats[i] ?? card.title : card.title}
                           </span>
                         ))}
                       </div>
@@ -237,7 +240,7 @@ export default function PlatformlarHubPage() {
                         {platform.statusLabel}
                       </span>
                       <span className="flex items-center gap-1 text-xs font-bold text-accent transition-transform group-hover:translate-x-1">
-                        Keşfet
+                        {copy.explore}
                         <HiOutlineArrowRight className="h-3.5 w-3.5" />
                       </span>
                     </div>
@@ -255,41 +258,41 @@ export default function PlatformlarHubPage() {
                   <div>
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-subtle border border-accent/20 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-accent-text">
                       <HiOutlineBolt className="h-3.5 w-3.5 text-accent" />
-                      Geliştirici & Otomasyon
+                      {copy.developer}
                     </span>
                     <h2 className="mt-4 font-display text-2xl font-extrabold tracking-tight text-ink sm:text-3xl lg:text-4xl">
-                      Kendi yazılımınız veya CRM sisteminizle entegre olun.
+                      {copy.developerTitle}
                     </h2>
                     <p className="mt-3 text-sm leading-relaxed text-muted sm:text-base">
-                      Tentamark REST API ve Webhook desteği ile e-ticaret mağazanızı, Notion çalışma alanınızı veya özel CRM veri tabanınızı dakikalar içinde bağlayın.
+                      {copy.developerDescription}
                     </p>
                     <div className="mt-6 flex flex-wrap items-center gap-3">
                       <Link
                         href="/kayit"
                         className="rounded-full bg-accent px-6 py-3 text-sm font-bold text-white shadow-md shadow-accent/25 hover:bg-accent-hover transition-all"
                       >
-                        API Anahtarınızı Alın
+                        {copy.getApiKey}
                       </Link>
                       <Link
                         href="/nasil-calisir"
                         className="rounded-full border border-line bg-surface px-5 py-3 text-sm font-semibold text-ink hover:bg-surface-soft transition-colors"
                       >
-                        Dökümantasyonu İncele
+                        {copy.viewDocs}
                       </Link>
                     </div>
                   </div>
 
                   {/* Clean Code Preview Block */}
                   <div className="overflow-hidden rounded-2xl border border-line bg-surface p-5 font-mono text-xs leading-relaxed text-ink shadow-lg">
-                    <p className="text-faint">// Otomatik içerik oluştur & zamanla</p>
+                    <p className="text-faint">{copy.codeComment}</p>
                     <p className="mt-1 font-bold text-accent">POST https://api.tentamark.com/v1/posts</p>
                     <p className="text-muted mt-2">&#123;</p>
                     <p className="pl-4 text-ink">&quot;channel&quot;: &quot;instagram&quot;,</p>
                     <p className="pl-4 text-ink">&quot;format&quot;: &quot;carousel&quot;,</p>
-                    <p className="pl-4 text-ink">&quot;topic&quot;: &quot;Haftalık Lezzet Bülteni&quot;,</p>
+                    <p className="pl-4 text-ink">&quot;topic&quot;: &quot;{copy.codeTopic}&quot;,</p>
                     <p className="pl-4 text-ink">&quot;autoSchedule&quot;: true</p>
                     <p className="text-muted">&#125;</p>
-                    <p className="mt-3 font-semibold text-emerald-600">// 200 OK — Planlandı & Izgara Güncellendi</p>
+                    <p className="mt-3 font-semibold text-emerald-600">{copy.codeSuccess}</p>
                   </div>
                 </div>
               </div>
@@ -299,6 +302,9 @@ export default function PlatformlarHubPage() {
 
         <SiteFooter />
       </div>
-    </LanguageProvider>
   );
+}
+
+export default function PlatformlarHubPage() {
+  return <LanguageProvider><PlatformlarHubContent /></LanguageProvider>;
 }

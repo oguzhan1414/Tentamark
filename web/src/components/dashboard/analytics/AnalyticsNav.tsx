@@ -12,7 +12,7 @@ import { useLanguage } from "@/context/LanguageContext";
 
 export default function AnalyticsNav() {
   const pathname = usePathname();
-  const { locale, t } = useLanguage();
+  const { t } = useLanguage();
   const an = t.dashboard.analytics;
 
   const tabs = [
@@ -20,25 +20,25 @@ export default function AnalyticsNav() {
       href: "/dashboard/analytics",
       label: an.overviewTab,
       icon: HiOutlineChartBar,
-      description: locale === "en" ? "Channel growth and audience metrics" : "Kanal büyümesi ve kitle metrikleri",
+      description: an.tabDescriptions.overview,
     },
     {
       href: "/dashboard/analytics/competitors",
       label: an.competitorsTab,
       icon: HiOutlineScale,
-      description: locale === "en" ? "Competitor performance benchmark" : "Rakip hesapların performans karşılaştırması",
+      description: an.tabDescriptions.competitors,
     },
     {
       href: "/dashboard/analytics/score",
       label: an.scoreTab,
       icon: HiOutlineSparkles,
-      description: locale === "en" ? "Brand health score & AI insights" : "Marka sağlık puanı ve AI içgörüleri",
+      description: an.tabDescriptions.score,
     },
     {
       href: "/dashboard/analytics/reports",
       label: an.reportsTab,
       icon: HiOutlineDocumentChartBar,
-      description: locale === "en" ? "Client & executive presentation reports" : "Müşteri ve yönetici sunum raporları",
+      description: an.tabDescriptions.reports,
     },
   ];
 

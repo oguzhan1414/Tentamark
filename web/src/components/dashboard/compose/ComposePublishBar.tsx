@@ -31,6 +31,7 @@ interface ComposePublishBarProps {
   submit: (status: "DRAFT" | "NEEDS_REVIEW" | "APPROVED", overrideIso?: string) => void;
   submitError: string | null;
   isEn: boolean;
+  canInstantPublish?: boolean;
 }
 
 export default function ComposePublishBar({
@@ -58,6 +59,7 @@ export default function ComposePublishBar({
   submit,
   submitError,
   isEn,
+  canInstantPublish = true,
 }: ComposePublishBarProps) {
   const scheduleMenuRef = useRef<HTMLDivElement>(null);
   const submitMenuRef = useRef<HTMLDivElement>(null);
@@ -326,7 +328,7 @@ export default function ComposePublishBar({
           <div className="absolute right-0 top-full z-20 mt-1.5 w-72 space-y-1 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
             <button
               type="button"
-              disabled={!scheduledAt || submitting}
+              disabled={submitting}
               onClick={() => {
                 setSubmitMenuOpen(false);
                 submit("DRAFT");
@@ -335,7 +337,7 @@ export default function ComposePublishBar({
             >
               {isEn ? "Save as Draft" : "Taslak Olarak Kaydet"}
             </button>
-            <button
+            {canInstantPublish && <button
               type="button"
               disabled={!scheduledAt || submitting}
               onClick={() => {
@@ -358,7 +360,7 @@ export default function ComposePublishBar({
                   ? "Ignores the scheduled date — live in ~1 minute."
                   : "Seçili tarihi yok sayar — ~1 dakikada yayında."}
               </span>
-            </button>
+            </button>}
           </div>
         )}
       </div>

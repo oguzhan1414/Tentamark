@@ -108,12 +108,14 @@ ComposeForm'da bir yazı yazarken:
 - Yanlışlıkla silersen → **geri alma yok**
 - Draft otomatik kaydedilmiyor
 
-### 2.5 i18n Yapısı Zayıf
+### 2.5 i18n Yapısı Zayıf — ✅ Çözüldü
 
-[LanguageContext.tsx](file:///d:/marketing-project/web/src/context/LanguageContext.tsx) ve bileşenlerde inline `TR/EN` string'ler var (`IDEA_CHIPS_TR` / `IDEA_CHIPS_EN`). Ama:
-- Tüm bileşenler Türkçe ve İngilizce string'leri **kodun içinde** tutuyor
-- Merkezi bir translation dosyası yok
-- next-intl veya benzeri bir i18n kütüphanesi kullanılmıyor
+Eski durumda `LanguageContext.tsx` ve bileşenlerde inline `TR/EN` string'ler, hardcoded array'ler (`IDEA_CHIPS_TR/EN`, `TONE_OPTIONS_TR/EN`, `DAY_NAMES_TR/EN`) ve yüzlerce ternary (`locale === "en" ? ... : ...`) mevcuttu.
+**Yapılan İyileştirmeler:**
+- `web/src/lib/i18n/dictionaries/` altında `tr/marketing.ts`, `en/marketing.ts`, `tr/dashboard.ts` ve `en/dashboard.ts` modüler sözlük mimarisi kuruldu.
+- `translations.ts` merkezi toplayıcı (aggregator) ve %100 tip güvenli `Translations` tipi oluşturuldu.
+- `LanguageContext.tsx` güçlendirilerek `{ locale, isEn, isTr, setLocale, toggleLocale, t }` arayüzü sunuldu; sayfa yenilenmeden anında reaktif dil değişimi sağlandı.
+- `ComposeForm`, `WeeklyPackForm`, `BrandLiveSidebar`, `MediaLibraryModal`, `TemplatePickerModal`, `SaveTemplateModal`, `WooCommerceProductPicker`, `CalendarHeader`, `CalendarDayModal`, `CalendarFilterDrawer`, `CalendarMediaPanel`, `CalendarAiTodoDrawer`, `CalendarWeekView`, `CalendarMonthView`, `AnalyticsNav` bileşenlerindeki tüm inline array ve koşullar merkezi sözlüklere taşındı.
 
 ### 2.6 LinkedIn Provider Eksik
 

@@ -22,6 +22,9 @@ type Props = {
   onAddComment: (itemId: string, text: string) => void;
   teamMembers: TeamMemberOption[];
   onAssign: (itemId: string, userId: string | null) => void;
+  onAssignDraft?: (itemId: string, userId: string | null) => void;
+  onSendForReview?: (itemId: string) => void;
+  canReview?: boolean;
   // Only Gönderiler's merged view passes this — Onaylarım's own items never
   // needed inline tag editing, so the header's Tags pill stays purely
   // decorative when this is omitted (unchanged behavior).
@@ -48,6 +51,9 @@ export default function ApprovalDetailModal({
   onAddComment,
   teamMembers,
   onAssign,
+  onAssignDraft,
+  onSendForReview,
+  canReview = true,
   onEditTags,
   onReject,
   onDelete,
@@ -230,8 +236,18 @@ export default function ApprovalDetailModal({
             </button>
           )}
 
-          {/* Onaya ata */}
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1">
+          {/* Taslak ve onay görevleri ayrı tutulur. */}
+          {realStatus === "draft" && onAssignDraft && canReview && (
+            <label className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
+              {isTr ? "Taslak görevi" : "Draft task"}
+              <select value={item.draftAssignedTo?.id ?? ""} onChange={(event) => onAssignDraft(item.id, event.target.value || null)}
+                className="max-w-28 bg-transparent text-xs focus:outline-none">
+                <option value="">{p.actions.unassigned}</option>
+                {teamMembers.map((member) => <option key={member.userId} value={member.userId}>{member.name}</option>)}
+              </select>
+            </label>
+          )}
+          {realStatus !== "draft" && canReview && <div className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1">
             <svg className="h-3 w-3 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
@@ -242,13 +258,13 @@ export default function ApprovalDetailModal({
               className="bg-transparent text-xs font-bold text-rose-700 cursor-pointer focus:outline-none"
             >
               <option value="">{p.actions.unassigned}</option>
-              {teamMembers.map((m) => (
+              {teamMembers.filter((member) => member.role !== "member").map((m) => (
                 <option key={m.userId} value={m.userId}>
                   {m.name}
                 </option>
               ))}
             </select>
-          </div>
+          </div>}
         </div>
 
         {/* Right: User avatar, Paylaşmak, icons & close */}
@@ -374,7 +390,13 @@ export default function ApprovalDetailModal({
           </div>
 
           {/* Main Preview with Left Status Line */}
-          <div className="flex w-full max-w-2xl items-start justify-center gap-6">
+          <div className="flex w-full max-w-2xl flex-col items-center justify-center gap-3 sm:flex-row sm:items-start sm:gap-6">
+            {realStatus === "draft" && onSendForReview && (
+              <button type="button" onClick={() => onSendForReview(item.id)}
+                className="mb-3 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white sm:hidden">
+                {isTr ? "Onaya gönder" : "Send for review"}
+              </button>
+            )}
             {/* Left Status Indicator Column (matches screenshot 2 & 3) */}
             <div className="hidden sm:flex flex-col items-end pt-8 shrink-0 w-44 text-right">
               {!isActionable ? (
@@ -384,6 +406,12 @@ export default function ApprovalDetailModal({
                   >
                     {p.statusLabels[realStatus] || STATUS_LABEL[realStatus].label}
                   </span>
+                  {realStatus === "draft" && onSendForReview && (
+                    <button type="button" onClick={() => onSendForReview(item.id)}
+                      className="rounded-lg bg-blue-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-blue-700">
+                      {isTr ? "Onaya gönder" : "Send for review"}
+                    </button>
+                  )}
                   {realStatus === "published" && heroPermalinkUrl && (
                     <a
                       href={heroPermalinkUrl}
@@ -395,6 +423,8 @@ export default function ApprovalDetailModal({
                     </a>
                   )}
                 </div>
+              ) : !canReview ? (
+                <span className="text-xs font-medium text-slate-500">{isTr ? "Onay bekliyor" : "Awaiting review"}</span>
               ) : isApproved ? (
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-slate-700">{p.actions.approved}</span>
@@ -530,7 +560,7 @@ export default function ApprovalDetailModal({
               single-caption device mockup doesn't have room for. Only
               rendered when actually populated (Onaylarım's own items never
               set these). */}
-          {(item.hook || item.visualPrompt || (item.platforms && item.platforms.length > 1)) && (
+          {(item.hook || item.visualPrompt || (item.platforms && item.platforms.length > 0)) && (
             <div className="mt-5 w-full max-w-2xl space-y-3">
               {item.hook && (
                 <div className="rounded-2xl border border-amber-200/70 bg-amber-50/70 p-4">
@@ -582,7 +612,7 @@ export default function ApprovalDetailModal({
                       </div> : <p className="whitespace-pre-line text-xs text-slate-800 leading-relaxed">{p.caption}</p>}
                       {platformError && (editingPlatformId === p.id || platformBusy === false && p.status === "failed") && <p role="alert" className="text-[11px] text-red-600">{platformError}</p>}
                       <div className="flex flex-wrap gap-2">
-                        {onSavePlatform && p.id && ["PENDING", "NEEDS_USER_ACTION", "FAILED"].includes(p.rawStatus ?? "") && editingPlatformId !== p.id && <button type="button" onClick={() => startPlatformEdit(p)} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100">Metni / tarihi düzenle</button>}
+                        {onSavePlatform && p.id && ["DRAFT", "NEEDS_REVIEW", "PENDING", "NEEDS_USER_ACTION", "FAILED"].includes(p.rawStatus ?? "") && editingPlatformId !== p.id && <button type="button" onClick={() => startPlatformEdit(p)} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100">Metni / tarihi düzenle</button>}
                         {onRetryPlatform && p.id && ["NEEDS_USER_ACTION", "FAILED"].includes(p.rawStatus ?? "") && <button type="button" disabled={platformBusy} onClick={() => {
                           if (p.id && confirm("Bu gönderinin platformda zaten yayınlanmadığını kontrol ettiniz mi? Yeniden deneme yaklaşık 2 dakika içinde paylaşım yapabilir.")) void retryPlatform(p.id);
                         }} className="rounded-lg bg-red-600 px-2.5 py-1 text-[11px] font-bold text-white disabled:opacity-40">2 dakika içinde tekrar dene</button>}

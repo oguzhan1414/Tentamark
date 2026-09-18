@@ -31,9 +31,6 @@ const CHAR_LIMIT: Record<PlatformName, number> = {
   canva: 1000,
 };
 
-const DAY_NAMES_TR = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
-const DAY_NAMES_EN = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-
 type Card = WeeklyPackItem & {
   id: string;
   scheduledAt: string;
@@ -118,9 +115,8 @@ export default function WeeklyPackForm({
 } = {}) {
   const brand = useBrand();
   const supabase = useMemo(() => createClient(), []);
-  const { locale } = useLanguage();
-  const isEn = locale === "en";
-  const dayNames = isEn ? DAY_NAMES_EN : DAY_NAMES_TR;
+  const { t, isEn, locale } = useLanguage();
+  const dayNames = t.dashboard.weeklyPack.dayNames;
 
   const [selectedPlatforms, setSelectedPlatforms] = useState<LaunchPlatform[]>(ALL_PLATFORMS);
   // Which day offsets (0..daySpan-1) actually get a post — defaults to every

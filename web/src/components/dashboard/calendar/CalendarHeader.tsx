@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useBrand } from "@/components/dashboard/BrandProvider";
+import { getBrandTeam } from "@/lib/brandTeam";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/context/LanguageContext";
+import type { MarketingHoliday } from "@/lib/calendar/marketingHolidays";
 
 type TeamMemberAvatar = { id: string; initial: string; name: string };
 
@@ -24,6 +26,8 @@ type Props = {
   onOpenCompose: () => void;
   onOpenSmartFill?: () => void;
   filterCount: number;
+  monthHolidays?: MarketingHoliday[];
+  onSelectHoliday?: (holiday: MarketingHoliday, dateStr?: string, angle?: string) => void;
 };
 
 export default function CalendarHeader({
@@ -40,34 +44,43 @@ export default function CalendarHeader({
   onOpenCompose,
   onOpenSmartFill,
   filterCount,
+  monthHolidays = [],
+  onSelectHoliday,
 }: Props) {
   const brand = useBrand();
   const supabase = useMemo(() => createClient(), []);
   const { t } = useLanguage();
   const c = t.dashboard.calendar;
+  const dm = t.dashboard.calendar.dayModal;
   const [teamMembers, setTeamMembers] = useState<TeamMemberAvatar[]>([]);
+
+  const now = new Date();
+  const currentDay = now.getDate();
+  const currentMonth = now.getMonth();
+
+  const nextHoliday = useMemo(() => {
+    if (!monthHolidays || monthHolidays.length === 0) return null;
+    const upcomingThisMonth = monthHolidays.find((h) => h.month === currentMonth && h.day >= currentDay);
+    if (upcomingThisMonth) return upcomingThisMonth;
+    return monthHolidays[0];
+  }, [monthHolidays, currentDay, currentMonth]);
+
+  const nextHolidayDiff = useMemo(() => {
+    if (!nextHoliday) return null;
+    const n = new Date();
+    const target = new Date(n.getFullYear(), nextHoliday.month, nextHoliday.day);
+    const today = new Date(n.getFullYear(), n.getMonth(), n.getDate());
+    return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  }, [nextHoliday]);
 
   useEffect(() => {
     let ignore = false;
     (async () => {
-      const { data: brandRow } = await supabase.from("brands").select("organization_id").eq("id", brand.id).maybeSingle();
-      if (ignore || !brandRow) return;
-
-      const { data: memberRows } = await supabase
-        .from("organization_members")
-        .select("id, profiles(full_name, email)")
-        .eq("organization_id", brandRow.organization_id)
-        .order("created_at", { ascending: true })
-        .limit(5);
-      if (ignore || !memberRows) return;
-
-      setTeamMembers(
-        memberRows.map((m) => {
-          const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
-          const name = p?.full_name || p?.email?.split("@")[0] || "Üye";
-          return { id: m.id, initial: name[0]?.toUpperCase() ?? "?", name };
-        })
-      );
+      const memberRows = await getBrandTeam(supabase, brand.id);
+      if (ignore) return;
+      setTeamMembers(memberRows.slice(0, 5).map((member) => ({
+        id: member.id, initial: member.name[0]?.toUpperCase() ?? "?", name: member.name,
+      })));
     })();
     return () => {
       ignore = true;
@@ -246,14 +259,78 @@ export default function CalendarHeader({
       </div>
 
       {/* Subheader */}
-      <div className="flex h-10 items-center border-t border-slate-100 bg-[#FAFAFA] px-6 text-xs text-slate-600">
-        <button
-          type="button"
-          onClick={onToday}
-          className="text-xs font-semibold text-slate-600 hover:text-slate-900 transition cursor-pointer"
-        >
-          {c.today}
-        </button>
+      <div className="flex h-11 items-center justify-between border-t border-slate-100 bg-[#FAFAFA] px-4 sm:px-6 text-xs text-slate-600 gap-3 overflow-x-auto">
+        <div className="flex items-center gap-2.5 shrink-0">
+          <button
+            type="button"
+            onClick={onToday}
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer shadow-2xs"
+          >
+            {c.today}
+          </button>
+
+          {/* Next Marketing Opportunity Radar */}
+          {nextHoliday && (
+            <div className="hidden lg:flex items-center gap-2 rounded-full border border-rose-200/90 bg-gradient-to-r from-rose-50 via-white to-amber-50/70 py-0.5 px-2.5 text-[11px] shadow-2xs">
+              <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-white text-[10px] shadow-2xs">
+                {nextHoliday.flag}
+              </span>
+              <span className="font-bold text-slate-800 truncate max-w-[150px]">
+                {nextHoliday.name}
+              </span>
+              {nextHolidayDiff === 0 ? (
+                <span className="rounded-full bg-red-600 text-white font-black text-[8px] px-1.5 py-0.2 uppercase tracking-wide animate-pulse">
+                  {dm.today}
+                </span>
+              ) : nextHolidayDiff === 1 ? (
+                <span className="rounded-full bg-orange-500 text-white font-bold text-[8px] px-1.5 py-0.2 uppercase">
+                  {dm.tomorrow}
+                </span>
+              ) : nextHolidayDiff !== null && nextHolidayDiff > 1 && nextHolidayDiff <= 14 ? (
+                <span className="rounded-full bg-amber-500 text-white font-bold text-[8px] px-1.5 py-0.2">
+                  {nextHolidayDiff} {dm.daysLeft}
+                </span>
+              ) : (
+                <span className="text-slate-400 font-mono text-[9px]">
+                  ({nextHoliday.day} {c.daySuffix})
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => onSelectHoliday?.(nextHoliday)}
+                className="ml-0.5 inline-flex items-center gap-1 rounded-full bg-white border border-rose-200 px-2 py-0.5 text-[9.5px] font-bold text-rose-700 hover:bg-rose-600 hover:text-white transition shadow-2xs cursor-pointer"
+              >
+                <span>✨</span>
+                <span>{dm.generatePost}</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Month Holidays Pill List */}
+        {monthHolidays && monthHolidays.length > 0 && (
+          <div className="hidden sm:flex items-center gap-2 overflow-x-auto py-1">
+            <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1 shrink-0">
+              <span>🎉</span>
+              <span>{c.thisMonthDays}</span>
+            </span>
+            <div className="flex items-center gap-1.5 overflow-x-auto">
+              {monthHolidays.map((h) => (
+                <button
+                  key={h.id}
+                  type="button"
+                  onClick={() => onSelectHoliday?.(h)}
+                  title={`${h.name} (${h.tag})\n💡 ${h.advice}`}
+                  className="inline-flex items-center gap-1 rounded-full border border-slate-200/90 bg-white px-2.5 py-0.5 text-[10px] font-semibold text-slate-700 shadow-2xs hover:border-rose-300 hover:bg-rose-50/80 hover:text-rose-800 transition cursor-pointer shrink-0"
+                >
+                  <span>{h.flag}</span>
+                  <span className="truncate max-w-[130px]">{h.name}</span>
+                  <span className="text-[9px] font-mono text-slate-400">({h.day})</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </header>
   );

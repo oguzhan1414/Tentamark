@@ -25,19 +25,18 @@ import { useLanguage } from "@/context/LanguageContext";
 // actually look different here — otherwise it sits in the grid identical to
 // a post still on track to publish, which is exactly the confusion "reddet"
 // is supposed to resolve.
-function statusMeta(post: CalendarPost, locale: "tr" | "en" = "tr"): { dot: string; text: string; label: string } {
-  const isEn = locale === "en";
-  if (post.postStatus === "FAILED") return { dot: "bg-rose-500", text: "text-rose-700", label: isEn ? "Needs attention" : "İşlem gerekli" };
-  if (post.postStatus === "DRAFT") return { dot: "bg-slate-400", text: "text-slate-500", label: isEn ? "Draft" : "Taslak" };
-  if (post.postStatus === "PUBLISHED") return { dot: "bg-blue-500", text: "text-blue-600", label: isEn ? "Published" : "Yayınlandı" };
+function statusMeta(post: CalendarPost, postStatus: Record<string, string>): { dot: string; text: string; label: string } {
+  if (post.postStatus === "FAILED") return { dot: "bg-rose-500", text: "text-rose-700", label: postStatus.failed };
+  if (post.postStatus === "DRAFT") return { dot: "bg-slate-400", text: "text-slate-500", label: postStatus.draft };
+  if (post.postStatus === "PUBLISHED") return { dot: "bg-blue-500", text: "text-blue-600", label: postStatus.published };
   return post.approvalStatus === "APPROVED"
-    ? { dot: "bg-emerald-500", text: "text-emerald-600", label: isEn ? "Approved" : "Onaylandı" }
-    : { dot: "bg-amber-500", text: "text-amber-600", label: isEn ? "Pending" : "Bekliyor" };
+    ? { dot: "bg-emerald-500", text: "text-emerald-600", label: postStatus.approved }
+    : { dot: "bg-amber-500", text: "text-amber-600", label: postStatus.pending };
 }
 
 export default function CalendarPostCard({ post, onClick, draggable = true, compact = false, otherPlatforms = [] }: Props) {
-  const { locale } = useLanguage();
-  const status = statusMeta(post, locale);
+  const { t } = useLanguage();
+  const status = statusMeta(post, t.dashboard.calendar.postStatus);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: post.id,
     disabled: !draggable,
@@ -88,7 +87,7 @@ export default function CalendarPostCard({ post, onClick, draggable = true, comp
           </span>
           {otherPlatforms.length > 0 && (
             <span
-              title={locale === "en" ? `Also on ${otherPlatforms.length} more platform${otherPlatforms.length > 1 ? "s" : ""}` : `Ayrıca: ${otherPlatforms.length} platform daha`}
+              title={t.dashboard.calendar.dayModal.alsoOnPlatforms.replace("{count}", String(otherPlatforms.length))}
               className="absolute -top-1 -left-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-slate-900 px-0.5 text-[8px] font-bold text-white ring-1 ring-white"
             >
               +{otherPlatforms.length}

@@ -52,8 +52,8 @@ export default function MediaLibraryModal({
   maxSelectable,
   onClose,
 }: Props) {
-  const { locale } = useLanguage();
-  const isEn = locale === "en";
+  const { t, isEn } = useLanguage();
+  const ml = t.dashboard.mediaLibrary;
   const { items, loading, uploading, error, upload, addItem, rename } = useMediaLibrary(brandId);
   const { connected: canvaConnected } = useCanvaConnection(brandId);
   const { busy: canvaBusy, error: canvaError, start: handleCanvaClick } = useCanvaDesignFlow(addItem);
@@ -95,9 +95,7 @@ export default function MediaLibraryModal({
       <div className="relative z-10 flex max-h-[80vh] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
         <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-3.5">
           <span className="text-sm font-bold text-slate-900">
-            {multiple
-              ? isEn ? "Select from Media" : "Medyadan Seç"
-              : isEn ? "Media Library" : "Medya Kütüphanesi"}
+            {multiple ? ml.selectTitle : ml.title}
           </span>
           <button
             type="button"
@@ -166,9 +164,9 @@ export default function MediaLibraryModal({
           ) : (
             <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50/80 p-0.5 text-xs font-semibold w-fit">
               {([
-                { key: "all", label: isEn ? "All" : "Tümü" },
-                { key: "image", label: isEn ? "Photos" : "Fotoğraf" },
-                { key: "video", label: isEn ? "Videos" : "Video" },
+                { key: "all", label: ml.tabs.all },
+                { key: "image", label: ml.tabs.image },
+                { key: "video", label: ml.tabs.video },
               ] as const).map((f) => (
                 <button
                   key={f.key}

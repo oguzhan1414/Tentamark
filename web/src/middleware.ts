@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { checkRateLimit, rateLimitErrorResponse } from "@/lib/rateLimit";
 
 const CANONICAL_HOST = "tentamark.com";
-const PROTECTED_PREFIXES = ["/dashboard", "/settings", "/calisma-alanlari"];
+const PROTECTED_PREFIXES = ["/dashboard", "/settings", "/calisma-alanlari", "/onboarding"];
 const AUTH_ROUTES = ["/giris", "/kayit", "/login", "/register"];
 
 export async function middleware(request: NextRequest) {

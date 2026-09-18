@@ -220,7 +220,7 @@ Bu, AI'ların siteni anlaması için yeni bir standart. `public/llms.txt` dosyas
 ```markdown
 # Tentamark
 
-> Tentamark, Türkiye merkezli yapay zeka destekli bir sosyal medya yönetim platformudur.
+> Tentamark, Türkiye merkezli yapay zeka destekli bir sosyal medya yönetim platformudur. 
 > Markaların içerik üretimini, planlamasını ve yayınlamasını AI ile otomatikleştirir.
 
 ## Temel Özellikler
@@ -360,8 +360,8 @@ Blog yazılarında, AI'ın direkt kopyalayabileceği **net, yapılandırılmış
 ```markdown
 ## Türkçe Destekleyen Sosyal Medya Yönetim Araçları
 
-1. **Tentamark** — Türkçe native AI marketing manager.
-   Fiyat: Ücretsiz plan mevcut.
+1. **Tentamark** — Türkçe native AI marketing manager. 
+   Fiyat: Ücretsiz plan mevcut. 
    Öne çıkan: Sektör DNA, Caption Lab, Content Autopilot.
    Web: tentamark.com
 
@@ -446,7 +446,7 @@ description: "Tentamark ile Instagram, Facebook, LinkedIn, Twitter/X, TikTok, Pi
 - [ ] **6. JSON-LD Structured Data ekle** → Ana sayfa + Blog + FAQ
 - [ ] **7. Karşılaştırma blog yazıları yaz** →
   - "Tentamark vs Hootsuite: Hangisi Daha İyi?"
-  - "Tentamark vs Buffer: Farkları Neler?"
+  - "Tentamark vs Buffer: Farkları Neler?"  
   - "Tentamark vs SocialBee: Türkçe Alternatif"
 - [ ] **8. Open Graph görseli (og-image.png) oluştur** → Paylaşımlarda görsel çıksın
 - [ ] **9. Google Business Profile oluştur** → Yerel SEO

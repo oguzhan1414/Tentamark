@@ -20,13 +20,14 @@ export default function SaveTemplateModal({
   bodyPreview: string;
   saving: boolean;
 }) {
-  const { locale } = useLanguage();
-  const isEn = locale === "en";
+  const { t, locale } = useLanguage();
+  const sm = t.dashboard.templates.saveModal;
+  const common = t.dashboard.common;
 
   const [name, setName] = useState("");
   const [category, setCategory] = useState<TemplateCategoryId>("genel");
 
-  const categories = getTemplateCategories(isEn);
+  const categories = getTemplateCategories(locale);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -48,12 +49,12 @@ export default function SaveTemplateModal({
       >
         <div className="flex items-center justify-between pb-1">
           <h3 id="save-template-title" className="font-display text-base font-bold text-slate-900 tracking-tight">
-            {isEn ? "Save as Template" : "Şablon Olarak Kaydet"}
+            {sm.title}
           </h3>
           <button
             type="button"
             onClick={onCancel}
-            aria-label={isEn ? "Close" : "Kapat"}
+            aria-label={sm.close}
             className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition cursor-pointer"
           >
             <HiOutlineXMark className="h-5 w-5" />
@@ -66,7 +67,7 @@ export default function SaveTemplateModal({
 
         <div className="mt-4 space-y-1.5">
           <label htmlFor="template_name" className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            {isEn ? "Template Name" : "Şablon Adı"}
+            {sm.nameLabel}
           </label>
           <input
             id="template_name"
@@ -74,14 +75,14 @@ export default function SaveTemplateModal({
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && name.trim() && onSave(name.trim(), category)}
-            placeholder={isEn ? 'e.g. "Customer Testimonial"' : 'Örn. "Müşteri Yorumu Formatı"'}
+            placeholder={sm.namePlaceholder}
             className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 focus:border-slate-400 focus:outline-none"
           />
         </div>
 
         <div className="mt-4 space-y-1.5">
           <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            {isEn ? "Category" : "Kategori"}
+            {sm.categoryLabel}
           </label>
           <div className="flex flex-wrap gap-1.5">
             {categories.map((c) => (
@@ -108,7 +109,7 @@ export default function SaveTemplateModal({
             onClick={onCancel}
             className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
           >
-            {isEn ? "Cancel" : "Vazgeç"}
+            {common.cancel}
           </button>
           <button
             type="button"
@@ -116,7 +117,7 @@ export default function SaveTemplateModal({
             onClick={() => onSave(name.trim(), category)}
             className="flex-1 rounded-xl bg-slate-900 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition disabled:opacity-50 cursor-pointer"
           >
-            {saving ? (isEn ? "Saving…" : "Kaydediliyor…") : (isEn ? "Save" : "Kaydet")}
+            {saving ? sm.saving : common.save}
           </button>
         </div>
       </div>

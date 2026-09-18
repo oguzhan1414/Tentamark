@@ -1,5 +1,6 @@
 "use client";
 
+import { useLanguage } from "@/context/LanguageContext";
 import PlatformIcon, { platformLabel, type PlatformName } from "@/components/PlatformIcon";
 import { ALL_PLATFORMS } from "@/lib/ai/platforms";
 import type { CalendarCampaign, CalendarFilterState } from "./types";
@@ -8,12 +9,10 @@ type Props = {
   isOpen: boolean;
   filterState: CalendarFilterState;
   campaigns: CalendarCampaign[];
-  onChange: (next: CalendarFilterState) => void;
+  onChange: (state: CalendarFilterState) => void;
   onClose: () => void;
   onReset: () => void;
 };
-
-import { useLanguage } from "@/context/LanguageContext";
 
 export default function CalendarFilterDrawer({
   isOpen,
@@ -23,14 +22,16 @@ export default function CalendarFilterDrawer({
   onClose,
   onReset,
 }: Props) {
-  const { locale } = useLanguage();
-  const isEn = locale === "en";
+  const { t } = useLanguage();
+  const fd = t.dashboard.calendar.filterDrawer;
+  const ps = t.dashboard.calendar.postStatus;
+  const common = t.dashboard.common;
 
   const postStatusLabels: Record<string, string> = {
-    DRAFT: isEn ? "Draft" : "Taslak",
-    SCHEDULED: isEn ? "Scheduled" : "Zamanlandı",
-    PUBLISHED: isEn ? "Published" : "Yayınlandı",
-    FAILED: isEn ? "Needs attention" : "İşlem gerekli",
+    DRAFT: ps.draft,
+    SCHEDULED: ps.scheduled,
+    PUBLISHED: ps.published,
+    FAILED: ps.failed,
   };
 
   if (!isOpen) return null;
@@ -39,11 +40,11 @@ export default function CalendarFilterDrawer({
     <aside className="fixed inset-y-0 right-0 z-50 w-full max-w-xs border-l border-slate-200 bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
       {/* Header */}
       <div className="flex h-14 items-center justify-between border-b border-slate-100 px-5">
-        <h3 className="font-semibold text-sm text-slate-900">{isEn ? "Filter & Sort" : "Filtrele ve sırala"}</h3>
+        <h3 className="font-semibold text-sm text-slate-900">{fd.title}</h3>
         <button
           type="button"
           onClick={onClose}
-          aria-label={isEn ? "Close" : "Kapat"}
+          aria-label={fd.close}
           className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
         >
           ✕
@@ -55,7 +56,7 @@ export default function CalendarFilterDrawer({
         {/* Sort By */}
         <div>
           <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            {isEn ? "SORT BY" : "SIRALA"}
+            {fd.sortBy}
           </span>
           <div className="mt-2 flex items-center gap-2">
             <button
@@ -67,7 +68,7 @@ export default function CalendarFilterDrawer({
                   : "text-slate-600 hover:bg-slate-50"
               }`}
             >
-              <span>⇅</span> {isEn ? "Default order" : "Varsayılan sıra"}
+              <span>⇅</span> {fd.defaultOrder}
             </button>
             <button
               type="button"
@@ -78,7 +79,7 @@ export default function CalendarFilterDrawer({
                   : "text-slate-600 hover:bg-slate-50"
               }`}
             >
-              <span>📅</span> {isEn ? "By date" : "Tarihe göre"}
+              <span>📅</span> {fd.byDate}
             </button>
           </div>
         </div>
@@ -86,15 +87,15 @@ export default function CalendarFilterDrawer({
         {/* Approval Status */}
         <div>
           <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            {isEn ? "APPROVAL STATUS" : "ONAY DURUMU"}
+            {fd.approvalStatus}
           </span>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {(
               [
-                { key: "all", label: isEn ? "All" : "Tümü", cls: "bg-blue-600 text-white" },
-                { key: "PENDING", label: isEn ? "Pending" : "Bekliyor", cls: "bg-amber-600 text-white" },
-                { key: "APPROVED", label: isEn ? "Approved" : "Onaylandı", cls: "bg-emerald-600 text-white" },
-                { key: "FEEDBACK", label: isEn ? "Feedback" : "Geri Bildirim", cls: "bg-rose-600 text-white" },
+                { key: "all", label: common.all, cls: "bg-blue-600 text-white" },
+                { key: "PENDING", label: ps.pending, cls: "bg-amber-600 text-white" },
+                { key: "APPROVED", label: ps.approved, cls: "bg-emerald-600 text-white" },
+                { key: "FEEDBACK", label: fd.feedback, cls: "bg-rose-600 text-white" },
               ] as const
             ).map((s) => (
               <button
@@ -114,7 +115,7 @@ export default function CalendarFilterDrawer({
         {/* Post Status */}
         <div>
           <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            {isEn ? "POST STATUS" : "GÖNDERİ DURUMU"}
+            {fd.status}
           </span>
           <div className="mt-2 flex flex-wrap gap-1.5">
             <button
@@ -124,7 +125,7 @@ export default function CalendarFilterDrawer({
                 filterState.postStatus === "all" ? "bg-blue-600 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
               }`}
             >
-              {isEn ? "All" : "Tümü"}
+              {common.all}
             </button>
             {Object.entries(postStatusLabels).map(([key, label]) => (
               <button
@@ -144,7 +145,7 @@ export default function CalendarFilterDrawer({
         {/* Platform */}
         <div>
           <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            PLATFORM
+            {fd.platforms}
           </span>
           <div className="mt-2 flex flex-wrap gap-1.5">
             <button
@@ -154,7 +155,7 @@ export default function CalendarFilterDrawer({
                 filterState.platform === "all" ? "bg-blue-600 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
               }`}
             >
-              {isEn ? "All" : "Tümü"}
+              {common.all}
             </button>
             {ALL_PLATFORMS.map((p) => (
               <button
@@ -176,14 +177,14 @@ export default function CalendarFilterDrawer({
         {campaigns.length > 0 && (
           <div>
             <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              {isEn ? "CAMPAIGN" : "KAMPANYA"}
+              {fd.campaigns}
             </span>
             <select
               value={filterState.campaign}
               onChange={(e) => onChange({ ...filterState, campaign: e.target.value })}
               className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 focus:border-blue-500 focus:outline-none"
             >
-              <option value="all">{isEn ? "All campaigns" : "Tüm kampanyalar"}</option>
+              <option value="all">{fd.allCampaigns}</option>
               {campaigns.map((c) => (
                 <option key={c.id} value={c.name}>
                   {c.name}
@@ -196,7 +197,7 @@ export default function CalendarFilterDrawer({
         {/* Search input */}
         <div>
           <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            {isEn ? "SEARCH" : "ARA"}
+            {common.search.toUpperCase()}
           </span>
           <div className="relative mt-2">
             <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">🔍</span>
@@ -204,7 +205,7 @@ export default function CalendarFilterDrawer({
               type="text"
               value={filterState.searchQuery}
               onChange={(e) => onChange({ ...filterState, searchQuery: e.target.value })}
-              placeholder={isEn ? "Search in posts..." : "Gönderilerde ara..."}
+              placeholder={fd.searchPlaceholder}
               className="w-full rounded-xl border border-slate-200 py-2 pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-none"
             />
           </div>
@@ -218,7 +219,7 @@ export default function CalendarFilterDrawer({
           onClick={onReset}
           className="w-full rounded-xl border border-slate-200 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
         >
-          {isEn ? "Reset filters" : "Filtreleri sıfırla"}
+          {fd.clearFilters}
         </button>
       </div>
     </aside>

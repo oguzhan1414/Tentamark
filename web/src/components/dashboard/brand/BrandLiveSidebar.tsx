@@ -39,7 +39,8 @@ export default function BrandLiveSidebar({
   onSave,
   describeTone,
 }: Props) {
-  const { locale } = useLanguage();
+  const { t, isEn, locale } = useLanguage();
+  const sb = t.dashboard.brand.sidebar;
   const [showLearningLog, setShowLearningLog] = useState(false);
   const [showFindings, setShowFindings] = useState(false);
 
@@ -59,12 +60,12 @@ export default function BrandLiveSidebar({
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-              <span>{savingStep || (locale === "en" ? "Saving..." : "Kaydediliyor...")}</span>
+              <span>{savingStep || sb.saving}</span>
             </>
           ) : (
             <>
               <span>💾</span>
-              <span>{locale === "en" ? "Save Changes & Update Strategy" : "Değişiklikleri Kaydet & Stratejiyi Güncelle"}</span>
+              <span>{sb.saveChanges}</span>
             </>
           )}
         </button>
@@ -72,7 +73,7 @@ export default function BrandLiveSidebar({
         {saved && !strategyWarning && (
           <div className="rounded-lg bg-emerald-50 p-2 text-center text-xs font-semibold text-emerald-700 flex items-center justify-center gap-1.5">
             <span>✓</span>
-            <span>{locale === "en" ? "Brand profile and strategy updated!" : "Marka profili ve strateji güncellendi!"}</span>
+            <span>{sb.savedNotice}</span>
           </div>
         )}
 
@@ -93,10 +94,10 @@ export default function BrandLiveSidebar({
       <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-            {locale === "en" ? "Live Brand Identity" : "Canlı Marka Kimliği"}
+            {sb.liveIdentity}
           </span>
           <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[9px] font-bold text-rose-700 border border-rose-100">
-            {locale === "en" ? "Live Preview" : "Canlı Önizleme"}
+            {sb.livePreview}
           </span>
         </div>
 
@@ -106,10 +107,10 @@ export default function BrandLiveSidebar({
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate font-display text-base font-bold text-slate-900">
-              {brandName || (locale === "en" ? "Your Brand" : "Markanız")}
+              {brandName || sb.defaultBrandName}
             </p>
             <p className="truncate text-xs text-slate-500">
-              {industry || (locale === "en" ? "Industry not specified" : "Sektör belirtilmedi")}
+              {industry || sb.industryNotSpecified}
             </p>
           </div>
         </div>
@@ -117,7 +118,7 @@ export default function BrandLiveSidebar({
         {/* Tone Badge */}
         <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 text-xs text-slate-700">
           <span className="text-[10px] font-bold uppercase text-slate-400 block mb-0.5">
-            {locale === "en" ? "Tone & Approach:" : "Ton & Yaklaşım:"}
+            {sb.toneAndApproach}
           </span>
           <p className="font-semibold text-slate-800">{describeTone(tonePosition)}</p>
         </div>
@@ -126,7 +127,7 @@ export default function BrandLiveSidebar({
         {colorList.length > 0 && (
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
-              {locale === "en" ? "Color Palette" : "Renk Paleti"}
+              {sb.colorPalette}
             </span>
             <div className="flex flex-wrap gap-2">
               {colorList.map((c, i) => (
@@ -146,7 +147,7 @@ export default function BrandLiveSidebar({
         {brandTraits.length > 0 && (
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
-              {locale === "en" ? "Key Traits" : "Öne Çıkan Nitelikler"}
+              {sb.keyTraits}
             </span>
             <div className="flex flex-wrap gap-1">
               {brandTraits.slice(0, 4).map((t, idx) => (
@@ -174,7 +175,7 @@ export default function BrandLiveSidebar({
             </div>
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100/80 px-2 py-0.5 text-[9px] font-bold text-emerald-800">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
-              {locale === "en" ? "Live" : "Canlı"}
+              {sb.liveBadge}
             </span>
           </div>
 
@@ -182,7 +183,7 @@ export default function BrandLiveSidebar({
           {intelligenceSummary.recommendation && (
             <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs text-slate-800">
               <span className="font-bold text-emerald-800 block mb-1">
-                {locale === "en" ? "Tentamark's Recommendation" : "Tentamark'ın Önerisi"}
+                {sb.recommendation}
               </span>
               <p className="leading-relaxed text-slate-700 text-[11px]">
                 {intelligenceSummary.recommendation}
@@ -199,7 +200,7 @@ export default function BrandLiveSidebar({
                 className="flex items-center justify-between w-full text-[11px] font-bold text-slate-600 hover:text-slate-900 transition"
               >
                 <span>
-                  {locale === "en"
+                  {isEn
                     ? `Recent AI Findings (${intelligenceSummary.findings.length})`
                     : `Son AI Bulguları (${intelligenceSummary.findings.length})`}
                 </span>
@@ -227,7 +228,7 @@ export default function BrandLiveSidebar({
               className="text-[11px] font-semibold text-slate-700 hover:text-slate-900 transition flex items-center gap-1"
             >
               <span>
-                {locale === "en"
+                {isEn
                   ? showLearningLog
                     ? "Hide Learning Log ▲"
                     : `Learning Log (${learningLog.length} days) ▼`
@@ -241,7 +242,7 @@ export default function BrandLiveSidebar({
               <div className="mt-2.5 max-h-48 overflow-y-auto space-y-2 rounded-xl bg-slate-50 p-2.5 border border-slate-200 text-xs">
                 {learningLog.length === 0 ? (
                   <p className="text-[11px] text-slate-400">
-                    {locale === "en" ? "No logged AI activity yet." : "Henüz kayıtlı bir AI etkinliği yok."}
+                    {sb.noLoggedActivity}
                   </p>
                 ) : (
                   learningLog.map((day) => (

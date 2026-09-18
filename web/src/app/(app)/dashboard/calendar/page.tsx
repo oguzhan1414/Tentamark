@@ -11,6 +11,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { useBrand } from "@/components/dashboard/BrandProvider";
+import { getBrandTeam } from "@/lib/brandTeam";
 import { useComposeModal } from "@/components/dashboard/ComposeModalProvider";
 import { useLanguage } from "@/context/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
@@ -36,6 +37,12 @@ import type { MediaLibraryItem } from "@/lib/media/useMediaLibrary";
 import type { ApprovalComment, ApprovalItem, TeamMemberOption } from "@/components/dashboard/approvals/types";
 import { getDashboardBriefing } from "@/lib/ai/getDashboardBriefing";
 import { deriveStatus } from "@/lib/contentStatus";
+import {
+  getHolidaysForCountry,
+  getMonthHolidays,
+  isHolidayOnDate,
+  type MarketingHoliday,
+} from "@/lib/calendar/marketingHolidays";
 import {
   fetchContentRows,
   rowToApprovalItem,
@@ -92,9 +99,40 @@ export default function CalendarPage() {
   const [notes, setNotes] = useState<CalendarNote[]>([]);
   const [campaigns, setCampaigns] = useState<CalendarCampaign[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMemberOption[]>([]);
+  const [canReview, setCanReview] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [calendarError, setCalendarError] = useState<string | null>(null);
+
+  // Marketing special days & national holidays for active brand
+  const countryCode = brand.country || "tr";
+  // Month and week grids include days from adjacent years.
+  const holidays = useMemo(() => {
+    const year = currentDate.getFullYear();
+    return [year - 1, year, year + 1].flatMap((value) => getHolidaysForCountry(countryCode, value));
+  }, [countryCode, currentDate]);
+
+  const monthHolidays = useMemo(() => {
+    return getMonthHolidays(currentDate.getFullYear(), currentDate.getMonth(), countryCode);
+  }, [currentDate, countryCode]);
+
+  function handleSelectHoliday(holiday: MarketingHoliday, targetDateStr?: string, angle?: string) {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const year = holiday.year ?? currentDate.getFullYear();
+    const dateStr =
+      targetDateStr ?? `${year}-${pad(holiday.month + 1)}-${pad(holiday.day)}`;
+
+    const initialIdea = angle
+      ? `${holiday.name} - Konsept: "${angle}" (${holiday.tag})`
+      : `${holiday.name} için özel kutlama ve kampanya paylaşımı (${holiday.tag})`;
+
+    composeModal.open({
+      date: dateStr,
+      initialIdea,
+      onSaved: () => setRefreshKey((k) => k + 1),
+    });
+  }
 
   // One CalendarPost per (content, platform) pair — a platform's own
   // scheduled_at/status decides where it lands and how it looks, not the
@@ -222,19 +260,11 @@ export default function CalendarPage() {
   useEffect(() => {
     let ignore = false;
     (async () => {
-      const { data: brandRow } = await supabase.from("brands").select("organization_id").eq("id", brand.id).maybeSingle();
-      if (ignore || !brandRow) return;
-      const { data: memberRows } = await supabase
-        .from("organization_members")
-        .select("user_id, profiles(full_name, email)")
-        .eq("organization_id", brandRow.organization_id);
+      const [memberRows, { data: auth }] = await Promise.all([getBrandTeam(supabase, brand.id), supabase.auth.getUser()]);
       if (ignore) return;
-      setTeamMembers(
-        (memberRows ?? []).map((m) => {
-          const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
-          return { userId: m.user_id, name: p?.full_name || p?.email?.split("@")[0] || "Üye" };
-        })
-      );
+      setCurrentUserId(auth.user?.id ?? null);
+      setCanReview(memberRows.some((member) => member.userId === auth.user?.id && ["owner", "admin"].includes(member.role)));
+      setTeamMembers(memberRows.map((member) => ({ userId: member.userId, name: member.name, role: member.role })));
     })();
     return () => {
       ignore = true;
@@ -630,6 +660,8 @@ export default function CalendarPage() {
             setSmartFillDate(todayKey);
           }}
           filterCount={activeFilterCount}
+          monthHolidays={monthHolidays}
+          onSelectHoliday={(h) => handleSelectHoliday(h)}
         />
 
         {calendarError && (
@@ -651,8 +683,10 @@ export default function CalendarPage() {
               posts={filteredPosts}
               notes={notes}
               campaigns={campaigns}
+              holidays={holidays}
               todayKey={todayKey}
               onSelectPost={setSelectedPost}
+              onSelectHoliday={handleSelectHoliday}
               onAddPostAtDate={handleOpenComposeAtDate}
               onSmartFillDate={(dateStr) => {
                 setSmartFillCategory(undefined);
@@ -668,8 +702,10 @@ export default function CalendarPage() {
               meetings={meetings}
               notes={notes}
               campaigns={campaigns}
+              holidays={holidays}
               todayKey={todayKey}
               onSelectPost={setSelectedPost}
+              onSelectHoliday={handleSelectHoliday}
               onAddPostAtDate={handleOpenComposeAtDate}
               onSmartFillDate={(dateStr) => {
                 setSmartFillCategory(undefined);
@@ -732,9 +768,10 @@ export default function CalendarPage() {
             onAddComment={addComment}
             teamMembers={teamMembers}
             onAssign={handleAssign}
-            onEditTags={saveTags}
-            onReject={rejectContent}
-            onDelete={deleteContentItem}
+            canReview={canReview}
+            onEditTags={canReview || (selectedApprovalItem.realStatus === "draft" || selectedApprovalItem.realStatus === "review") && (selectedApprovalItem.createdBy === currentUserId || selectedApprovalItem.draftAssignedTo?.id === currentUserId) ? saveTags : undefined}
+            onReject={canReview ? rejectContent : undefined}
+            onDelete={canReview ? deleteContentItem : undefined}
           />
         )}
 
@@ -760,11 +797,19 @@ export default function CalendarPage() {
             posts={posts.filter((p) => p.date === dayModalDate)}
             notes={notes.filter((n) => n.date === dayModalDate)}
             campaign={campaigns.find((c) => dayModalDate >= c.start_date && dayModalDate <= c.end_date)}
+            holidays={(() => {
+              const [y, m, d] = dayModalDate.split("-").map(Number);
+              return holidays.filter((h) => isHolidayOnDate(h, { year: y, month: m - 1, day: d }));
+            })()}
             isPast={dayModalDate < todayKey}
             onClose={() => setDayModalDate(null)}
             onSelectPost={(post) => {
               setDayModalDate(null);
               setSelectedPost(post);
+            }}
+            onSelectHoliday={(h, dateStr, angle) => {
+              setDayModalDate(null);
+              handleSelectHoliday(h, dateStr, angle);
             }}
             onAddPostAtDate={(dateStr) => {
               setDayModalDate(null);

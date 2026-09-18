@@ -237,7 +237,7 @@ export default function ConnectStrip() {
         {tile.isOfficialApi && (
           <span
             className="absolute top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 flex h-1.5 w-1.5 sm:h-2 sm:w-2 pointer-events-none"
-            title="Resmi API Yayında"
+            title={t.connect.officialApiPill}
           >
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
             <span className="relative inline-flex h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-emerald-500 shadow-xs" />
@@ -358,7 +358,7 @@ export default function ConnectStrip() {
             href="/platformlar"
             className="group inline-flex items-center gap-2 rounded-full border border-line bg-surface px-6 py-2.5 text-xs sm:text-sm font-semibold text-ink shadow-xs transition-all hover:border-accent/40 hover:bg-surface-soft hover:shadow-md cursor-pointer"
           >
-            <span>Tüm 16+ Platformu & Entegrasyon Rehberini İncele</span>
+            <span>{t.connect.viewAllButton}</span>
             <HiOutlineArrowRight className="h-3.5 w-3.5 text-accent transition-transform duration-200 group-hover:translate-x-1" />
           </Link>
         </div>

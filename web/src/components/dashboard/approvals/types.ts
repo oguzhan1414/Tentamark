@@ -32,6 +32,8 @@ export type ApprovalItem = {
   comments: ApprovalComment[];
   isDemo?: boolean;
   assignedTo?: { id: string; name: string } | null;
+  draftAssignedTo?: { id: string; name: string } | null;
+  createdBy?: string | null;
   // Populated when this item comes from the merged Gönderiler view (which
   // covers every content status, not just the review/approved slice
   // Onaylarım used to be scoped to) — lets ApprovalDetailModal hide the
@@ -58,4 +60,4 @@ export type ApprovalItem = {
   format?: string;
 };
 
-export type TeamMemberOption = { userId: string; name: string };
+export type TeamMemberOption = { userId: string; name: string; role?: "owner" | "admin" | "member" };

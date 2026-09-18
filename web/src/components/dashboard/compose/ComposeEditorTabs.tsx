@@ -40,6 +40,7 @@ interface ComposeEditorTabsProps {
   analyzingVoice: boolean;
   handleCheckVoiceConsistency: () => void;
   onOpenCaptionLab: () => void;
+  onOpenMultiplier?: () => void;
   isEn: boolean;
 }
 
@@ -75,6 +76,7 @@ export default function ComposeEditorTabs({
   analyzingVoice,
   handleCheckVoiceConsistency,
   onOpenCaptionLab,
+  onOpenMultiplier,
   isEn,
 }: ComposeEditorTabsProps) {
   const currentCaption = drafts[activePlatformTab] ?? "";
@@ -196,12 +198,30 @@ export default function ComposeEditorTabs({
           >
             <span className="flex items-center gap-1.5 rounded-[11px] bg-white px-3.5 py-1.5 text-[11px] font-extrabold text-violet-700 group-hover:bg-violet-50/50 transition">
               <span className="text-sm">🧪</span>
-              <span>{isEn ? "Caption Lab (3 A/B Variants)" : "Caption Lab (3 A/B Varyantı)"}</span>
+              <span>{isEn ? "Caption Lab" : "Caption Lab"}</span>
               <span className="rounded-full bg-violet-100 px-1.5 py-0.5 text-[9px] font-black text-violet-800">
-                PRO
+                A/B
               </span>
             </span>
           </button>
+
+          {/* Star Hero Button: 1 -> 7 Multiplier */}
+          {onOpenMultiplier && (
+            <button
+              type="button"
+              onClick={onOpenMultiplier}
+              disabled={!currentCaption.trim()}
+              className="relative group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 p-[1px] shadow-sm hover:shadow-md hover:shadow-orange-500/20 transition cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
+            >
+              <span className="flex items-center gap-1.5 rounded-[11px] bg-white px-3.5 py-1.5 text-[11px] font-extrabold text-orange-700 group-hover:bg-orange-50/50 transition">
+                <span className="text-sm">⚡</span>
+                <span>{isEn ? "1 → 7 Multiplier" : "1 → 7 Çarpan"}</span>
+                <span className="rounded-full bg-orange-100 px-1.5 py-0.5 text-[9px] font-black text-orange-800">
+                  7X AI
+                </span>
+              </span>
+            </button>
+          )}
 
           {/* Content Remix DJ Menu */}
           <ContentRemixMenu

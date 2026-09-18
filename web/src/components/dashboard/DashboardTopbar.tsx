@@ -2,6 +2,7 @@
 
 import TentamarkLogo from "@/components/TentamarkLogo";
 import UserProfileDropdown from "@/components/dashboard/UserProfileDropdown";
+import NotificationDropdown from "@/components/dashboard/NotificationDropdown";
 import { useLanguage } from "@/context/LanguageContext";
 import type { PlatformName } from "@/components/PlatformIcon";
 
@@ -9,7 +10,6 @@ export default function DashboardTopbar({
   userName,
   userEmail,
   brandName,
-  systemHealthy: _systemHealthy,
   connectedPlatforms,
 }: {
   userName: string;
@@ -21,18 +21,29 @@ export default function DashboardTopbar({
   const { locale, setLocale, t } = useLanguage();
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-slate-200/70 bg-white/80 px-4 backdrop-blur-md sm:px-6 lg:px-8 print:hidden">
-      {/* Left / Brand Info & Mobile Logo */}
-      <div className="flex items-center gap-3 sm:gap-4">
-        <div className="flex items-center gap-2.5 lg:hidden">
-          <TentamarkLogo size={24} withWordmark={true} />
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/80 bg-white/95 px-4 sm:px-6 backdrop-blur-md">
+      {/* Brand / Logo Context */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <TentamarkLogo size={24} />
+          <span className="font-bold tracking-tight text-slate-900 text-sm hidden sm:inline-block">
+            Tentamark
+          </span>
         </div>
+        {brandName && (
+          <div className="hidden md:flex items-center gap-2 pl-3 border-l border-slate-200 text-xs text-slate-500 font-medium">
+            <span>{t.dashboard.topbar.activeBrand}</span>
+            <span className="rounded-md bg-slate-100 px-2 py-0.5 font-bold text-slate-800">
+              {brandName}
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Right / Actions & Profile */}
-      <div className="flex items-center gap-2.5 sm:gap-3.5">
-        {/* Language Switcher Pill (TR / EN) */}
-        <div className="flex items-center rounded-full border border-slate-200/90 bg-white p-0.5 shadow-2xs">
+      {/* Right Controls: Notifications & Profile */}
+      <div className="flex items-center gap-2.5 sm:gap-3">
+        {/* Language Switcher */}
+        <div className="flex items-center rounded-full border border-slate-200 bg-slate-50/80 p-0.5">
           <button
             type="button"
             onClick={() => setLocale("tr")}
@@ -41,7 +52,7 @@ export default function DashboardTopbar({
                 ? "bg-slate-900 text-white shadow-xs"
                 : "text-slate-500 hover:text-slate-900"
             }`}
-            aria-label="Türkçe"
+            aria-label={t.dashboard.userMenu.turkish}
           >
             TR
           </button>
@@ -53,27 +64,14 @@ export default function DashboardTopbar({
                 ? "bg-slate-900 text-white shadow-xs"
                 : "text-slate-500 hover:text-slate-900"
             }`}
-            aria-label="English"
+            aria-label={t.dashboard.userMenu.english}
           >
             EN
           </button>
         </div>
 
-        {/* Quick notification bell — decorative until a real notification system exists */}
-        <button
-          type="button"
-          aria-label={t.dashboard.topbar.notifications}
-          className="relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 shadow-sm"
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.75}
-              d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-            />
-          </svg>
-        </button>
+        {/* Live Notification Dropdown */}
+        <NotificationDropdown />
 
         {/* Interactive User Profile Dropdown with Logout & Settings */}
         <UserProfileDropdown

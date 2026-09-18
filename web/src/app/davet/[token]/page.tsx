@@ -84,7 +84,7 @@ export default function InviteAcceptPage() {
       return;
     }
     setPhase("done");
-    setTimeout(() => router.push("/dashboard/calendar"), 1200);
+    setTimeout(() => router.push("/dashboard"), 1200);
   }
 
   async function handleSignOut() {
@@ -104,7 +104,7 @@ export default function InviteAcceptPage() {
       const { data, error } = await supabase.auth.signUp({
         email: invite.email,
         password,
-        options: { data: { full_name: name, brand_name: invite.organization_name } },
+        options: { data: { full_name: name, brand_name: invite.brand_name ?? invite.organization_name } },
       });
 
       if (error) {
@@ -162,7 +162,7 @@ export default function InviteAcceptPage() {
         {invite && (phase === "match" || phase === "accepting" || phase === "done") && (
           <div className="space-y-4">
             <h1 className="font-display text-xl font-bold">
-              {invite.organization_name} ekibine katıl
+              {invite.brand_name ?? invite.organization_name} ekibine katıl
             </h1>
             <p className="text-sm text-white/50">
               <span className="font-semibold text-white/80">{invite.email}</span> hesabınla{" "}
@@ -204,7 +204,7 @@ export default function InviteAcceptPage() {
         {invite && phase === "form" && (
           <div className="space-y-4">
             <h1 className="font-display text-xl font-bold">
-              {invite.organization_name} ekibine katıl
+              {invite.brand_name ?? invite.organization_name} ekibine katıl
             </h1>
             <p className="text-sm text-white/50">
               <span className="font-semibold text-white/80">{invite.email}</span> için{" "}

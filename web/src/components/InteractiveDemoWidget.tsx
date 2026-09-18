@@ -4,141 +4,23 @@ import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { HiOutlineArrowRight } from "react-icons/hi2";
+import { useLanguage } from "@/context/LanguageContext";
 
 type AudienceSegment = "solo" | "smb" | "agency";
 
-interface SegmentData {
-  id: AudienceSegment;
-  label: string;
-  headline: string;
-  subhead: string;
-  bullets: {
-    emoji: string;
-    bold: string;
-    text: string;
-  }[];
-  imageSrc: string;
-  imageAlt: string;
-  ctaText: string;
-}
-
-const SEGMENTS: Record<AudienceSegment, SegmentData> = {
-  solo: {
-    id: "solo",
-    label: "Tek başına çalışan girişimciler",
-    headline: "Tek başınıza çalışırken tüm sosyal medyanızı otonom yönetin.",
-    subhead:
-      "Pazarlamaya saatler harcamak yerine asıl işinize odaklanın. Tentamark marka ses tonunuzu öğrenir ve tüm süreci otomatikleştirir.",
-    bullets: [
-      {
-        emoji: "⚡",
-        bold: "Yapay zekâ",
-        text: "ile marka ses tonunuzda saniyeler içinde içerik üretin.",
-      },
-      {
-        emoji: "📅",
-        bold: "Haftalık 9'lu",
-        text: "görsel ızgaranızı tek ekranda planlayın ve zamandan tasarruf edin.",
-      },
-      {
-        emoji: "🎯",
-        bold: "Format uyarlaması",
-        text: "ile Instagram, TikTok ve LinkedIn için otomatik dönüşüm sağlayın.",
-      },
-      {
-        emoji: "📈",
-        bold: "Algoritma analizleri",
-        text: "ve haftalık büyüme reçeteleriyle yönünüzü belirleyin.",
-      },
-      {
-        emoji: "🚀",
-        bold: "Tek tıkla onaylayın,",
-        text: "telefonunuza ihtiyaç duymadan doğrudan Cloud üzerinden yayınlansın.",
-      },
-    ],
-    imageSrc: "/images/features/solo-entrepreneur-ui.jpg",
-    imageAlt: "Tek başına çalışan girişimciler için AI İçerik Üretici ve Zamanlayıcı Paneli",
-    ctaText: "14 gün boyunca ücretsiz deneyin",
-  },
-  smb: {
-    id: "smb",
-    label: "Küçük işletmeler",
-    headline: "Küçük işletmeler için uygun fiyatlı, hepsi bir arada sosyal medya aracı",
-    subhead:
-      "İşletmenizi pazarlamak için ihtiyacınız olan her şey, birden fazla sosyal medya aracına para ödemenize gerek kalmadan.",
-    bullets: [
-      {
-        emoji: "⚙️",
-        bold: "Yapay zekâ",
-        text: "ile hızlıca gönderi oluşturun.",
-      },
-      {
-        emoji: "⏱️",
-        bold: "Toplu olarak",
-        text: "gönderi planlayın ve zamandan tasarruf edin.",
-      },
-      {
-        emoji: "💬",
-        bold: "Tüm konuşmalarınızı",
-        text: "tek bir gelen kutusundan yönetin.",
-      },
-      {
-        emoji: "📊",
-        bold: "Performans raporlarını",
-        text: "saniyeler içinde oluşturun.",
-      },
-      {
-        emoji: "🔄",
-        bold: "Tekrarlayan paylaşım",
-        text: "görevlerini ortadan kaldırın.",
-      },
-    ],
-    imageSrc: "/images/features/small-business-ui.jpg",
-    imageAlt: "Küçük işletmeler için Sosyal Medya İçerik Kuyruğu ve Otomatik Yayınlama Paneli",
-    ctaText: "14 gün boyunca ücretsiz deneyin",
-  },
-  agency: {
-    id: "agency",
-    label: "Ajanslar",
-    headline: "Yoğun çalışan sosyal medya yöneticileri ve ajansları için mükemmel.",
-    subhead:
-      "Ekibinizi uyumlu tutun, düzenli olun ve her müşteriyi daha az karmaşa ve daha fazla kontrolle yönetin.",
-    bullets: [
-      {
-        emoji: "👤",
-        bold: "Birden fazla",
-        text: "müşteri hesabını tek panelden yönetin.",
-      },
-      {
-        emoji: "💼",
-        bold: "Çalışma alanlarında",
-        text: "müşteri varlıklarını düzenli tutun.",
-      },
-      {
-        emoji: "⚙️",
-        bold: "Sosyal medya ekibinizle",
-        text: "ve müşterilerinizle işbirliği yapın.",
-      },
-      {
-        emoji: "👍",
-        bold: "Yayınlanmadan önce",
-        text: "gönderileri tek tıkla onaylatın.",
-      },
-      {
-        emoji: "📄",
-        bold: "Müşterinin markasını taşıyan",
-        text: "PDF raporlarını kolayca paylaşın.",
-      },
-    ],
-    imageSrc: "/images/features/agency-workspace-ui.jpg",
-    imageAlt: "Ajanslar ve ekipler için Çoklu Müşteri Çalışma Alanı ve Onay Paneli",
-    ctaText: "14 gün boyunca ücretsiz deneyin",
-  },
+const SEGMENT_IMAGES: Record<AudienceSegment, string> = {
+  solo: "/images/features/solo-entrepreneur-ui.jpg",
+  smb: "/images/features/small-business-ui.jpg",
+  agency: "/images/features/agency-workspace-ui.jpg",
 };
 
+const TAB_KEYS: AudienceSegment[] = ["solo", "smb", "agency"];
+
 export default function InteractiveDemoWidget() {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<AudienceSegment>("smb");
-  const current = SEGMENTS[activeTab];
+  const current = t.interactiveDemo.segments[activeTab];
+  const imageSrc = SEGMENT_IMAGES[activeTab];
 
   return (
     <section
@@ -151,14 +33,14 @@ export default function InteractiveDemoWidget() {
           <div className="w-12 h-1.5 rounded-full bg-[#FA5252] mx-auto" />
 
           <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-950 tracking-tight">
-            Büyük ya da küçük her takım için tasarlandı.
+            {t.interactiveDemo.title}
           </h2>
         </div>
 
         {/* ================= CENTER SEGMENT PILLS ================= */}
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          {(Object.keys(SEGMENTS) as AudienceSegment[]).map((tabKey) => {
-            const item = SEGMENTS[tabKey];
+          {TAB_KEYS.map((tabKey) => {
+            const item = t.interactiveDemo.segments[tabKey];
             const isSelected = activeTab === tabKey;
             return (
               <button
@@ -216,8 +98,8 @@ export default function InteractiveDemoWidget() {
           <div className="lg:col-span-6 relative flex items-center justify-center">
             <div className="relative w-full aspect-[4/3] max-w-xl overflow-hidden rounded-3xl border border-slate-100 shadow-2xl transition-all duration-300 hover:scale-[1.01]">
               <Image
-                key={current.id}
-                src={current.imageSrc}
+                key={activeTab}
+                src={imageSrc}
                 alt={current.imageAlt}
                 fill
                 priority

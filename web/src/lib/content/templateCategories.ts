@@ -1,26 +1,33 @@
+import { translations, type Locale } from "@/lib/i18n/translations";
+
 export type TemplateCategoryId = "musteri_yorumu" | "haftalik_ipucu" | "urun_lansmani" | "genel";
 
-export const TEMPLATE_CATEGORIES: { id: TemplateCategoryId; label: string; labelEn: string; icon: string }[] = [
-  { id: "musteri_yorumu", label: "Müşteri Yorumu", labelEn: "Customer Review", icon: "💬" },
-  { id: "haftalik_ipucu", label: "Haftalık İpucu", labelEn: "Weekly Tip", icon: "💡" },
-  { id: "urun_lansmani", label: "Ürün Lansmanı", labelEn: "Product Launch", icon: "🚀" },
-  { id: "genel", label: "Genel", labelEn: "General", icon: "📄" },
-];
+export const TEMPLATE_CATEGORY_ICONS: Record<TemplateCategoryId, string> = {
+  musteri_yorumu: "💬",
+  haftalik_ipucu: "💡",
+  urun_lansmani: "🚀",
+  genel: "📄",
+};
 
-export function getTemplateCategories(isEn?: boolean) {
-  return TEMPLATE_CATEGORIES.map((c) => ({
-    id: c.id,
-    label: isEn ? c.labelEn : c.label,
-    icon: c.icon,
+export function getTemplateCategories(localeOrIsEn?: Locale | boolean) {
+  const loc: Locale = typeof localeOrIsEn === "string" ? localeOrIsEn : localeOrIsEn ? "en" : "tr";
+  const catDict = translations[loc].dashboard.templates.categories;
+  const ids: TemplateCategoryId[] = ["musteri_yorumu", "haftalik_ipucu", "urun_lansmani", "genel"];
+  return ids.map((id) => ({
+    id,
+    label: catDict[id] ?? id,
+    icon: TEMPLATE_CATEGORY_ICONS[id] ?? "📄",
   }));
 }
 
 export function templateCategoryIcon(id: string | null): string {
-  return TEMPLATE_CATEGORIES.find((c) => c.id === id)?.icon ?? "📄";
+  if (!id) return "📄";
+  return TEMPLATE_CATEGORY_ICONS[id as TemplateCategoryId] ?? "📄";
 }
 
-export function templateCategoryLabel(id: string | null, isEn?: boolean): string {
-  const item = TEMPLATE_CATEGORIES.find((c) => c.id === id);
-  if (!item) return isEn ? "General" : "Genel";
-  return isEn ? item.labelEn : item.label;
+export function templateCategoryLabel(id: string | null, localeOrIsEn?: Locale | boolean): string {
+  const loc: Locale = typeof localeOrIsEn === "string" ? localeOrIsEn : localeOrIsEn ? "en" : "tr";
+  const catDict = translations[loc].dashboard.templates.categories;
+  if (!id) return catDict.genel;
+  return catDict[id as TemplateCategoryId] ?? catDict.genel;
 }

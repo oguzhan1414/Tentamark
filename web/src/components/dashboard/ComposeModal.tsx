@@ -24,6 +24,7 @@ export default function ComposeModal({
   initialCampaignId,
   initialDate,
   initialHour,
+  initialIdea,
   initialMedia,
   onSubmitted,
 }: {
@@ -31,6 +32,7 @@ export default function ComposeModal({
   initialCampaignId?: string;
   initialDate?: string;
   initialHour?: number;
+  initialIdea?: string;
   initialMedia?: MediaLibraryItem[];
   onSubmitted?: () => void;
 }) {
@@ -87,6 +89,7 @@ export default function ComposeModal({
             initialCampaignId={initialCampaignId}
             initialDate={initialDate}
             initialHour={initialHour}
+            initialIdea={initialIdea}
             initialMedia={initialMedia}
           />
         </div>

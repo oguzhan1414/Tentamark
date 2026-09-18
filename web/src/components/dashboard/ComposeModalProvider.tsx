@@ -8,6 +8,7 @@ type ComposeModalOptions = {
   campaignId?: string;
   date?: string;
   hour?: number;
+  initialIdea?: string;
   // Set when opened by dragging one or more Medya panel thumbnails onto a
   // calendar day — pre-attaches them instead of leaving Compose's media
   // step empty (the whole point of drag-to-schedule being faster than the
@@ -46,6 +47,7 @@ export function ComposeModalProvider({ children }: { children: React.ReactNode }
           initialCampaignId={options.campaignId}
           initialDate={options.date}
           initialHour={options.hour}
+          initialIdea={options.initialIdea}
           initialMedia={options.initialMedia}
           onSubmitted={options.onSaved}
         />

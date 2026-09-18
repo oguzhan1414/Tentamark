@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback } from "react";
 import type { ContentFormat, GeneratedDrafts, LaunchPlatform } from "@/lib/ai/generateDrafts";
 
 export interface ComposeDraftState {
@@ -10,6 +10,7 @@ export interface ComposeDraftState {
   tone: string;
   drafts: GeneratedDrafts | null;
   activePlatformTab: LaunchPlatform;
+  draftAssigneeId?: string;
   timestamp: number;
 }
 

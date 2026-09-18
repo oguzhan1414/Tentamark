@@ -1,15 +1,32 @@
 import { redirect } from "next/navigation";
 import { getUserWorkspaces } from "@/lib/brand";
+import { createClient } from "@/lib/supabase/server";
 
 /*
   The landing gate every post-login redirect funnels through (giris/kayit/
-  auth callback all push here, not straight to /dashboard/calendar). Most
-  users have exactly one workspace, so this is invisible to them — they land
-  on Takvim same as before. Anyone with 2+ workspaces sees the picker first
-  and chooses which one to enter, Planable-style, instead of silently landing
-  in whichever brand happened to be active last.
+  auth callback all push here, not straight to /dashboard/calendar).
+  1. If user has not completed onboarding, redirect to /onboarding.
+  2. If user has 2+ workspaces, show the picker at /calisma-alanlari.
+  3. Otherwise, land on Takvim (/dashboard/calendar).
 */
 export default async function DashboardIndexPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("onboarding_completed")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profile && profile.onboarding_completed === false) {
+      redirect("/onboarding");
+    }
+  }
+
   const workspaces = await getUserWorkspaces();
 
   if (workspaces.length > 1) {

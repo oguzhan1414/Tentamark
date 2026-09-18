@@ -30,13 +30,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect("/giris");
   }
 
-  const brand = await getCurrentBrand();
-
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name")
+    .select("full_name, onboarding_completed")
     .eq("id", user.id)
     .maybeSingle();
+  if (!profile?.onboarding_completed) redirect("/onboarding");
+  const brand = await getCurrentBrand();
   const userName = profile?.full_name || user.email?.split("@")[0] || "Kullanıcı";
 
   const userEmail = user.email || "";
@@ -45,7 +45,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     // Signed in but no org/brand yet — shouldn't happen once handle_new_user
     // runs on every signup, but fail safely rather than crash the panel on
     // a stale session or a user created outside the normal signup flow.
-    redirect("/giris");
+    redirect("/calisma-alanlari");
   }
 
   const { data: accounts } = await supabase

@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from "react";
 
-export type Brand = { id: string; name: string; timezone: string };
+export type Brand = { id: string; name: string; timezone: string; country?: string };
 
 const BrandContext = createContext<Brand | null>(null);
 

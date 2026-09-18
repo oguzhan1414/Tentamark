@@ -83,6 +83,12 @@ export default function WorkspacePicker({
         </div>
       )}
 
+      {workspaces.length === 0 && !isOwner && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+          Erişebildiğin bir marka yok. Marka sahibinden bu marka için yeni bir davet bağlantısı iste.
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {workspaces.map((w) => (
           <button

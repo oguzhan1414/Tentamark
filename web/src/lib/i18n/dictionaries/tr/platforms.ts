@@ -1,0 +1,18 @@
+export const trPlatformSummaries = {
+  instagram: { headline: "Paylaşmadan önce Instagram ızgaranızı görün.", shortDesc: "Akışı, Reels ve karuselleri görsel takvimde planlayın.", formats: ["Akış gönderileri", "Karuseller", "Reels"] },
+  facebook: { headline: "Facebook sayfalarınız için içerik planlayın.", shortDesc: "Sayfa gönderilerini ve topluluk güncellemelerini hazırlayın.", formats: ["Sayfa gönderileri", "Görseller", "Videolar"] },
+  linkedin: { headline: "Uzmanlığınızı LinkedIn'de düzenli paylaşın.", shortDesc: "Profesyonel gönderileri, belgeleri ve B2B kampanyaları planlayın.", formats: ["Metin gönderileri", "Belgeler", "Karuseller"] },
+  tiktok: { headline: "Kısa video akışınızı düzenli sürdürün.", shortDesc: "Dikey videoları, açıklamaları ve yayın planını hazırlayın.", formats: ["Dikey video", "Açıklamalar", "Trendler"] },
+  youtube: { headline: "YouTube videolarını ve Shorts'u birlikte planlayın.", shortDesc: "Video fikirlerini, Shorts'u ve kanal yayınlarını düzenleyin.", formats: ["Videolar", "Shorts", "Topluluk"] },
+  threads: { headline: "Threads sohbetlerine zamanında katılın.", shortDesc: "Metin güncellemelerini marka sesinizle hazırlayın.", formats: ["Metin gönderileri", "Yanıtlar", "Görseller"] },
+  x: { headline: "X gönderilerinizi zamanında ve odaklı paylaşın.", shortDesc: "Kısa gönderileri, dizileri ve sohbetleri planlayın.", formats: ["Gönderiler", "Diziler", "Görseller"] },
+  pinterest: { headline: "Görsel fikirleri kalıcı keşfe dönüştürün.", shortDesc: "İçeriğinize ziyaretçi taşıyan Pin ve panolar planlayın.", formats: ["Pinler", "Panolar", "Ürün Pinleri"] },
+  telegram: { headline: "Telegram topluluğunuzu haberdar edin.", shortDesc: "Kanal güncellemelerini ve duyuruları planlayın.", formats: ["Kanal gönderileri", "Görseller", "Videolar"] },
+  bluesky: { headline: "Fikirlerinizi Bluesky topluluğuyla paylaşın.", shortDesc: "Açık sosyal ağ için gönderiler ve sohbetler hazırlayın.", formats: ["Metin gönderileri", "Görseller", "Diziler"] },
+  woocommerce: { headline: "WooCommerce kataloğunuzu içerik planına taşıyın.", shortDesc: "Ürünler ve kampanyalar etrafında sosyal içerik üretin.", formats: ["Ürünler", "Kampanyalar", "Sosyal gönderiler"] },
+  shopify: { headline: "Shopify ürünlerini kampanya fikirlerine dönüştürün.", shortDesc: "Kataloğunuzu sosyal içerik ve lansman planına bağlayın.", formats: ["Ürünler", "Koleksiyonlar", "Kampanyalar"] },
+  "google-business": { headline: "İşletme profilinizi güncel tutun.", shortDesc: "Yerel işletme güncellemelerini ve fırsatları planlayın.", formats: ["Güncellemeler", "Fırsatlar", "Fotoğraflar"] },
+  discord: { headline: "Discord topluluğunuz için güncellemeler planlayın.", shortDesc: "Duyuruları ve topluluk içeriklerini koordine edin.", formats: ["Duyurular", "Etkinlikler", "Topluluk"] },
+  whatsapp: { headline: "WhatsApp işletme güncellemelerini hazırlayın.", shortDesc: "Mesajları ve müşteri iletişimini düzenleyin.", formats: ["Mesajlar", "Medya", "Güncellemeler"] },
+  canva: { headline: "İçerik fikirlerini Canva tasarımlarına taşıyın.", shortDesc: "Görsel konseptleri düzenlenebilir Canva şablonlarına aktarın.", formats: ["Sosyal gönderiler", "Hikâyeler", "Karuseller"] },
+} as const;

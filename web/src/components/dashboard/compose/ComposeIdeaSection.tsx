@@ -34,6 +34,7 @@ interface ComposeIdeaSectionProps {
   onGenerate: () => void;
   generating: boolean;
   genError: string | null;
+  onOpenMultiplier?: () => void;
   isEn: boolean;
 }
 
@@ -69,6 +70,7 @@ export default function ComposeIdeaSection({
   onGenerate,
   generating,
   genError,
+  onOpenMultiplier,
   isEn,
 }: ComposeIdeaSectionProps) {
   return (
@@ -297,20 +299,37 @@ export default function ComposeIdeaSection({
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={onGenerate}
-              disabled={!idea.trim() || selectedPlatforms.length === 0 || generating}
-              className="w-full rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-violet-700 disabled:opacity-50 transition cursor-pointer"
-            >
-              {generating
-                ? isEn
-                  ? "Generating..."
-                  : "Üretiliyor..."
-                : isEn
-                ? "Generate posts"
-                : "Gönderileri üret"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onGenerate}
+                disabled={!idea.trim() || selectedPlatforms.length === 0 || generating}
+                className="flex-1 rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-violet-700 disabled:opacity-50 transition cursor-pointer"
+              >
+                {generating
+                  ? isEn
+                    ? "Generating..."
+                    : "Üretiliyor..."
+                  : isEn
+                  ? "Generate posts"
+                  : "Gönderileri üret"}
+              </button>
+              {onOpenMultiplier && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAiPanelOpen(false);
+                    onOpenMultiplier();
+                  }}
+                  disabled={!idea.trim()}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 px-3.5 py-2.5 text-xs font-bold text-white shadow-sm hover:opacity-95 disabled:opacity-50 transition cursor-pointer whitespace-nowrap"
+                  title={isEn ? "Multiply into 7 platform formats" : "7 platform formatına çoğalt"}
+                >
+                  <span>⚡</span>
+                  <span>{isEn ? "1 → 7 Multiplier" : "1 → 7 Çarpan"}</span>
+                </button>
+              )}
+            </div>
             {genError && (
               <p role="alert" className="text-xs text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-100">
                 {genError}

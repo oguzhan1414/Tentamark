@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 
-export type CurrentBrand = { id: string; name: string; timezone: string };
+export type CurrentBrand = { id: string; name: string; timezone: string; country?: string };
 
 export type Workspace = {
   id: string;
@@ -37,25 +37,25 @@ export async function getCurrentBrand(): Promise<CurrentBrand | null> {
   if (profile?.active_brand_id) {
     const { data: activeBrand } = await supabase
       .from("brands")
-      .select("id, name, timezone")
+      .select("id, name, timezone, country")
       .eq("id", profile.active_brand_id)
       .maybeSingle();
     if (activeBrand) return activeBrand;
   }
 
-  const { data: membership } = await supabase
+  const { data: memberships } = await supabase
     .from("organization_members")
     .select("organization_id")
-    .eq("user_id", user.id)
-    .limit(1)
-    .maybeSingle();
+    .eq("user_id", user.id);
 
-  if (!membership) return null;
+  const organizationIds = [...new Set((memberships ?? []).map((membership) => membership.organization_id))];
+  if (organizationIds.length === 0) return null;
 
   const { data: brand } = await supabase
     .from("brands")
-    .select("id, name, timezone")
-    .eq("organization_id", membership.organization_id)
+    .select("id, name, timezone, country")
+    .in("organization_id", organizationIds)
+    .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
 

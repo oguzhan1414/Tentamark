@@ -1,10 +1,12 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { useBrand } from "@/components/dashboard/BrandProvider";
+import { getBrandTeam } from "@/lib/brandTeam";
+import { getUpcomingHolidayForCountry } from "@/lib/calendar/marketingHolidays";
 import { createClient } from "@/lib/supabase/client";
 import PlatformIcon, { platformLabel, type PlatformName } from "@/components/PlatformIcon";
 import { useCanvaConnection } from "@/lib/canva/useCanvaConnection";
@@ -541,6 +543,7 @@ function WooCommerceConnectCard({ brandId }: { brandId: string }) {
 }
 
 function SettingsPageContent() {
+  const router = useRouter();
   const brand = useBrand();
   const { t, locale } = useLanguage();
   const st = t.dashboard.settings;
@@ -562,13 +565,11 @@ function SettingsPageContent() {
   const [userName, setUserName] = useState("");
   const [email, setEmail] = useState("");
   const [timezone, setTimezone] = useState(brand.timezone || "Europe/Istanbul");
+  const [country, setCountry] = useState(brand.country || "tr");
 
-  // Notifications — preferences UI only; nothing sends real emails yet (no
-  // cron/email infra exists), so these intentionally aren't persisted or
-  // claimed as "saved" anywhere.
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [weeklyDigest, setWeeklyDigest] = useState(true);
   const [publishAlerts, setPublishAlerts] = useState(true);
+  const [notificationPrefError, setNotificationPrefError] = useState<string | null>(null);
+  const [notificationPrefSaving, setNotificationPrefSaving] = useState(false);
 
   // Bağlantılar — ported from the old standalone /dashboard/connections
   // page. That page was a server component with an inline "use server"
@@ -690,20 +691,28 @@ function SettingsPageContent() {
       setUserId(user.id);
       setEmail(user.email ?? "");
 
-      const [{ data: profile }, { data: membership }] = await Promise.all([
+      const [{ data: profile }, { data: activeBrand }, { data: notificationPreferences }] = await Promise.all([
         supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
-        supabase.from("organization_members").select("role, organization_id").eq("user_id", user.id).limit(1).maybeSingle(),
+        supabase.from("brands").select("organization_id").eq("id", brand.id).maybeSingle(),
+        supabase.from("notification_preferences").select("publish_alerts").eq("user_id", user.id).maybeSingle(),
       ]);
+      const { data: membership } = activeBrand
+        ? await supabase.from("organization_members").select("role, organization_id")
+          .eq("user_id", user.id).eq("organization_id", activeBrand.organization_id).maybeSingle()
+        : { data: null };
+      const { data: brandGrant } = await supabase.from("brand_memberships")
+        .select("role").eq("brand_id", brand.id).eq("user_id", user.id).maybeSingle();
       if (ignore) return;
 
       setUserName(profile?.full_name ?? "");
-      setMyRole(membership?.role ?? "member");
+      setMyRole(membership?.role === "owner" ? "owner" : brandGrant?.role ?? "member");
       setOrganizationId(membership?.organization_id ?? null);
+      setPublishAlerts(notificationPreferences?.publish_alerts ?? true);
     })();
     return () => {
       ignore = true;
     };
-  }, [supabase]);
+  }, [supabase, brand.id]);
 
   useEffect(() => {
     if (!organizationId) return;
@@ -726,25 +735,13 @@ function SettingsPageContent() {
     if (!organizationId) return;
     let ignore = false;
     (async () => {
-      const { data: memberRows } = await supabase
-        .from("organization_members")
-        .select("id, user_id, role, profiles(full_name, email)")
-        .eq("organization_id", organizationId)
-        .order("created_at", { ascending: true });
+      try {
+        const team = await getBrandTeam(supabase, brand.id);
+        if (!ignore) setMembers(team);
+      } catch (error) {
+        if (!ignore) setTeamActionError(error instanceof Error ? error.message : "Ekip yüklenemedi.");
+      }
       if (ignore) return;
-
-      setMembers(
-        (memberRows ?? []).map((m) => {
-          const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
-          return {
-            id: m.id,
-            userId: m.user_id,
-            role: m.role,
-            name: p?.full_name || p?.email?.split("@")[0] || st.teamTab.defaultUser,
-            email: p?.email ?? "",
-          };
-        })
-      );
 
       // Only owners can see pending invites (RLS) — for anyone else this
       // simply comes back empty, which is exactly what we want to show.
@@ -752,6 +749,7 @@ function SettingsPageContent() {
         .from("organization_invites")
         .select("id, email, role, token, expires_at")
         .eq("organization_id", organizationId)
+        .eq("brand_id", brand.id)
         .eq("status", "pending")
         .order("created_at", { ascending: false });
       if (ignore) return;
@@ -760,7 +758,7 @@ function SettingsPageContent() {
     return () => {
       ignore = true;
     };
-  }, [supabase, organizationId, teamRefreshKey, st.teamTab.defaultUser]);
+  }, [supabase, organizationId, brand.id, teamRefreshKey]);
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -773,6 +771,7 @@ function SettingsPageContent() {
       .from("organization_invites")
       .insert({
         organization_id: organizationId,
+        brand_id: brand.id,
         email: inviteEmail.trim().toLowerCase(),
         role: inviteRole,
         invited_by: userId,
@@ -798,7 +797,7 @@ function SettingsPageContent() {
   async function handleChangeRole(memberId: string, role: string) {
     setTeamActionError(null);
     setMembers((prev) => prev.map((m) => (m.id === memberId ? { ...m, role } : m)));
-    const { error } = await supabase.from("organization_members").update({ role }).eq("id", memberId);
+    const { error } = await supabase.from("brand_memberships").update({ role }).eq("id", memberId).eq("brand_id", brand.id);
     if (error) {
       setTeamActionError(error.message);
       setTeamRefreshKey((k) => k + 1);
@@ -808,7 +807,7 @@ function SettingsPageContent() {
   async function handleRemoveMember(memberId: string) {
     setTeamActionError(null);
     setMembers((prev) => prev.filter((m) => m.id !== memberId));
-    const { error } = await supabase.from("organization_members").delete().eq("id", memberId);
+    const { error } = await supabase.from("brand_memberships").delete().eq("id", memberId).eq("brand_id", brand.id);
     if (error) {
       setTeamActionError(error.message);
       setTeamRefreshKey((k) => k + 1);
@@ -847,16 +846,53 @@ function SettingsPageContent() {
 
     const [{ error: profileError }, { error: brandError }] = await Promise.all([
       supabase.from("profiles").update({ full_name: userName.trim() || null }).eq("id", userId),
-      supabase.from("brands").update({ timezone }).eq("id", brand.id),
+      supabase.from("brands").update({ timezone, country }).eq("id", brand.id).select("id").single(),
     ]);
 
-    setSaving(false);
     if (profileError || brandError) {
+      setSaving(false);
       setSaveError(st.generalForm.saveError);
       return;
     }
+    if (country !== (brand.country || "tr")) {
+      const { error: clearError } = await supabase.from("notifications").delete()
+        .eq("brand_id", brand.id).eq("user_id", userId).eq("type", "holiday_upcoming");
+      if (clearError) console.warn("Could not clear old holiday notification:", clearError);
+      const holiday = getUpcomingHolidayForCountry(country);
+      if (holiday) {
+        const { error: notificationError } = await supabase.from("notifications").insert({
+          brand_id: brand.id,
+          user_id: userId,
+          category: "calendar",
+          type: "holiday_upcoming",
+          title: `${holiday.flag} Yaklaşan Özel Gün: ${holiday.name}`,
+          message: `${holiday.name} (${holiday.tag}) yaklaşıyor. ${holiday.advice}`,
+          link: "/dashboard/calendar",
+          action_label: "Takvimde Gör",
+          is_read: false,
+        });
+        if (notificationError) console.warn("Could not update holiday notification:", notificationError);
+      }
+    }
+    setSaving(false);
     setSavedNotice(true);
+    router.refresh();
     setTimeout(() => setSavedNotice(false), 3000);
+  }
+
+  async function savePublishAlerts(nextValue: boolean) {
+    if (!userId || notificationPrefSaving) return;
+    const previousValue = publishAlerts;
+    setPublishAlerts(nextValue);
+    setNotificationPrefSaving(true);
+    setNotificationPrefError(null);
+    const { error } = await supabase.from("notification_preferences")
+      .upsert({ user_id: userId, publish_alerts: nextValue }, { onConflict: "user_id" });
+    setNotificationPrefSaving(false);
+    if (error) {
+      setPublishAlerts(previousValue);
+      setNotificationPrefError("Bildirim tercihi kaydedilemedi. Tekrar deneyin.");
+    }
   }
 
   async function handleSignOut() {
@@ -868,7 +904,8 @@ function SettingsPageContent() {
     } catch (err) {
       console.error("Çıkış yapılırken hata:", err);
     } finally {
-      window.location.href = "/giris";
+      router.replace("/giris");
+      router.refresh();
     }
   }
 
@@ -946,6 +983,23 @@ function SettingsPageContent() {
               </div>
 
               <div className="space-y-1.5">
+                <label htmlFor="settings-market" className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  {locale === "tr" ? "Hedef pazar takvimi" : "Target market calendar"}
+                </label>
+                <select id="settings-market" value={country} onChange={(event) => setCountry(event.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 focus:border-slate-400 focus:outline-none">
+                  <option value="tr">Türkiye</option>
+                  <option value="us">United States</option>
+                  <option value="eu">Europe-wide campaigns</option>
+                  <option value="uk">United Kingdom</option>
+                  <option value="global">Global</option>
+                </select>
+                <p className="text-[11px] text-slate-500">
+                  {locale === "tr" ? "Takvimde gösterilen özel günleri belirler; planlama saatini değiştirmez." : "Controls calendar occasions without changing your scheduling time zone."}
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
                   {st.generalForm.timezone}
                 </label>
@@ -954,9 +1008,14 @@ function SettingsPageContent() {
                   onChange={(e) => setTimezone(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 focus:border-slate-400 focus:outline-none"
                 >
-                  <option value="Europe/Istanbul">Europe/Istanbul (GMT+3)</option>
-                  <option value="Europe/London">Europe/London (GMT+0)</option>
-                  <option value="America/New_York">America/New_York (GMT-5)</option>
+                  {!["Europe/Istanbul", "Europe/Berlin", "Europe/London", "America/New_York", "America/Los_Angeles", "UTC"].includes(timezone) &&
+                    <option value={timezone}>{timezone}</option>}
+                  <option value="Europe/Istanbul">Europe/Istanbul</option>
+                  <option value="Europe/Berlin">Europe/Berlin</option>
+                  <option value="Europe/London">Europe/London</option>
+                  <option value="America/New_York">America/New_York</option>
+                  <option value="America/Los_Angeles">America/Los_Angeles</option>
+                  <option value="UTC">UTC</option>
                 </select>
               </div>
 
@@ -1189,6 +1248,7 @@ function SettingsPageContent() {
               </h3>
 
               <form onSubmit={handleInvite} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <p className="w-full text-xs font-semibold text-slate-600">Bu davet yalnızca {brand.name} markasına erişim verir.</p>
                 <div className="flex-1 space-y-1.5">
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-500">{st.teamTab.emailLabel}</label>
                   <input
@@ -1287,35 +1347,36 @@ function SettingsPageContent() {
               <input
                 type="checkbox"
                 checked={publishAlerts}
-                onChange={(e) => setPublishAlerts(e.target.checked)}
+                disabled={!userId || notificationPrefSaving}
+                onChange={(e) => void savePublishAlerts(e.target.checked)}
                 className="h-4 w-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300"
               />
             </label>
 
-            <label className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 cursor-pointer">
+            {notificationPrefError && <p role="alert" className="text-xs text-rose-600">{notificationPrefError}</p>}
+
+            <label className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 opacity-60">
               <div>
                 <p className="text-xs font-semibold text-slate-800">{st.notificationsTab.weeklyTitle}</p>
-                <p className="text-[11px] text-slate-400">
-                  {st.notificationsTab.weeklyDesc}
-                </p>
+                <p className="text-[11px] text-slate-400">Yakında — haftalık e-posta özeti henüz etkin değil.</p>
               </div>
               <input
                 type="checkbox"
-                checked={weeklyDigest}
-                onChange={(e) => setWeeklyDigest(e.target.checked)}
+                checked={false}
+                disabled
                 className="h-4 w-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300"
               />
             </label>
 
-            <label className="flex items-start justify-between cursor-pointer p-3 rounded-xl border border-slate-100 hover:bg-slate-50 transition">
+            <label className="flex items-start justify-between p-3 rounded-xl border border-slate-100 opacity-60">
               <div>
                 <p className="text-xs font-bold text-slate-900">{st.notificationsTab.growthTitle}</p>
-                <p className="text-[11px] text-slate-500">{st.notificationsTab.growthDesc}</p>
+                <p className="text-[11px] text-slate-500">Yakında — e-posta bildirimleri henüz etkin değil.</p>
               </div>
               <input
                 type="checkbox"
-                checked={emailNotifications}
-                onChange={(e) => setEmailNotifications(e.target.checked)}
+                checked={false}
+                disabled
                 className="h-4 w-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300"
               />
             </label>

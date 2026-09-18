@@ -97,7 +97,7 @@ export default function HeroSpotlight() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-[#FA5252]" />
             </span>
-            <span className="tracking-wide">AI Marketing Manager · 17+ Platform</span>
+            <span className="tracking-wide">{t.hero.eyebrowBadge}</span>
           </div>
 
           {/* Ana Başlık */}
@@ -117,7 +117,7 @@ export default function HeroSpotlight() {
               href="/kayit"
               className="inline-flex items-center justify-center gap-2 rounded-full bg-[#FA5252] px-8 py-3.5 font-bold text-white text-sm sm:text-base shadow-lg shadow-rose-500/25 hover:bg-[#e04545] hover:shadow-xl hover:scale-[1.02] transition-all cursor-pointer"
             >
-              <span>14 Gün Ücretsiz Deneyin</span>
+              <span>{t.hero.tryFreeButton}</span>
               <HiOutlineArrowRight className="h-4 w-4" />
             </Link>
 
@@ -126,20 +126,20 @@ export default function HeroSpotlight() {
               className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200/90 bg-white px-6 py-3.5 font-semibold text-slate-700 text-sm hover:bg-slate-50 hover:border-slate-300 transition-all shadow-xs"
             >
               <HiOutlinePlay className="h-4 w-4 text-[#FA5252]" />
-              <span>Nasıl Çalıştığını Gör</span>
+              <span>{t.hero.howItWorksButton}</span>
             </a>
           </div>
 
           {/* Güven ve Mikro Bilgi */}
           <p className="hs-actions mt-3 text-xs text-slate-400 font-medium flex items-center gap-2">
             <HiOutlineCheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
-            <span>Kredi kartı gerekmez · 60 saniyede ilk planınız hazır · İptal serbest</span>
+            <span>{t.hero.trustBadge}</span>
           </p>
 
           {/* Platform Şeridi */}
           <div className="hs-trust mt-8 pt-6 border-t border-slate-200/70">
             <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-slate-400 font-semibold mb-3">
-              Kusursuz Entegre 17+ Kanal &amp; Araç
+              {t.hero.platformsTitle}
             </p>
             <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
               {CONNECTED_PLATFORMS.map((plat) => {
@@ -163,7 +163,7 @@ export default function HeroSpotlight() {
                 href="/platformlar"
                 className="text-[11px] font-bold text-[#FA5252] hover:underline px-2 py-1"
               >
-                +Tümünü Gör
+                {t.hero.seeAllPlatforms}
               </Link>
             </div>
           </div>
@@ -231,7 +231,7 @@ export default function HeroSpotlight() {
                     <FaXTwitter className="h-3 w-3 text-slate-900" />
                   </div>
                   <p className="text-[10px] text-slate-800 font-medium leading-relaxed mt-1">
-                    Sosyal medyada başarılı olmanın sırrı her gün 3 saat post hazırlamak değil. Tek bir sağlam fikri 6 mecraya otonom dönüştürmektir. Yapay zeka bunu 60 saniyede yapıyor.
+                    Tek bir fikri farklı kanalların diline uyarlamak içerik planlamasını kolaylaştırır. Her taslağı yayın öncesinde gözden geçirin.
                   </p>
                 </div>
 
@@ -303,7 +303,7 @@ export default function HeroSpotlight() {
                     <FaLinkedin className="h-3 w-3 text-[#0A66C2]" />
                   </div>
                   <p className="text-[10px] text-slate-800 font-medium leading-relaxed">
-                    Operasyon maliyetini %40 düşürüp içerik hızını 4x yapmanın 3 adımı 👇
+                    Sosyal medya içerik planını daha düzenli kurmanın 3 adımı 👇
                   </p>
                   <div className="mt-2 rounded-lg bg-blue-50/70 p-2 flex items-center justify-between text-[9px] font-bold text-blue-900">
                     <span>Karusel Rehberi</span>
@@ -345,7 +345,7 @@ export default function HeroSpotlight() {
                     <FaXTwitter className="h-3 w-3 text-slate-900" />
                   </div>
                   <p className="text-[10px] text-slate-800 font-medium">
-                    Sosyal medyada başarılı olmanın sırrı her gün 3 saat post hazırlamak değil. Tek bir sağlam fikri 6 mecraya otonom dönüştürmektir.
+                    Tek bir sağlam fikri farklı mecralara uygun taslaklara dönüştürün; yayın öncesinde her birini gözden geçirin.
                   </p>
                 </div>
 

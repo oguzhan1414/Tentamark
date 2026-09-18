@@ -3,10 +3,13 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useLanguage } from "@/context/LanguageContext";
 import { FaShopify, FaFacebook, FaInstagram, FaHeart, FaComment, FaShare, FaBookmark } from "react-icons/fa6";
 import { SiCanva } from "@/components/PlatformIcon";
 
 export default function WhyUsInteractiveSection() {
+  const { t } = useLanguage();
+
   return (
     <section
       id="neden-biz"
@@ -17,7 +20,7 @@ export default function WhyUsInteractiveSection() {
         {/* ================= ANA BAŞLIK ================= */}
         <div className="text-center max-w-4xl mx-auto">
           <h2 className="font-display text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl lg:text-[34px] leading-tight">
-            Bir yönlendirme metnini, ürün bağlantısını veya görseli lansmana hazır reklamlara dönüştürün.
+            {t.whyUs.mainTitle}
           </h2>
         </div>
 
@@ -29,10 +32,10 @@ export default function WhyUsInteractiveSection() {
             {/* Üst Metin Alanı */}
             <div>
               <h3 className="font-display text-lg sm:text-[21px] font-bold text-slate-900 leading-snug">
-                Görseller, başlıklar, metinler ve harekete geçirici mesajlar tek bir akışta.
+                {t.whyUs.card1.title}
               </h3>
               <p className="mt-2.5 text-xs sm:text-sm text-slate-600 leading-relaxed font-body">
-                Görseller, başlıklar, metin, harekete geçirici mesajlar gibi tüm unsurları birlikte oluşturun, böylece reklam baştan sona marka kimliğine uygun kalsın.
+                {t.whyUs.card1.desc}
               </p>
             </div>
 
@@ -81,7 +84,7 @@ export default function WhyUsInteractiveSection() {
               <div className="mt-3 flex items-center justify-center gap-3 w-full max-w-[310px]">
                 {/* Sol Kutu: Captions */}
                 <div className="flex-1 rounded-xl border border-slate-200/80 bg-white p-3 shadow-xs">
-                  <span className="text-[11px] font-bold text-slate-700 block">Captions</span>
+                  <span className="text-[11px] font-bold text-slate-700 block">{t.whyUs.card1.captionsLabel}</span>
                   <div className="space-y-1.5 mt-2">
                     <div className="h-2 w-11/12 rounded-full bg-rose-200" />
                     <div className="h-2 w-8/12 rounded-full bg-rose-100" />
@@ -90,7 +93,7 @@ export default function WhyUsInteractiveSection() {
 
                 {/* Sağ Kutu: Hashtags */}
                 <div className="flex-1 rounded-xl border border-slate-200/80 bg-white p-3 shadow-xs">
-                  <span className="text-[11px] font-bold text-slate-700 block">Hashtags</span>
+                  <span className="text-[11px] font-bold text-slate-700 block">{t.whyUs.card1.hashtagsLabel}</span>
                   <div className="space-y-1.5 mt-2">
                     <div className="h-2 w-10/12 rounded-full bg-teal-200" />
                     <div className="h-2 w-7/12 rounded-full bg-teal-100" />
@@ -105,10 +108,10 @@ export default function WhyUsInteractiveSection() {
             {/* Üst Metin Alanı */}
             <div>
               <h3 className="font-display text-lg sm:text-[21px] font-bold text-slate-900 leading-snug">
-                Bir komut isteminden, ürün URL&apos;sinden veya bir resimden başlayın.
+                {t.whyUs.card2.title}
               </h3>
               <p className="mt-2.5 text-xs sm:text-sm text-slate-600 leading-relaxed font-body">
-                Ne varsa getirin. Tek satırlık bir metin, bir ürün bağlantısı veya bir resim. Tentamark bunları reklamlara, videolara ve metinlere dönüştürüyor.
+                {t.whyUs.card2.desc}
               </p>
             </div>
 
@@ -189,10 +192,10 @@ export default function WhyUsInteractiveSection() {
             {/* Üst Metin Alanı */}
             <div>
               <h3 className="font-display text-lg sm:text-[21px] font-bold text-slate-900 leading-snug">
-                Her reklam ve video otomatik olarak marka kimliğine uygun kalır.
+                {t.whyUs.card3.title}
               </h3>
               <p className="mt-2.5 text-xs sm:text-sm text-slate-600 leading-relaxed font-body">
-                Marka renklerini, tonunu ve logosunu bir kez ayarlayın. Tentamark bunları her formatta, her kampanyada uygular.
+                {t.whyUs.card3.desc}
               </p>
             </div>
 
@@ -311,7 +314,7 @@ export default function WhyUsInteractiveSection() {
             href="/kayit"
             className="inline-flex items-center justify-center rounded-full bg-[#3B82F6] px-10 py-3.5 text-base font-bold text-white shadow-lg shadow-blue-500/25 hover:bg-[#2563EB] hover:shadow-xl transition-all cursor-pointer hover:scale-[1.03]"
           >
-            Şimdi deneyin
+            {t.whyUs.ctaButton}
           </Link>
         </div>
       </div>

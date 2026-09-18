@@ -19,44 +19,13 @@ import {
 } from "react-icons/hi2";
 import PlatformIcon, { type PlatformName } from "@/components/PlatformIcon";
 
-const PRODUCT_ITEMS = [
-  {
-    title: "AI Marketing Manager",
-    desc: "Stratejiden paylaşıma tüm sosyal medya operasyonunu otonom yönetin.",
-    icon: HiOutlineSparkles,
-    href: "/#demo",
-    tag: "Amiral Gemisi",
-  },
-  {
-    title: "Marka Intelligence & DNA",
-    desc: "Web sitenizden marka dilinizi, tonunuzu ve kurallarınızı öğrenir.",
-    icon: HiOutlineFingerPrint,
-    href: "/#demo",
-  },
-  {
-    title: "İçerik Stüdyosu",
-    desc: "Platforma özel açılış kancaları, caption ve görsel konseptleri üretir.",
-    icon: HiOutlinePencilSquare,
-    href: "/#demo",
-  },
-  {
-    title: "Akıllı İçerik Takvimi",
-    desc: "Boş günleri hedef kitle saatlerine göre tek tıkla doldurur.",
-    icon: HiOutlineCalendarDays,
-    href: "/nasil-calisir",
-  },
-  {
-    title: "Kampanyalar",
-    desc: "Lansman ve indirim dönemlerini çok kanallı paketlerle kurgulayın.",
-    icon: HiOutlineMegaphone,
-    href: "/nasil-calisir",
-  },
-  {
-    title: "Sosyal Sağlık Skoru & Analiz",
-    desc: "1.000 puan üzerinden sağlık skoru ve rakip istihbaratı teşhisi.",
-    icon: HiOutlineChartBar,
-    href: "/nasil-calisir",
-  },
+const PRODUCT_CONFIG = [
+  { icon: HiOutlineSparkles, href: "/#demo" },
+  { icon: HiOutlineFingerPrint, href: "/#demo" },
+  { icon: HiOutlinePencilSquare, href: "/#demo" },
+  { icon: HiOutlineCalendarDays, href: "/nasil-calisir" },
+  { icon: HiOutlineMegaphone, href: "/nasil-calisir" },
+  { icon: HiOutlineChartBar, href: "/nasil-calisir" },
 ];
 
 const PLATFORMS_MENU: { name: PlatformName; label: string; active: boolean }[] = [
@@ -76,7 +45,7 @@ const PLATFORMS_MENU: { name: PlatformName; label: string; active: boolean }[] =
 ];
 
 export default function SiteHeader() {
-  const { t } = useLanguage();
+  const { locale, setLocale, t } = useLanguage();
   const [productMenuOpen, setProductMenuOpen] = useState(false);
   const [platformsMenuOpen, setPlatformsMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -121,7 +90,7 @@ export default function SiteHeader() {
                 productMenuOpen ? "text-[#FA5252]" : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              <span>Ürün</span>
+              <span>{t.header.product}</span>
               <HiOutlineChevronDown
                 className={`h-3.5 w-3.5 transition-transform duration-200 ${
                   productMenuOpen ? "rotate-180 text-[#FA5252]" : "text-slate-400"
@@ -136,12 +105,13 @@ export default function SiteHeader() {
                 className="absolute left-1/2 -translate-x-1/2 top-full mt-3 w-[560px] rounded-2xl border border-slate-200/90 bg-white p-4 shadow-2xl shadow-slate-950/15 backdrop-blur-md animate-in fade-in zoom-in-95 duration-150 z-50"
               >
                 <div className="grid grid-cols-2 gap-2">
-                  {PRODUCT_ITEMS.map((item) => {
-                    const Icon = item.icon;
+                  {t.header.productItems.map((item, idx) => {
+                    const cfg = PRODUCT_CONFIG[idx] || PRODUCT_CONFIG[0];
+                    const Icon = cfg.icon;
                     return (
                       <Link
-                        key={item.title}
-                        href={item.href}
+                        key={idx}
+                        href={cfg.href}
                         onClick={() => setProductMenuOpen(false)}
                         className="group flex items-start gap-3 rounded-xl p-2.5 transition hover:bg-slate-50 hover:border-slate-200"
                       >
@@ -170,13 +140,13 @@ export default function SiteHeader() {
 
                 {/* Bottom explorer strip */}
                 <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between px-2 text-xs">
-                  <span className="text-slate-500 text-[11px]">Gerçek panel ekranlarıyla keşfetmek ister misiniz?</span>
+                  <span className="text-slate-500 text-[11px]">{t.header.productBottom.text}</span>
                   <Link
                     href="/nasil-calisir"
                     onClick={() => setProductMenuOpen(false)}
                     className="flex items-center gap-1 font-bold text-[#FA5252] hover:text-[#E03131]"
                   >
-                    <span>6 Adımlı Ürün Turu</span>
+                    <span>{t.header.productBottom.cta}</span>
                     <HiOutlineArrowRight className="h-3 w-3" />
                   </Link>
                 </div>
@@ -189,7 +159,7 @@ export default function SiteHeader() {
             href="/nasil-calisir"
             className="font-body text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
           >
-            Nasıl Çalışır
+            {t.header.howItWorks}
           </Link>
 
           {/* Platformlar Dropdown */}
@@ -205,7 +175,7 @@ export default function SiteHeader() {
                 platformsMenuOpen ? "text-[#FA5252]" : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              <span>Platformlar</span>
+              <span>{t.header.platforms}</span>
               <HiOutlineChevronDown
                 className={`h-3.5 w-3.5 transition-transform duration-200 ${
                   platformsMenuOpen ? "rotate-180 text-[#FA5252]" : "text-slate-400"
@@ -221,7 +191,7 @@ export default function SiteHeader() {
               >
                 <div className="space-y-1">
                   <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Kanal Desteği
+                    {t.header.platformsMenu.channelSupport}
                   </div>
                   {PLATFORMS_MENU.map((plt) => (
                     <Link
@@ -241,7 +211,7 @@ export default function SiteHeader() {
                             : "bg-amber-50 text-amber-700 border border-amber-200/60"
                         }`}
                       >
-                        {plt.active ? "Aktif" : "Yakında"}
+                        {plt.active ? t.header.platformsMenu.activeBadge : t.header.platformsMenu.soonBadge}
                       </span>
                     </Link>
                   ))}
@@ -253,7 +223,7 @@ export default function SiteHeader() {
                     onClick={() => setPlatformsMenuOpen(false)}
                     className="flex items-center justify-center gap-1.5 rounded-xl bg-slate-50 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition text-center w-full"
                   >
-                    <span>Tüm Platformları Karşılaştır</span>
+                    <span>{t.header.platformsMenu.compareAll}</span>
                     <HiOutlineArrowRight className="h-3 w-3" />
                   </Link>
                 </div>
@@ -266,7 +236,7 @@ export default function SiteHeader() {
             href="/#neden-biz"
             className="font-body text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
           >
-            Neden Tentamark
+            {t.header.whyUs}
           </Link>
 
           {/* Blog Link */}
@@ -274,7 +244,7 @@ export default function SiteHeader() {
             href="/blog"
             className="font-body text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
           >
-            Blog
+            {t.header.blog}
           </Link>
 
           {/* Fiyatlandırma Link */}
@@ -282,31 +252,68 @@ export default function SiteHeader() {
             href="/fiyatlandirma"
             className="font-body text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
           >
-            Fiyatlandırma
+            {t.header.pricing}
           </Link>
         </nav>
 
-        {/* CTA & Auth Action Buttons */}
-        <div className="flex items-center gap-3">
+        {/* CTA, Language Toggle & Auth Action Buttons */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Header Compact Language Switcher */}
+          <div
+            role="group"
+            aria-label={t.footer.languageToggleLabel}
+            className="flex items-center rounded-full border border-slate-200/90 bg-slate-50/90 p-0.5 text-[11px] font-semibold font-mono shadow-2xs"
+          >
+            <button
+              type="button"
+              id="header-lang-tr"
+              onClick={() => setLocale("tr")}
+              className={`rounded-full px-2 py-0.5 transition-all cursor-pointer ${
+                locale === "tr"
+                  ? "bg-[#FA5252] text-white shadow-xs font-bold"
+                  : "text-slate-500 hover:text-slate-900"
+              }`}
+              aria-pressed={locale === "tr"}
+              title="Türkçe"
+            >
+              TR
+            </button>
+            <span className="text-slate-300 text-[10px] px-0.5 select-none">/</span>
+            <button
+              type="button"
+              id="header-lang-en"
+              onClick={() => setLocale("en")}
+              className={`rounded-full px-2 py-0.5 transition-all cursor-pointer ${
+                locale === "en"
+                  ? "bg-[#FA5252] text-white shadow-xs font-bold"
+                  : "text-slate-500 hover:text-slate-900"
+              }`}
+              aria-pressed={locale === "en"}
+              title="English"
+            >
+              EN
+            </button>
+          </div>
+
           <Link
             href="/giris"
             className="hidden font-body text-sm font-semibold text-slate-700 transition-colors hover:text-slate-900 sm:inline-block"
           >
-            Giriş Yap
+            {t.header.login}
           </Link>
           <Link
             href="/kayit"
-            className="rounded-full bg-[#FA5252] px-4 py-2 font-body text-xs sm:text-sm font-bold text-white shadow-sm shadow-[#FA5252]/30 transition hover:bg-[#E03131]"
+            className="rounded-full bg-[#FA5252] px-3.5 py-1.5 sm:px-4 sm:py-2 font-body text-xs sm:text-sm font-bold text-white shadow-sm shadow-[#FA5252]/30 transition hover:bg-[#E03131]"
           >
-            Ücretsiz Başla
+            {t.header.startFree}
           </Link>
 
           {/* Mobile hamburger button */}
           <button
             type="button"
             onClick={() => setMobileMenuOpen((prev) => !prev)}
-            aria-label="Menü"
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-700 md:hidden"
+            aria-label={t.header.mobileMenu}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-700 md:hidden cursor-pointer"
           >
             {mobileMenuOpen ? <HiOutlineXMark className="h-5 w-5" /> : <HiOutlineBars3 className="h-5 w-5" />}
           </button>
@@ -322,7 +329,7 @@ export default function SiteHeader() {
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center justify-between rounded-xl p-2.5 text-xs font-bold text-slate-800 hover:bg-slate-50"
             >
-              <span>Nasıl Çalışır (Ürün Turu)</span>
+              <span>{t.header.mobileDrawer.tour}</span>
               <span>→</span>
             </Link>
             <Link
@@ -330,7 +337,7 @@ export default function SiteHeader() {
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center justify-between rounded-xl p-2.5 text-xs font-bold text-slate-800 hover:bg-slate-50"
             >
-              <span>Platformlar & Kanallar</span>
+              <span>{t.header.mobileDrawer.platforms}</span>
               <span>→</span>
             </Link>
             <Link
@@ -338,7 +345,7 @@ export default function SiteHeader() {
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center justify-between rounded-xl p-2.5 text-xs font-bold text-slate-800 hover:bg-slate-50"
             >
-              <span>Neden Tentamark?</span>
+              <span>{t.header.mobileDrawer.whyUs}</span>
               <span>→</span>
             </Link>
             <Link
@@ -346,7 +353,7 @@ export default function SiteHeader() {
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center justify-between rounded-xl p-2.5 text-xs font-bold text-slate-800 hover:bg-slate-50"
             >
-              <span>Blog & Rehberler</span>
+              <span>{t.header.mobileDrawer.blog}</span>
               <span>→</span>
             </Link>
             <Link
@@ -354,7 +361,7 @@ export default function SiteHeader() {
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center justify-between rounded-xl p-2.5 text-xs font-bold text-slate-800 hover:bg-slate-50"
             >
-              <span>Fiyatlandırma</span>
+              <span>{t.header.mobileDrawer.pricing}</span>
               <span>→</span>
             </Link>
           </div>
@@ -365,14 +372,14 @@ export default function SiteHeader() {
               onClick={() => setMobileMenuOpen(false)}
               className="flex-1 rounded-xl border border-slate-200 py-2.5 text-center text-xs font-semibold text-slate-700 hover:bg-slate-50"
             >
-              Giriş Yap
+              {t.header.login}
             </Link>
             <Link
               href="/kayit"
               onClick={() => setMobileMenuOpen(false)}
               className="flex-1 rounded-xl bg-[#FA5252] py-2.5 text-center text-xs font-bold text-white hover:bg-[#E03131]"
             >
-              Ücretsiz Başla
+              {t.header.startFree}
             </Link>
           </div>
         </div>

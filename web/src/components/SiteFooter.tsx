@@ -23,6 +23,9 @@ export default function SiteFooter() {
         </div>
 
         <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-medium text-muted sm:justify-end">
+          <Link href="/tentamark-nedir" className="hover:text-ink transition">
+            Tentamark Nedir?
+          </Link>
           <Link href="/nasil-calisir" className="hover:text-ink transition">
             Nasıl Çalışır?
           </Link>

@@ -26,7 +26,16 @@ const monoFont = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Tentamark - Markanız için çalışan AI Marketing Manager",
   description:
-    "Marka kimliğinizi öğrenen, haftalık içerik planı çıkaran, onayınızla yayınlayan ve sonuçlardan öğrenen AI Marketing Manager. Tenta'yla tanışın.",
+    "Marka bilgilerinize göre sosyal medya içerik taslakları ve haftalık plan hazırlayın; içerikleri gözden geçirip onay akışını yönetin.",
+  metadataBase: new URL("https://tentamark.com"),
+  openGraph: {
+    title: "Tentamark | AI Marketing Manager",
+    description: "Markanıza uygun içerikleri planlayın, gözden geçirin ve yayın sürecini tek yerden yönetin.",
+    url: "https://tentamark.com",
+    siteName: "Tentamark",
+    locale: "tr_TR",
+    type: "website",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

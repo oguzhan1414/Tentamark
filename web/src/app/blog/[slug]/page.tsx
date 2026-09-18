@@ -4,10 +4,12 @@ import Link from "next/link";
 import Image from "next/image";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import { LanguageProvider } from "@/context/LanguageContext";
 import BlogCard from "@/components/blog/BlogCard";
 import BlogShareBar from "@/components/blog/BlogShareBar";
 import BlogTableOfContents from "@/components/blog/BlogTableOfContents";
 import { getPostBySlug, getRelatedPosts, getAdjacentPosts, getAllPosts } from "@/lib/blog/blogUtils";
+import { publishedAtIso } from "@/lib/blog/publishedAtIso";
 import {
   HiOutlineClock,
   HiOutlineChevronRight,
@@ -58,7 +60,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       siteName: "Tentamark Blog",
       locale: "tr_TR",
       type: "article",
-      publishedTime: post.publishedAt,
+      publishedTime: publishedAtIso(post.publishedAt),
       authors: [post.author.name],
       images: [
         {
@@ -88,9 +90,22 @@ export default async function BlogPostPage({ params }: Props) {
 
   const relatedPosts = getRelatedPosts(post.id, 3);
   const { prev, next } = getAdjacentPosts(post.id);
+  const articleJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: post.title,
+    description: post.excerpt,
+    image: `https://tentamark.com${post.coverImage}`,
+    datePublished: publishedAtIso(post.publishedAt),
+    author: { "@type": "Organization", name: "Tentamark" },
+    publisher: { "@type": "Organization", name: "Tentamark" },
+    mainEntityOfPage: `https://tentamark.com/blog/${post.slug}`,
+  };
 
   return (
+    <LanguageProvider>
     <div className="min-h-screen bg-[#FAF9F6] text-[#172B46] selection:bg-rose-100 selection:text-[#172B46]">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd).replace(/</g, "\\u003c") }} />
       <SiteHeader />
 
       <main className="pb-20 pt-20">
@@ -170,6 +185,12 @@ export default async function BlogPostPage({ params }: Props) {
 
           <div className="grid items-start gap-12 lg:grid-cols-[minmax(0,1fr)_260px] xl:gap-16">
             <div className="min-w-0 max-w-[72ch] space-y-12">
+              {post.question && post.shortAnswer && (
+                <section className="rounded-xl border border-[#E3E6E9] bg-white p-6" aria-labelledby="kisa-yanit-baslik">
+                  <h2 id="kisa-yanit-baslik" className="text-xl font-bold text-[#172B46]">{post.question}</h2>
+                  <p className="mt-3 text-[17px] leading-8 text-[#334155]">{post.shortAnswer}</p>
+                </section>
+              )}
               <div className="border-l-[3px] border-[#FA5252] bg-white py-5 pl-6 pr-5 text-lg font-medium leading-8 text-[#334155] sm:pr-8">
                 {post.excerpt}
               </div>
@@ -394,5 +415,6 @@ export default async function BlogPostPage({ params }: Props) {
 
       <SiteFooter />
     </div>
+    </LanguageProvider>
   );
 }

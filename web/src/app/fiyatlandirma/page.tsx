@@ -72,6 +72,9 @@ export default function FiyatlandirmaPage() {
         <SiteHeader />
 
         <main className="flex-1">
+          <div className="mx-auto mt-24 max-w-6xl rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-950">
+            Paketler geliştirme aşamasındadır. Ücretli ödeme ve deneme süresi henüz aktif değildir; güncel erişim ve sınırları doğrulayın.
+          </div>
           {/* ================= HERO SECTION ================= */}
           <section className="relative overflow-hidden pt-12 pb-10 sm:pt-16 sm:pb-12">
             {/* Arka plan geometrik desen & atmosferik ambient */}

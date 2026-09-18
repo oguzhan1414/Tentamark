@@ -1,36 +1,39 @@
 import { BlogPost, BlogCategory } from "./blogTypes";
 import { BLOG_POSTS } from "./blogData";
+import { SEO_POSTS } from "./seoPosts";
 import { BLOG_CATEGORIES } from "./blogCategories";
 
+const ALL_POSTS = [...SEO_POSTS, ...BLOG_POSTS];
+
 export function getAllPosts(): BlogPost[] {
-  return BLOG_POSTS;
+  return ALL_POSTS;
 }
 
 export function getFeaturedPost(): BlogPost {
-  return BLOG_POSTS.find((p) => p.featured) || BLOG_POSTS[0];
+  return ALL_POSTS.find((p) => p.featured) || ALL_POSTS[0];
 }
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
-  return BLOG_POSTS.find((p) => p.slug === slug);
+  return ALL_POSTS.find((p) => p.slug === slug);
 }
 
 export function getPostsByCategory(category: BlogCategory | "all"): BlogPost[] {
-  if (category === "all") return BLOG_POSTS;
-  return BLOG_POSTS.filter((p) => p.category === category);
+  if (category === "all") return ALL_POSTS;
+  return ALL_POSTS.filter((p) => p.category === category);
 }
 
 export function getRelatedPosts(currentId: number, limit = 3): BlogPost[] {
-  const current = BLOG_POSTS.find((p) => p.id === currentId);
-  if (!current) return BLOG_POSTS.slice(0, limit);
+  const current = ALL_POSTS.find((p) => p.id === currentId);
+  if (!current) return ALL_POSTS.slice(0, limit);
 
   // Match same category first, exclude current
-  const sameCategory = BLOG_POSTS.filter((p) => p.id !== currentId && p.category === current.category);
+  const sameCategory = ALL_POSTS.filter((p) => p.id !== currentId && p.category === current.category);
   if (sameCategory.length >= limit) {
     return sameCategory.slice(0, limit);
   }
 
   // Otherwise fill with others
-  const others = BLOG_POSTS.filter((p) => p.id !== currentId && p.category !== current.category);
+  const others = ALL_POSTS.filter((p) => p.id !== currentId && p.category !== current.category);
   return [...sameCategory, ...others].slice(0, limit);
 }
 
@@ -38,11 +41,11 @@ export function getAdjacentPosts(currentId: number): {
   prev: BlogPost | null;
   next: BlogPost | null;
 } {
-  const currentIndex = BLOG_POSTS.findIndex((p) => p.id === currentId);
+  const currentIndex = ALL_POSTS.findIndex((p) => p.id === currentId);
   if (currentIndex === -1) return { prev: null, next: null };
 
-  const prev = currentIndex > 0 ? BLOG_POSTS[currentIndex - 1] : null;
-  const next = currentIndex < BLOG_POSTS.length - 1 ? BLOG_POSTS[currentIndex + 1] : null;
+  const prev = currentIndex > 0 ? ALL_POSTS[currentIndex - 1] : null;
+  const next = currentIndex < ALL_POSTS.length - 1 ? ALL_POSTS[currentIndex + 1] : null;
 
   return { prev, next };
 }
@@ -50,7 +53,7 @@ export function getAdjacentPosts(currentId: number): {
 export function searchPosts(query: string, category: string = "all"): BlogPost[] {
   const normalizedQuery = query.toLowerCase().trim();
 
-  return BLOG_POSTS.filter((post) => {
+  return ALL_POSTS.filter((post) => {
     const matchesCategory = category === "all" || post.category === category;
     if (!matchesCategory) return false;
 

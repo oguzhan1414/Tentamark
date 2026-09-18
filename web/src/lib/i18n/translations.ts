@@ -17,14 +17,14 @@ export const translations = {
       eyebrow: "AI Marketing Manager",
       headlineBefore: "Markanızın sosyal medyasını yöneten bir ekip. ",
       headlineHighlight: "Tek kişi bile olsanız.",
-      copy: "Tentamark markanızı öğrenir, haftalık içerik planını hazırlar ve her platforma ayrı yazar. Siz onaylarsınız, o yayınlar ve sonuçlardan öğrenir.",
+      copy: "Tentamark marka bilgilerinize göre haftalık içerik taslakları hazırlar. Metinleri gözden geçirir, düzenler ve yayın akışını yönetirsiniz. Bağlantı seçenekleri platforma göre değişir.",
       emailPlaceholder: "ornek@marka.com",
       emailLabel: "E-posta adresiniz",
       ctaButton: "Erken erişime katıl",
       watchDemo: "Demo izle",
-      trustText: "Instagram, Facebook ve LinkedIn ile çalışır",
-      statValue: "Etkileşim +%18",
-      statPeriod: "son 30 gün",
+      trustText: "Platform bağlantıları hesap türüne ve izinlere bağlıdır",
+      statValue: "Örnek içerik",
+      statPeriod: "ürün önizlemesi",
       portraitAlt: "Kendi markasının sosyal medyasını Tentamark ile yöneten bir işletme sahibi",
     },
     adShowcase: {
@@ -362,7 +362,7 @@ export const translations = {
           items: [
             {
               q: "Hangi platformlarda yayın yapabiliyorum?",
-              a: "Bugün Instagram, Facebook ve LinkedIn'de doğrudan yayın yapılıyor. TikTok, YouTube, Pinterest, Threads ve X yol haritamızda; sırayla açılıyor.",
+              a: "İçerik hazırlama ile doğrudan yayın farklı yeteneklerdir. Güncel bağlantı ve yayın kapsamını platform sayfalarında ve hesabınızdaki bağlantı ekranında kontrol edin.",
             },
             {
               q: "Markamın tonunu nasıl öğreniyor?",
@@ -370,7 +370,7 @@ export const translations = {
             },
             {
               q: "Görsel ve video içerikleri nasıl üretiliyor?",
-              a: "Çekim konseptini kısaca anlatırsınız; Tentamark markanızın renk paletine ve tonuna uygun bir görsel veya video üretir. Diğer her içerik gibi, siz onaylamadan hiçbir şey yayına gitmez.",
+              a: "Bir görsel fikri veya içerik taslağı hazırlayabilirsiniz. Video üretimi ve yayın seçenekleri ürünün geliştirme durumuna ve platform izinlerine göre değişir; yayın öncesinde çıktıyı kontrol edin.",
             },
           ],
         },
@@ -984,14 +984,14 @@ export const translations = {
       eyebrow: "AI Marketing Manager",
       headlineBefore: "A dedicated team managing your brand's social media. ",
       headlineHighlight: "Even if you're a team of one.",
-      copy: "Tentamark learns your brand identity, prepares your weekly content plan, and writes specifically for each platform. You approve, it publishes and learns from the results.",
+      copy: "Tentamark prepares weekly content drafts using your brand information. You review and edit them, then manage the publishing workflow. Connection options vary by platform.",
       emailPlaceholder: "name@brand.com",
       emailLabel: "Your email address",
       ctaButton: "Join early access",
       watchDemo: "Watch demo",
-      trustText: "Works with Instagram, Facebook, and LinkedIn",
-      statValue: "Engagement +18%",
-      statPeriod: "last 30 days",
+      trustText: "Connections depend on account type and permissions",
+      statValue: "Sample content",
+      statPeriod: "product preview",
       portraitAlt: "A business owner managing their social media with Tentamark",
     },
     adShowcase: {
@@ -1329,7 +1329,7 @@ export const translations = {
           items: [
             {
               q: "Which platforms can I publish to directly?",
-              a: "Direct automated publishing is live today for Instagram, Facebook, and LinkedIn. TikTok, YouTube, Pinterest, Threads, and X are on our active roadmap and launching in phases.",
+              a: "Content preparation and direct publishing are different capabilities. Check the platform pages and your account's connection screen for the current connection and publishing options.",
             },
             {
               q: "How does it learn my brand's distinct voice?",
@@ -1337,7 +1337,7 @@ export const translations = {
             },
             {
               q: "How are visual and video assets created?",
-              a: "Briefly specify your visual concept; Tentamark renders a custom image or video aligned with your brand's aesthetic. Nothing is ever published without your explicit review.",
+              a: "You can prepare a visual concept or content draft. Video generation and publishing options depend on product development and platform permissions; review every output before publishing.",
             },
           ],
         },

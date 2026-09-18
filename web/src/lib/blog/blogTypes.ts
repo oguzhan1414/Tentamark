@@ -55,6 +55,8 @@ export interface BlogPost {
   title: string;
   subtitle: string;
   excerpt: string;
+  question?: string;
+  shortAnswer?: string;
   category: BlogCategory;
   categoryLabel: string;
   readingTime: number; // in minutes

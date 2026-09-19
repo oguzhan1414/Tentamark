@@ -12,6 +12,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/fiyatlandirma",
     "/platformlar",
     "/blog",
+    "/iletisim",
     "/gizlilik",
     "/kullanim-kosullari",
   ];

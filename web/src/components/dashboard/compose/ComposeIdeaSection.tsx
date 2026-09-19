@@ -1,6 +1,7 @@
 "use client";
 
 import type { LaunchPlatform } from "@/lib/ai/generateDrafts";
+import AiGeneratingShimmer from "@/components/dashboard/common/AiGeneratingShimmer";
 
 interface ComposeIdeaSectionProps {
   mode: "manual" | "ai";
@@ -303,16 +304,16 @@ export default function ComposeIdeaSection({
               <button
                 type="button"
                 onClick={onGenerate}
-                disabled={!idea.trim() || selectedPlatforms.length === 0 || generating}
+                disabled={!idea.trim() || generating}
                 className="flex-1 rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-violet-700 disabled:opacity-50 transition cursor-pointer"
               >
                 {generating
                   ? isEn
-                    ? "Generating..."
-                    : "Üretiliyor..."
+                    ? "Generating with AI..."
+                    : "AI ile Üretiliyor..."
                   : isEn
-                  ? "Generate posts"
-                  : "Gönderileri üret"}
+                  ? "✨ Generate with AI"
+                  : "✨ AI ile Üret"}
               </button>
               {onOpenMultiplier && (
                 <button
@@ -321,7 +322,7 @@ export default function ComposeIdeaSection({
                     setAiPanelOpen(false);
                     onOpenMultiplier();
                   }}
-                  disabled={!idea.trim()}
+                  disabled={!idea.trim() || generating}
                   className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 px-3.5 py-2.5 text-xs font-bold text-white shadow-sm hover:opacity-95 disabled:opacity-50 transition cursor-pointer whitespace-nowrap"
                   title={isEn ? "Multiply into 7 platform formats" : "7 platform formatına çoğalt"}
                 >
@@ -330,6 +331,30 @@ export default function ComposeIdeaSection({
                 </button>
               )}
             </div>
+
+            {generating && (
+              <div className="pt-1">
+                <AiGeneratingShimmer
+                  title={isEn ? "AI Content Engine Working..." : "AI İçerik Motoru Çalışıyor..."}
+                  stages={
+                    isEn
+                      ? [
+                          "Scanning brand voice and audience dynamics...",
+                          "Engineering hooks for selected platforms...",
+                          "Optimizing hashtag and virality strategies...",
+                          "Preparing content drafts for your review...",
+                        ]
+                      : [
+                          "Marka sesiniz ve hedef kitle dinamikleri taranıyor...",
+                          "Seçilen platformlar için kancalar (hooks) tasarlanıyor...",
+                          "Hashtag ve etkileşim stratejisi optimize ediliyor...",
+                          "Taslaklar onayınıza hazır hale getiriliyor...",
+                        ]
+                  }
+                />
+              </div>
+            )}
+
             {genError && (
               <p role="alert" className="text-xs text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-100">
                 {genError}

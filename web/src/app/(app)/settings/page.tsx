@@ -13,8 +13,9 @@ import { useCanvaConnection } from "@/lib/canva/useCanvaConnection";
 import { useWooCommerceConnection } from "@/lib/woocommerce/useWooCommerceConnection";
 import { useLanguage } from "@/context/LanguageContext";
 import { HiOutlineShieldCheck, HiOutlineArrowRightOnRectangle } from "react-icons/hi2";
+import DeveloperAccessTab from "@/components/dashboard/settings/DeveloperAccessTab";
 
-type SettingsTab = "genel" | "plan" | "ekip" | "bildirimler" | "baglantilar";
+type SettingsTab = "genel" | "plan" | "ekip" | "bildirimler" | "baglantilar" | "gelistirici";
 
 type TeamMember = { id: string; userId: string; role: string; name: string; email: string };
 type TeamInvite = { id: string; email: string; role: string; token: string; expires_at: string };
@@ -552,7 +553,7 @@ function SettingsPageContent() {
 
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
     const param = searchParams.get("tab");
-    return (["genel", "plan", "ekip", "bildirimler", "baglantilar"] as const).includes(param as SettingsTab)
+    return (["genel", "plan", "ekip", "bildirimler", "baglantilar", "gelistirici"] as const).includes(param as SettingsTab)
       ? (param as SettingsTab)
       : "genel";
   });
@@ -677,8 +678,9 @@ function SettingsPageContent() {
     { key: "plan" as const, label: st.tabs.plan, icon: "💎" },
     { key: "ekip" as const, label: st.tabs.team, icon: "👥" },
     { key: "baglantilar" as const, label: st.tabs.connections, icon: "🔗" },
+    { key: "gelistirici" as const, label: locale === "en" ? "Developer" : "Geliştirici", icon: "🧩" },
     { key: "bildirimler" as const, label: st.tabs.notifications, icon: "🔔" },
-  ], [st]);
+  ], [st, locale]);
 
   useEffect(() => {
     let ignore = false;
@@ -1542,6 +1544,8 @@ function SettingsPageContent() {
           </div>
         </div>
       )}
+
+      {activeTab === "gelistirici" && <DeveloperAccessTab isOwner={isOwner} />}
 
     </div>
   );

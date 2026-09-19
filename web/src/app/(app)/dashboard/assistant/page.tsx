@@ -431,9 +431,9 @@ export default function AssistantPage() {
         .select("id")
         .single();
 
-      return data?.id ?? `msg_${Date.now()}`;
+      return data?.id ?? `msg_${crypto.randomUUID()}`;
     } catch {
-      return `msg_${Date.now()}`;
+      return `msg_${crypto.randomUUID()}`;
     }
   }
 
@@ -454,7 +454,7 @@ export default function AssistantPage() {
       ? `[Ekli Görsel: ${currentImg.name} (${currentImg.url})]\n${textToSend || "Bu görseli sosyal medya içeriğim için nasıl kullanabilirim ve ne tür bir kanca veya açıklama yazmalıyım?"}`
       : textToSend;
 
-    const userMsgId = `usr_${Date.now()}`;
+    const userMsgId = `usr_${crypto.randomUUID()}`;
     const userMsg: Message = {
       id: userMsgId,
       role: "user",
@@ -498,7 +498,7 @@ export default function AssistantPage() {
 
       const reply = await askAssistant(brand.id, historyTurns, promptForAi);
 
-      const assistantMsgId = `ast_${Date.now()}`;
+      const assistantMsgId = `ast_${crypto.randomUUID()}`;
       const assistantMsg: Message = {
         id: assistantMsgId,
         role: "assistant",
@@ -532,7 +532,7 @@ export default function AssistantPage() {
       );
     } catch (err) {
       const errorMsg: Message = {
-        id: `err_${Date.now()}`,
+        id: `err_${crypto.randomUUID()}`,
         role: "assistant",
         content: `Üzgünüm, yanıt oluşturulurken bir hata oluştu: ${
           err instanceof Error ? err.message : "Bilinmeyen hata"

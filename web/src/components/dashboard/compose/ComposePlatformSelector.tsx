@@ -70,15 +70,55 @@ export default function ComposePlatformSelector({
               </span>
             </div>
           ) : connectedPlatforms.length === 0 ? (
-            <p className="text-xs text-slate-500">
-              {isEn ? "No connected accounts yet. " : "Henüz bağlı bir hesabın yok. "}
-              <Link
-                href="/settings?tab=baglantilar"
-                className="font-semibold text-blue-600 hover:underline"
-              >
-                {isEn ? "Connect one →" : "Bir hesap bağla →"}
-              </Link>
-            </p>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-md">
+                  {isEn ? "Draft Mode" : "Taslak Modu (Bağlı hesap yok)"}
+                </span>
+                <Link
+                  href="/settings?tab=baglantilar"
+                  className="text-xs font-semibold text-blue-600 hover:underline"
+                >
+                  {isEn ? "Connect live account →" : "Hesap bağla →"}
+                </Link>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                {(["instagram", "linkedin", "x", "tiktok", "facebook"] as LaunchPlatform[]).map((platform) => {
+                  const checked = selectedPlatforms.includes(platform);
+                  return (
+                    <button
+                      key={platform}
+                      type="button"
+                      onClick={() => onTogglePlatform(platform)}
+                      title={`${platformLabel(platform)} (${isEn ? "Draft" : "Taslak"})`}
+                      aria-label={`${platformLabel(platform)} ${checked ? "selected" : "not selected"}`}
+                      aria-pressed={checked}
+                      className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition hover:-translate-y-0.5 cursor-pointer ${
+                        checked
+                          ? "border-blue-300 bg-blue-50 shadow-sm"
+                          : "border-slate-200 bg-white hover:border-slate-300"
+                      }`}
+                    >
+                      <PlatformIcon
+                        name={platform}
+                        variant="tile"
+                        className={`h-7 w-7 rounded-lg transition ${
+                          checked ? "" : "opacity-35 grayscale"
+                        }`}
+                      />
+                      {checked && (
+                        <span
+                          className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[9px] font-bold text-white shadow"
+                          aria-hidden="true"
+                        >
+                          ✓
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           ) : (
             <div className="flex flex-wrap items-center gap-2">
               {connectedPlatforms.map((platform) => {

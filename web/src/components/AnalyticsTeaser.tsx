@@ -29,11 +29,11 @@ export default function AnalyticsTeaser() {
         >
           <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl bg-bg border border-line">
             <Image
-              src="/images/analytics-strategy-loop.jpeg"
+              src="/images/analytics-strategy-loop-v2.png"
               alt={t.analytics.imageAlt}
               fill
               sizes="(min-width: 1024px) 70vw, 100vw"
-              className="object-contain object-center transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+              className="object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.015]"
             />
           </div>
         </div>

@@ -131,16 +131,16 @@ ${content}
     .replace(/\s*```$/i, "")
     .trim();
 
-  const parsed = JSON.parse(cleaned);
+  const parsed = JSON.parse(cleaned) as { variants?: unknown };
 
-  const rawVariants = Array.isArray(parsed.variants) ? parsed.variants : [];
+  const rawVariants = Array.isArray(parsed.variants) ? parsed.variants as Record<string, unknown>[] : [];
   const defaultBadges: Record<string, { badge: string; title: string }> = {
     curiosity: { badge: "🏆 Merak Kancası", title: "Merak & Durdurucu Kanca" },
     educational: { badge: "🥈 Eğitici & Değer", title: "Bilgi & Kaydetme Odaklı" },
     direct_cta: { badge: "🥉 Doğrudan Eylem", title: "Dönüşüm & Aksiyon" },
   };
 
-  const variants: CaptionLabVariant[] = rawVariants.map((v: any, index: number) => {
+  const variants: CaptionLabVariant[] = rawVariants.map((v, index: number) => {
     const rawId = v.id || (index === 0 ? "curiosity" : index === 1 ? "educational" : "direct_cta");
     const validId = rawId === "curiosity" || rawId === "educational" || rawId === "direct_cta" ? rawId : "curiosity";
     const defaults = defaultBadges[validId] || defaultBadges.curiosity;
@@ -149,7 +149,7 @@ ${content}
       id: validId,
       badge: String(v.badge || defaults.badge).trim(),
       title: String(v.title || defaults.title).trim(),
-      hook: String(v.hook || v.caption?.split("\n")[0] || "").trim(),
+      hook: String(v.hook || (typeof v.caption === "string" ? v.caption.split("\n")[0] : "")).trim(),
       caption: String(v.caption || content).trim(),
       overallScore: clampScore(v.overall_score, 85),
       hookScore: clampScore(v.hook_score, 80),

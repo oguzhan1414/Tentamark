@@ -63,6 +63,8 @@ export default function SocialScorePage() {
 
   useEffect(() => {
     let ignore = false;
+    // Loading is intentionally reset when the active brand changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     getAnalyticsOverview(brand.id)
       .then((data) => {

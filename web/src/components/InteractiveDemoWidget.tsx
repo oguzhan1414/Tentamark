@@ -9,9 +9,9 @@ import { useLanguage } from "@/context/LanguageContext";
 type AudienceSegment = "solo" | "smb" | "agency";
 
 const SEGMENT_IMAGES: Record<AudienceSegment, string> = {
-  solo: "/images/features/solo-entrepreneur-ui.jpg",
-  smb: "/images/features/small-business-ui.jpg",
-  agency: "/images/features/agency-workspace-ui.jpg",
+  solo: "/images/features/audience-solo-v3.png",
+  smb: "/images/features/audience-small-business-v3.png",
+  agency: "/images/features/audience-agency-v3.png",
 };
 
 const TAB_KEYS: AudienceSegment[] = ["solo", "smb", "agency"];
@@ -30,7 +30,7 @@ export default function InteractiveDemoWidget() {
       <div className="mx-auto max-w-7xl">
         {/* ================= TOP ACCENT BAR & TITLE ================= */}
         <div className="text-center max-w-3xl mx-auto space-y-4">
-          <div className="w-12 h-1.5 rounded-full bg-[#FA5252] mx-auto" />
+          <div className="mx-auto h-1.5 w-14 rounded-full bg-gradient-to-r from-violet via-sky to-coral" />
 
           <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-950 tracking-tight">
             {t.interactiveDemo.title}
@@ -49,8 +49,8 @@ export default function InteractiveDemoWidget() {
                 onClick={() => setActiveTab(tabKey)}
                 className={`rounded-full px-6 py-2.5 text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                   isSelected
-                    ? "bg-[#FA5252] text-white shadow-lg shadow-[#FA5252]/25 scale-[1.03]"
-                    : "bg-white border border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                    ? "scale-[1.03] bg-ink text-white shadow-lg shadow-violet/20"
+                    : "border border-line bg-white text-slate-700 hover:border-violet/30 hover:bg-bg-violet"
                 }`}
               >
                 {item.label}
@@ -86,7 +86,7 @@ export default function InteractiveDemoWidget() {
             <div className="pt-2">
               <Link
                 href="/kayit"
-                className="group inline-flex items-center gap-2 rounded-full bg-[#FA5252] px-8 py-3.5 font-body text-sm sm:text-base font-bold text-white shadow-lg shadow-[#FA5252]/25 hover:bg-[#E03131] transition-all hover:scale-102"
+                className="group inline-flex items-center gap-2 rounded-full bg-ink px-8 py-3.5 font-body text-sm font-bold text-white shadow-lg shadow-ink/20 transition-all hover:-translate-y-0.5 hover:bg-violet sm:text-base"
               >
                 <span>{current.ctaText}</span>
                 <HiOutlineArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
@@ -96,7 +96,7 @@ export default function InteractiveDemoWidget() {
 
           {/* ----------------- RIGHT COLUMN: BESPOKE 3D SAAS ARTWORK ----------------- */}
           <div className="lg:col-span-6 relative flex items-center justify-center">
-            <div className="relative w-full aspect-[4/3] max-w-xl overflow-hidden rounded-3xl border border-slate-100 shadow-2xl transition-all duration-300 hover:scale-[1.01]">
+            <div className="relative aspect-[4/3] w-full max-w-xl overflow-hidden rounded-[2rem] border border-white/90 bg-bg-violet shadow-[0_30px_80px_rgba(42,33,70,0.18)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_38px_95px_rgba(42,33,70,0.23)]">
               <Image
                 key={activeTab}
                 src={imageSrc}
@@ -104,7 +104,7 @@ export default function InteractiveDemoWidget() {
                 fill
                 priority
                 sizes="(max-width: 1024px) 100vw, 50vw"
-                className="object-cover object-center animate-in fade-in zoom-in-95 duration-200"
+                className="object-cover object-center animate-in fade-in zoom-in-95 duration-300"
               />
             </div>
           </div>

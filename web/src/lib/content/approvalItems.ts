@@ -48,6 +48,12 @@ export type ContentRow = {
   draftAssignedTo?: { id: string; name: string } | null;
   createdBy?: string | null;
   comments: ApprovalComment[];
+  is_evergreen?: boolean;
+  evergreen_interval_days?: number;
+  evergreen_max_recycles?: number | null;
+  evergreen_recycle_count?: number;
+  evergreen_last_recycled_at?: string | null;
+  evergreen_auto_remix?: boolean;
 };
 
 export function firstMedia(contentMedia: unknown): { url: string; isVideo: boolean } | null {
@@ -136,7 +142,28 @@ export function rowToApprovalItem(row: ContentRow, brandName: string): ApprovalI
     hook: row.metadata?.hook,
     visualPrompt: row.metadata?.visualPrompt,
     format: row.format,
+    isEvergreen: Boolean(row.is_evergreen),
+    evergreenIntervalDays: row.evergreen_interval_days ?? 30,
+    evergreenRecycleCount: row.evergreen_recycle_count ?? 0,
+    evergreenLastRecycledAt: row.evergreen_last_recycled_at ?? null,
+    evergreenAutoRemix: row.evergreen_auto_remix ?? true,
   };
+}
+
+export async function toggleContentEvergreen(
+  supabase: SupabaseBrowserClient,
+  id: string,
+  isEvergreen: boolean,
+  intervalDays: number = 30
+) {
+  return supabase
+    .from("content")
+    .update({
+      is_evergreen: isEvergreen,
+      evergreen_interval_days: intervalDays,
+    })
+    .eq("id", id)
+    .select("id");
 }
 
 // Low-level mutations, shared so "reject means status back to DRAFT" (etc.)
@@ -191,7 +218,7 @@ export async function fetchContentRows(supabase: SupabaseBrowserClient, brandId:
     const { data, error } = await supabase
       .from("content")
       .select(
-        "id, title, core_idea, category, status, created_at, created_by, draft_assignee_id, tags, format, assigned_to, assignee:profiles!assigned_to(full_name, email), draft_assignee:profiles!draft_assignee_id(full_name, email), campaigns(name), content_media(media(file_url, file_type)), content_platforms(id, platform, caption, hashtags, status, scheduled_at, permalink_url, last_error)"
+        "id, title, core_idea, category, status, created_at, created_by, draft_assignee_id, tags, format, assigned_to, is_evergreen, evergreen_interval_days, evergreen_max_recycles, evergreen_recycle_count, evergreen_last_recycled_at, evergreen_auto_remix, assignee:profiles!assigned_to(full_name, email), draft_assignee:profiles!draft_assignee_id(full_name, email), campaigns(name), content_media(media(file_url, file_type)), content_platforms(id, platform, caption, hashtags, status, scheduled_at, permalink_url, last_error)"
       )
       .eq("brand_id", brandId)
       .order("created_at", { ascending: false })
@@ -284,6 +311,12 @@ export async function fetchContentRows(supabase: SupabaseBrowserClient, brandId:
       createdBy: r.created_by ? String(r.created_by) : null,
       draftAssignedTo: r.draft_assignee_id ? { id: String(r.draft_assignee_id), name: draftAssignee?.full_name || draftAssignee?.email?.split("@")[0] || "Üye" } : null,
       comments: commentsByContent.get(String(r.id)) ?? [],
+      is_evergreen: Boolean(r.is_evergreen),
+      evergreen_interval_days: typeof r.evergreen_interval_days === "number" ? r.evergreen_interval_days : 30,
+      evergreen_max_recycles: typeof r.evergreen_max_recycles === "number" ? r.evergreen_max_recycles : null,
+      evergreen_recycle_count: typeof r.evergreen_recycle_count === "number" ? r.evergreen_recycle_count : 0,
+      evergreen_last_recycled_at: r.evergreen_last_recycled_at ? String(r.evergreen_last_recycled_at) : null,
+      evergreen_auto_remix: r.evergreen_auto_remix !== false,
     };
   });
 }

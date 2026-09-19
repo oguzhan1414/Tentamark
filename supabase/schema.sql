@@ -173,11 +173,19 @@ create table if not exists public.content (
   -- "Onaya ata" (patches/0027) — no notification infra exists, so this is
   -- just an assignment record/filter, not a "ping this person" feature.
   assigned_to uuid references public.profiles(id) on delete set null,
+  -- Evergreen Recycling (patches/0045)
+  is_evergreen boolean default false not null,
+  evergreen_interval_days integer default 30 not null,
+  evergreen_max_recycles integer default null,
+  evergreen_recycle_count integer default 0 not null,
+  evergreen_last_recycled_at timestamptz default null,
+  evergreen_auto_remix boolean default true not null,
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null
 );
 
 create index if not exists idx_content_assigned_to on public.content(assigned_to);
+create index if not exists idx_content_evergreen on public.content(brand_id, is_evergreen, evergreen_last_recycled_at) where is_evergreen = true;
 
 -- content_comments — a real threaded discussion on a piece of content
 -- (Planable-style: teammates leaving notes like "Alright! Scheduled." right
@@ -233,6 +241,30 @@ create table if not exists public.content_platforms (
 create index if not exists idx_cp_platform_post_id on public.content_platforms(platform_post_id);
 create index if not exists idx_cp_scheduled_status on public.content_platforms(status, scheduled_at);
 create index if not exists idx_cp_content_id on public.content_platforms(content_id);
+
+-- updated_at auto-bump (patches/0047) — without this, `updated_at` only ever
+-- reflects insert time; no application code sets it on UPDATE, which makes
+-- it useless as an optimistic-concurrency token (MCP's reschedule_draft /
+-- submit_for_approval tools rely on it actually changing).
+create or replace function private.set_updated_at() returns trigger
+language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists set_updated_at on public.content;
+create trigger set_updated_at before update on public.content
+for each row execute function private.set_updated_at();
+
+drop trigger if exists set_updated_at on public.content_platforms;
+create trigger set_updated_at before update on public.content_platforms
+for each row execute function private.set_updated_at();
+
+drop trigger if exists set_updated_at on public.brand_dna;
+create trigger set_updated_at before update on public.brand_dna
+for each row execute function private.set_updated_at();
 
 -- calendar_notes (patch 0019, color added in 0020) — free-text sticky notes
 -- on a calendar day, independent of any real content/post.
@@ -331,8 +363,45 @@ create table if not exists public.audit_logs (
   entity_type text not null,
   entity_id uuid not null,
   metadata jsonb default '{}'::jsonb,
-  created_at timestamptz default now() not null
+  created_at timestamptz default now() not null,
+  -- MCP actor/connection/request shape (patches/0047) — user_id stays "which
+  -- human this credential traces back to"; these describe the credential and
+  -- call itself. No FK on mcp_connection_id yet: mcp_connections doesn't
+  -- exist until the MCP OAuth/PAT stage.
+  actor_type text not null default 'user' check (actor_type in ('user', 'mcp_oauth', 'mcp_pat', 'system')),
+  mcp_connection_id uuid,
+  request_id text,
+  tool_name text,
+  outcome text not null default 'success' check (outcome in ('success', 'denied', 'failed')),
+  before_state jsonb,
+  after_state jsonb,
+  client_name text
 );
+
+create index if not exists idx_audit_logs_mcp_connection on public.audit_logs(mcp_connection_id) where mcp_connection_id is not null;
+create index if not exists idx_audit_logs_entity on public.audit_logs(entity_type, entity_id);
+
+-- mcp_idempotency_keys (patches/0047) — replay ledger for MCP write tools.
+-- No SELECT policy for authenticated/anon on purpose: `result`/`error` can
+-- contain another org's cached tool output, and without mcp_connections yet
+-- there's no join target to scope a policy by. RLS with zero policies denies
+-- every role except service_role, which is all lib/mcp/idempotency.ts needs.
+create table if not exists public.mcp_idempotency_keys (
+  id uuid primary key default gen_random_uuid(),
+  connection_id uuid not null,
+  tool_name text not null,
+  idempotency_key text not null,
+  request_hash text not null,
+  status text not null default 'in_progress' check (status in ('in_progress', 'completed', 'failed')),
+  result jsonb,
+  error jsonb,
+  created_at timestamptz not null default now(),
+  completed_at timestamptz,
+  unique (connection_id, tool_name, idempotency_key)
+);
+alter table public.mcp_idempotency_keys enable row level security;
+create index if not exists idx_mcp_idempotency_lookup
+  on public.mcp_idempotency_keys(connection_id, tool_name, idempotency_key);
 
 -- ==============================================================================
 -- 8. AUTOMATIC ONBOARDING TRIGGER (auth.users -> profiles & initial workspace)
@@ -575,6 +644,7 @@ create policy "Calendar notes update" on public.calendar_notes
 -- Audit Logs: Members can read org audit logs, only service_role can insert
 create policy "Audit logs select" on public.audit_logs
   for select to authenticated using (private.is_org_member(organization_id));
+revoke update, delete on public.audit_logs from authenticated, anon;
 
 -- AI Runs: insert-mostly, like publish_attempts. No update/delete — a wrong
 -- run gets a corrected one logged after it, not rewritten.
@@ -1280,3 +1350,33 @@ end;
 $$;
 
 grant execute on function public.respond_to_share_link(text, text, text) to authenticated, anon;
+
+-- ==========================================
+-- CONTACT SUBMISSIONS
+-- ==========================================
+create table if not exists public.contact_submissions (
+  id uuid primary key default gen_random_uuid(),
+  first_name text not null,
+  last_name text not null,
+  email text not null,
+  phone text,
+  subject text not null,
+  message text not null,
+  status text not null default 'new' check (status in ('new', 'in_progress', 'replied', 'archived')),
+  ip_address text,
+  user_agent text,
+  created_at timestamptz not null default timezone('utc'::text, now())
+);
+
+alter table public.contact_submissions enable row level security;
+
+create policy "Anyone can submit contact form"
+  on public.contact_submissions for insert
+  to public with check (true);
+
+create policy "Team can view contact submissions"
+  on public.contact_submissions for select
+  to authenticated using (true);
+
+create index if not exists idx_contact_submissions_created_at
+  on public.contact_submissions (created_at desc);

@@ -55,6 +55,7 @@ import ComposeMediaSection, {
 import ComposePublishBar from "./compose/ComposePublishBar";
 import CaptionLabModal from "./compose/CaptionLabModal";
 import ContentMultiplierModal from "./compose/ContentMultiplierModal";
+import AiGeneratingShimmer from "./common/AiGeneratingShimmer";
 
 const CHAR_LIMIT: Record<PlatformName, number> = {
   instagram: 2200,
@@ -239,6 +240,11 @@ export default function ComposeForm({
 
   // Content Multiplier (1 -> 7) State
   const [multiplierOpen, setMultiplierOpen] = useState(false);
+
+  // Evergreen Recycling State
+  const [isEvergreen, setIsEvergreen] = useState(false);
+  const [evergreenIntervalDays, setEvergreenIntervalDays] = useState(30);
+  const [evergreenAutoRemix, setEvergreenAutoRemix] = useState(true);
 
   async function handleOpenCaptionLab() {
     const currentText = drafts?.[activePlatformTab] || idea;
@@ -442,12 +448,17 @@ export default function ComposeForm({
         initialMedia !== undefined &&
         initialMedia.length > 0 &&
         initialMedia.every((m) => !m.file_type.startsWith("video/"));
-      const defaultPlatforms = droppedOnlyPhotos ? connected.filter((p) => p !== "tiktok") : connected;
+      const defaultPlatforms = connected.length > 0
+        ? (droppedOnlyPhotos ? connected.filter((p) => p !== "tiktok") : connected)
+        : (["instagram"] as LaunchPlatform[]);
       setSelectedPlatforms(defaultPlatforms);
 
       if (connected.length > 0) {
         setActivePlatformTab((current) => (connected.includes(current) ? current : connected[0]));
         setPreviewPlatform((current) => (connected.includes(current as LaunchPlatform) ? current : connected[0]));
+      } else {
+        setActivePlatformTab("instagram");
+        setPreviewPlatform("instagram");
       }
     })();
     return () => {
@@ -655,7 +666,11 @@ export default function ComposeForm({
   }
 
   async function generate() {
-    if (!idea.trim() || selectedPlatforms.length === 0) return;
+    if (!idea.trim()) return;
+    const platformsToUse: LaunchPlatform[] = selectedPlatforms.length > 0 ? selectedPlatforms : ["instagram"];
+    if (selectedPlatforms.length === 0) {
+      setSelectedPlatforms(["instagram"]);
+    }
     setState("generating");
     setGenError(null);
     try {
@@ -665,7 +680,7 @@ export default function ComposeForm({
       })`;
 
       const visionMediaUrl = await resolveMediaForVision();
-      const result = await generateDrafts(brand.id, enhancedPrompt, selectedPlatforms, format, visionMediaUrl, voiceMode);
+      const result = await generateDrafts(brand.id, enhancedPrompt, platformsToUse, format, visionMediaUrl, voiceMode);
       setDrafts(result);
 
       const firstText = Object.values(result)[0] || "";
@@ -910,6 +925,9 @@ export default function ComposeForm({
           created_by: user?.id,
           draft_assignee_id: targetStatus === "DRAFT" && canAssignDraft ? draftAssigneeId || null : null,
           tags,
+          is_evergreen: isEvergreen,
+          evergreen_interval_days: isEvergreen ? evergreenIntervalDays : 30,
+          evergreen_auto_remix: isEvergreen ? evergreenAutoRemix : true,
         })
         .select("id")
         .single();
@@ -974,6 +992,9 @@ export default function ComposeForm({
     setDraftAssigneeId("");
     setHookAnalysis(null);
     setVoiceConsistency(null);
+    setIsEvergreen(false);
+    setEvergreenIntervalDays(30);
+    setEvergreenAutoRemix(true);
     clearDraft();
   }
 
@@ -1140,6 +1161,29 @@ export default function ComposeForm({
             />
           )}
 
+          {/* AI Generating Shimmer Feedback */}
+          {state === "generating" && (
+            <AiGeneratingShimmer
+              title={isEn ? "AI Content Engine Working..." : "AI İçerik Motoru Çalışıyor..."}
+              stages={
+                isEn
+                  ? [
+                      "Scanning brand voice and audience dynamics...",
+                      "Engineering hooks for selected platforms...",
+                      "Optimizing hashtag and virality strategies...",
+                      "Preparing content drafts for your review...",
+                    ]
+                  : [
+                      "Marka sesiniz ve hedef kitle dinamikleri taranıyor...",
+                      "Seçilen platformlar için kancalar (hooks) tasarlanıyor...",
+                      "Hashtag ve etkileşim stratejisi optimize ediliyor...",
+                      "Taslaklar onayınıza hazır hale getiriliyor...",
+                    ]
+              }
+              className="my-3"
+            />
+          )}
+
           {/* Media Attachments Section */}
           <ComposeMediaSection
             mediaItems={mediaItems}
@@ -1238,6 +1282,67 @@ export default function ComposeForm({
           {/* Publish / Scheduling Bar */}
           {drafts && (
             <>
+            {/* Evergreen Recycling Box */}
+            <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/50 p-3 text-xs transition-colors">
+              <div className="flex items-center justify-between gap-2">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={isEvergreen}
+                    onChange={(e) => setIsEvergreen(e.target.checked)}
+                    className="h-4 w-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span className="font-semibold text-emerald-950 flex items-center gap-1.5">
+                    🌱 {isEn ? "Evergreen Content (Auto-Recycle)" : "Zamansız İçerik (Evergreen Döngüsü)"}
+                  </span>
+                </label>
+                {isEvergreen && (
+                  <span className="rounded-full bg-emerald-200/80 px-2 py-0.5 text-[10px] font-bold text-emerald-900">
+                    {evergreenIntervalDays} {isEn ? "days" : "günde bir"}
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 text-[11px] text-emerald-800/80 leading-relaxed">
+                {isEn
+                  ? "High-performing, timeless content is automatically recycled and re-queued into your calendar at your preferred interval."
+                  : "Zaman aşımına uğramayan bu içerik, seçtiğin aralıklarla takvimine otomatik olarak yeniden kazandırılır."}
+              </p>
+
+              {isEvergreen && (
+                <div className="mt-3 flex flex-wrap items-center gap-2 pt-2 border-t border-emerald-200/60">
+                  <span className="text-[11px] font-medium text-emerald-900">
+                    {isEn ? "Recycle frequency:" : "Tekrar sıklığı:"}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    {[15, 30, 60, 90].map((days) => (
+                      <button
+                        key={days}
+                        type="button"
+                        onClick={() => setEvergreenIntervalDays(days)}
+                        className={`rounded-md px-2 py-1 text-[11px] font-semibold transition-all ${
+                          evergreenIntervalDays === days
+                            ? "bg-emerald-600 text-white shadow-sm"
+                            : "bg-white text-emerald-900 border border-emerald-200 hover:bg-emerald-100/60"
+                        }`}
+                      >
+                        {days} {isEn ? "d" : "gün"}{days === 30 ? (isEn ? " (Önerilen)" : " (Önerilen)") : ""}
+                      </button>
+                    ))}
+                  </div>
+
+                  <label className="ml-auto flex items-center gap-1.5 cursor-pointer text-[11px] text-emerald-900 select-none">
+                    <input
+                      type="checkbox"
+                      checked={evergreenAutoRemix}
+                      onChange={(e) => setEvergreenAutoRemix(e.target.checked)}
+                      className="h-3.5 w-3.5 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span>✨ {isEn ? "AI Hook Remix (Anti-spam)" : "AI Kanca Yenileme (Spam koruması)"}</span>
+                  </label>
+                </div>
+              )}
+            </div>
+
             {canAssignDraft && (
               <label className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 text-xs font-medium text-slate-600">
                 <span>{isEn ? "Draft task" : "Taslak görevi"}</span>

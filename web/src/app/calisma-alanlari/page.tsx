@@ -4,6 +4,7 @@ import { getUserWorkspaces } from "@/lib/brand";
 import TentamarkLogo from "@/components/TentamarkLogo";
 import UserProfileDropdown from "@/components/dashboard/UserProfileDropdown";
 import WorkspacePicker from "@/components/dashboard/WorkspacePicker";
+import { LanguageProvider } from "@/context/LanguageContext";
 
 /*
   Deliberately outside the (app) route group — this is the pre-workspace
@@ -49,20 +50,22 @@ export default async function WorkspacesLandingPage() {
   const userName = profile?.full_name || user.email?.split("@")[0] || "Kullanıcı";
 
   return (
-    <div className="min-h-dvh bg-[#F8FAFC] text-slate-900 antialiased">
-      <header className="flex h-16 items-center justify-between border-b border-slate-200/70 bg-white/80 px-4 backdrop-blur-md sm:px-6 lg:px-8">
-        <TentamarkLogo size={26} withWordmark />
-        <UserProfileDropdown userName={userName} userEmail={user.email ?? undefined} />
-      </header>
+    <LanguageProvider>
+      <div className="min-h-dvh bg-[#F8FAFC] text-slate-900 antialiased">
+        <header className="flex h-16 items-center justify-between border-b border-slate-200/70 bg-white/80 px-4 backdrop-blur-md sm:px-6 lg:px-8">
+          <TentamarkLogo size={26} withWordmark />
+          <UserProfileDropdown userName={userName} userEmail={user.email ?? undefined} />
+        </header>
 
-      <main className="mx-auto max-w-5xl p-4 sm:p-6 lg:p-8">
-        <WorkspacePicker
-          workspaces={workspaces}
-          isOwner={isOwner}
-          maxBrands={maxBrands}
-          ownedWorkspaceCount={ownedWorkspaceCount}
-        />
-      </main>
-    </div>
+        <main className="mx-auto max-w-5xl p-4 sm:p-6 lg:p-8">
+          <WorkspacePicker
+            workspaces={workspaces}
+            isOwner={isOwner}
+            maxBrands={maxBrands}
+            ownedWorkspaceCount={ownedWorkspaceCount}
+          />
+        </main>
+      </div>
+    </LanguageProvider>
   );
 }

@@ -9,27 +9,27 @@ import { useLanguage } from "@/context/LanguageContext";
 const STEPS_CONFIG = [
   {
     key: "brand-dna",
-    image: "/images/step-1-brand-dna.png",
+    image: "/images/loop-brand-dna-v2.png",
     cardBg: "bg-bg-violet",
   },
   {
     key: "content-ai",
-    image: "/images/step-2-tentacast.png",
+    image: "/images/loop-content-plan-v2.png",
     cardBg: "bg-bg-sky",
   },
   {
     key: "approval",
-    image: "/images/step-3-approval.jpeg",
+    image: "/images/loop-approval-v2.png",
     cardBg: "bg-bg-mint",
   },
   {
     key: "publish",
-    image: "/images/step-4-publish.jpeg",
+    image: "/images/loop-publishing-v2.png",
     cardBg: "bg-bg-coral",
   },
   {
     key: "learning",
-    image: "/images/step-5-learning.jpeg",
+    image: "/images/loop-learning-v2.png",
     cardBg: "bg-bg-amber",
   },
 ];
@@ -89,6 +89,16 @@ export default function LoopSection() {
   }));
 
   const currentStep = steps[active] || steps[0];
+
+  function goToStep(index: number) {
+    const trigger = scrollTriggerRef.current;
+    if (!trigger) return;
+    const progress = index / (steps.length - 1);
+    window.scrollTo({
+      top: trigger.start + (trigger.end - trigger.start) * progress,
+      behavior: "smooth",
+    });
+  }
 
   function renderStack(rawProgress: number) {
     const scaled = rawProgress * (steps.length - 1);
@@ -187,18 +197,21 @@ export default function LoopSection() {
                 ref={(el) => {
                   cardRefs.current[i] = el;
                 }}
-                className={`absolute inset-0 flex flex-col overflow-hidden rounded-[1.75rem] border border-line shadow-xl ${step.cardBg}`}
+                className={`absolute inset-0 flex flex-col overflow-hidden rounded-[1.75rem] border border-white/80 shadow-[0_30px_80px_rgba(42,33,70,0.18),0_8px_24px_rgba(42,33,70,0.08)] ${step.cardBg}`}
                 style={{ transformOrigin: "50% 100%" }}
               >
-                <div className="relative min-h-0 flex-1 p-4 sm:p-6">
-                  <div className="relative h-full w-full overflow-hidden rounded-2xl">
+                <div className="relative min-h-0 flex-1 p-3 sm:p-4">
+                  <div className="relative h-full w-full overflow-hidden rounded-2xl border border-white/70 bg-white/50 shadow-inner">
                     <Image
                       src={step.image}
                       alt={step.title}
                       fill
                       sizes="(min-width: 1024px) 40vw, 90vw"
-                      className="object-contain object-center"
+                      className="object-cover object-center"
                     />
+                    <span className="absolute right-3 top-3 rounded-full border border-white/75 bg-white/80 px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.14em] text-muted shadow-sm backdrop-blur-md">
+                      {String(i + 1).padStart(2, "0")} / {String(steps.length).padStart(2, "0")}
+                    </span>
                   </div>
                 </div>
                 <div className="px-6 pb-6 pt-1 sm:px-8 sm:pb-7">
@@ -214,7 +227,20 @@ export default function LoopSection() {
           {currentStep.title}
         </p>
 
-        <span className="relative z-20 mt-5 inline-flex items-center gap-1.5 rounded-full bg-surface/80 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.15em] text-muted backdrop-blur-sm shadow-xs">
+        <div className="relative z-20 mt-4 flex items-center gap-2" aria-label={`${active + 1} / ${steps.length}`}>
+          {steps.map((step, index) => (
+            <button
+              key={step.key}
+              type="button"
+              onClick={() => goToStep(index)}
+              className={`h-2 rounded-full transition-all duration-300 ${index === active ? "w-8 bg-accent" : index < active ? "w-2 bg-accent/45" : "w-2 bg-ink/15"}`}
+              aria-label={`${index + 1}. adım: ${step.label}`}
+              aria-current={index === active ? "step" : undefined}
+            />
+          ))}
+        </div>
+
+        <span className="relative z-20 mt-4 inline-flex items-center gap-1.5 rounded-full border border-white/60 bg-surface/80 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.15em] text-muted backdrop-blur-sm shadow-xs">
           <span aria-hidden="true">↓</span> {t.loop.scrollHint}
         </span>
       </div>

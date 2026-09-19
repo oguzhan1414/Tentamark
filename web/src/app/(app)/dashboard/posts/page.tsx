@@ -35,7 +35,8 @@ import {
   type ContentRow,
 } from "@/lib/content/approvalItems";
 
-const FILTER_KEYS: ("all" | UIStatus)[] = ["all", "draft", "review", "scheduled", "published", "failed"];
+export type PostsFilterKey = "all" | UIStatus | "evergreen";
+const FILTER_KEYS: PostsFilterKey[] = ["all", "draft", "review", "scheduled", "published", "failed", "evergreen"];
 const PAGE_SIZE = 18;
 function PlatformStatusSummary({ item }: { item: ApprovalItem }) {
   if (!item.platforms?.length) return null;
@@ -53,7 +54,7 @@ function PlatformStatusSummary({ item }: { item: ApprovalItem }) {
 }
 type PostsView = {
   name: string;
-  status: "all" | UIStatus;
+  status: PostsFilterKey;
   platform: string;
   campaign: string;
   tag: string;
@@ -80,9 +81,9 @@ function PostsPageContent() {
   // ?filter=review; the merged page keeps both entry points working —
   // ?filter= picks the List tab's status filter, ?view=kanban jumps
   // straight to the board (matches the old Onaylarım sidebar badge link).
-  const [filter, setFilter] = useState<"all" | UIStatus>(() => {
+  const [filter, setFilter] = useState<PostsFilterKey>(() => {
     const param = searchParams.get("filter");
-    return FILTER_KEYS.includes(param as "all" | UIStatus) ? (param as "all" | UIStatus) : "all";
+    return FILTER_KEYS.includes(param as PostsFilterKey) ? (param as PostsFilterKey) : "all";
   });
 
   const filters = useMemo<{ key: "all" | UIStatus; label: string }[]>(
@@ -190,7 +191,7 @@ function PostsPageContent() {
 
   // ============= LIST MODE: filter + search over every status =============
   const filtered = useMemo(() => {
-    let result = filter === "all" ? allItems : allItems.filter((i) => i.realStatus === filter);
+    let result = filter === "all" ? allItems : filter === "evergreen" ? allItems.filter((i) => i.isEvergreen) : allItems.filter((i) => i.realStatus === filter);
     if (platformFilter !== "all") result = result.filter((i) => i.platforms?.some((p) => p.platform === platformFilter));
     if (campaignFilter !== "all") result = result.filter((i) => i.campaignName === campaignFilter);
     if (tagFilter !== "all") result = result.filter((i) => i.tags.includes(tagFilter));
@@ -538,6 +539,25 @@ function PostsPageContent() {
                       </button>
                     );
                   })}
+
+                  <button
+                    type="button"
+                    onClick={() => { setFilter(filter === "evergreen" ? "all" : "evergreen"); setPage(1); setSelectedIds([]); }}
+                    className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer ${
+                      filter === "evergreen"
+                        ? "bg-emerald-600 text-white shadow-xs"
+                        : "border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900"
+                    }`}
+                  >
+                    <span>🌱 {isEn ? "Evergreen Pool" : "Evergreen Havuzu"}</span>
+                    <span
+                      className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                        filter === "evergreen" ? "bg-white/20 text-white" : "bg-emerald-200/70 text-emerald-900"
+                      }`}
+                    >
+                      {allItems.filter((i) => i.isEvergreen).length}
+                    </span>
+                  </button>
                 </div>
 
                 <div className="flex items-center gap-2.5">

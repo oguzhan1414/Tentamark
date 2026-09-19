@@ -62,14 +62,14 @@ export default function ProductShowcase() {
 
         <div className="ps-reveal relative mt-8">
           <div className="overflow-hidden rounded-[1.75rem] border border-line bg-surface/70 p-2 shadow-xl sm:p-4">
-            <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl bg-surface border border-line">
+            <div className="relative aspect-[1834/858] w-full overflow-hidden rounded-2xl border border-line bg-white">
               <Image
-                src="/images/ui-calendar.png"
+                src="/images/tentamark-weekly-calendar-guide-v3.png"
                 alt={t.productShowcase.imageAlt}
                 fill
                 priority
                 sizes="(min-width: 1024px) 70vw, 100vw"
-                className="object-contain object-center transition-transform duration-700 ease-out hover:scale-[1.01]"
+                className="object-cover object-center transition-transform duration-700 ease-out hover:scale-[1.005]"
               />
             </div>
           </div>

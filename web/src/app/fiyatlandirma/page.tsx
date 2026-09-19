@@ -549,7 +549,7 @@ function PricingContent() {
 
                   <div className="mt-8 pt-4 border-t border-slate-200">
                     <a
-                      href="mailto:destek@tentamark.com?subject=Enterprise%20Plan%20Talebi"
+                      href="mailto:info@tentamark.com?subject=Enterprise%20Plan%20Talebi"
                       className="block w-full rounded-xl bg-indigo-600 py-2.5 text-center text-xs sm:text-sm font-bold text-white transition hover:bg-indigo-700 shadow-md shadow-indigo-500/20"
                     >
                       {p("Satış Ekibiyle Görüşün")}
@@ -811,7 +811,7 @@ function PricingContent() {
                     <span className="text-xs sm:text-sm font-extrabold text-slate-900 block mt-0.5">{p("Özel Teklif")}</span>
                     <span className="text-[9px] text-indigo-700 font-medium hidden sm:block">{p("(Sınırsız)")}</span>
                     <a
-                      href="mailto:destek@tentamark.com?subject=Enterprise%20Plan%20Talebi"
+                      href="mailto:info@tentamark.com?subject=Enterprise%20Plan%20Talebi"
                       className="mt-1 hidden sm:inline-block w-full rounded-lg bg-indigo-600 py-1 text-[10px] font-bold text-white hover:bg-indigo-700 shadow-2xs transition"
                     >
                       {p("Görüşün")}
@@ -1244,7 +1244,7 @@ function PricingContent() {
                   {p("14 Gün Ücretsiz Başlayın →")}
                 </Link>
                 <a
-                  href="mailto:destek@tentamark.com?subject=Tentamark%20Demo%20Talebi"
+                  href="mailto:info@tentamark.com?subject=Tentamark%20Demo%20Talebi"
                   className="w-full sm:w-auto rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-bold text-slate-800 transition hover:bg-slate-50"
                 >
                   {p("Canlı Demo Planlayın")}

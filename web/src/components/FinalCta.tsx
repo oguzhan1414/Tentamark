@@ -1,51 +1,25 @@
 "use client";
 
+import Link from "next/link";
+import { HiOutlineArrowRight } from "react-icons/hi2";
 import { useLanguage } from "@/context/LanguageContext";
-import StampMark from "./StampMark";
 
 export default function FinalCta() {
   const { t } = useLanguage();
-
   return (
-    <section
-      id="erken-erisim"
-      className="relative z-100 -mt-8 sm:-mt-12 rounded-t-[2.25rem] sm:rounded-t-[3rem] lg:rounded-t-[3.5rem] bg-bg-violet text-ink shadow-[0_-10px_30px_rgba(28,20,48,0.05)] border-t border-line px-6 pt-20 pb-24 sm:pt-28 sm:pb-32"
-    >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 rounded-t-[inherit] bg-gradient-to-b from-white/40 to-transparent" aria-hidden="true" />
-      <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
-        <StampMark className="h-36 w-36 text-accent opacity-90" />
-
-        <p className="mt-8 font-mono text-xs uppercase tracking-[0.25em] text-accent-text font-semibold">
-          {t.finalCta.eyebrow}
-        </p>
-        <h2 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-          {t.finalCta.titleBefore}
-          <span className="spectrum-text">{t.finalCta.titleHighlight}</span>
-        </h2>
-        <p className="mt-4 max-w-md font-body text-base leading-relaxed text-muted">
-          {t.finalCta.copy}
-        </p>
-
-        <form
-          className="mt-8 flex w-full max-w-md flex-col gap-3 sm:flex-row"
-          onSubmit={(e) => e.preventDefault()}
-        >
-          <input
-            type="email"
-            placeholder={t.finalCta.emailPlaceholder}
-            className="w-full rounded-full border border-line bg-surface px-5 py-3.5 font-body text-sm text-ink placeholder:text-faint focus:border-accent focus:outline-none"
-          />
-          <button
-            type="submit"
-            className="shrink-0 rounded-full bg-accent px-6 py-3.5 font-body text-sm font-semibold text-white shadow-[0_10px_24px_-10px_rgb(109_79_235/0.6)] transition-colors hover:bg-accent-hover"
-          >
-            {t.finalCta.buttonText}
-          </button>
-        </form>
-
-        <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.15em] text-faint">
-          {t.finalCta.guarantee}
-        </p>
+    <section id="erken-erisim" className="relative z-30 bg-[linear-gradient(180deg,#eef8ff_0%,#f7fbff_18%,#ffffff_48%,#ffffff_100%)] px-4 pt-16 text-ink sm:px-6 sm:pt-20">
+      <div className="relative mx-auto grid max-w-7xl items-center gap-6 overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-[linear-gradient(110deg,#f7f5ff_0%,#fff_48%,#fff2f0_100%)] px-6 py-7 shadow-[0_18px_50px_rgba(44,34,75,0.08)] sm:px-9 md:grid-cols-[1fr_auto] lg:px-12">
+        <div className="pointer-events-none absolute -left-16 top-1/2 h-36 w-36 -translate-y-1/2 rounded-full bg-violet/10 blur-3xl" aria-hidden="true" />
+        <div className="pointer-events-none absolute -right-12 top-1/2 h-32 w-32 -translate-y-1/2 rounded-full bg-coral/15 blur-3xl" aria-hidden="true" />
+        <div className="relative">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-accent-text">{t.finalCta.eyebrow}</p>
+          <h2 className="mt-2 max-w-2xl font-display text-2xl font-bold tracking-tight sm:text-3xl">{t.finalCta.titleBefore}<span className="spectrum-text">{t.finalCta.titleHighlight}</span></h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted sm:text-base">{t.finalCta.copy}</p>
+        </div>
+        <div className="relative flex flex-col gap-2.5 sm:flex-row md:flex-col lg:flex-row">
+          <Link href="/kayit" className="group inline-flex items-center justify-center gap-2 rounded-full bg-ink px-6 py-3 text-sm font-bold text-white shadow-lg shadow-ink/15 transition hover:-translate-y-0.5 hover:bg-violet">{t.finalCta.buttonText}<HiOutlineArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></Link>
+          <Link href="/nasil-calisir" className="inline-flex items-center justify-center rounded-full border border-line bg-white px-6 py-3 text-sm font-bold text-ink transition hover:border-violet/30 hover:bg-bg-violet">{t.finalCta.secondaryButtonText}</Link>
+        </div>
       </div>
     </section>
   );

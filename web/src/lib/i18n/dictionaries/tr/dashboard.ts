@@ -639,7 +639,7 @@ export const trDashboard = {
       title: "Kullanıcı & Bölge Ayarları",
       fullName: "Ad Soyad",
       email: "E-posta Adresi",
-      emailHint: "E-posta adresini değiştirmek için giriş yaptığınız e-posta ile destek@tentamark.com adresine yazın",
+      emailHint: "E-posta adresini değiştirmek için giriş yaptığınız e-posta ile support@tentamark.com adresine yazın",
       timezone: "Saat Dilimi",
       language: "Panel Dili",
       languageHint: "Çoklu dil desteği yakında",

@@ -35,13 +35,23 @@ export default function ApprovalCard({ item, onClick }: Props) {
           <PlatformIcon name={item.platform} variant="tile" className="h-4 w-4 rounded shrink-0" />
           <span className="truncate text-xs font-semibold text-slate-700">{item.accountName}</span>
         </div>
-        <div className="flex items-center gap-1 font-mono text-[11px] text-slate-400 shrink-0">
-          {item.timeLabel.includes(":") && !item.timeLabel.includes("Taslak") && (
-            <svg className="h-3 w-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {item.isEvergreen && (
+            <span
+              title={`Zamansız İçerik: Her ${item.evergreenIntervalDays ?? 30} günde bir tekrarlanır (${item.evergreenRecycleCount ?? 0} kez döndü)`}
+              className="inline-flex items-center gap-0.5 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200"
+            >
+              🌱 {item.evergreenIntervalDays ?? 30}g
+            </span>
           )}
-          <span>{item.timeLabel}</span>
+          <div className="flex items-center gap-1 font-mono text-[11px] text-slate-400">
+            {item.timeLabel.includes(":") && !item.timeLabel.includes("Taslak") && (
+              <svg className="h-3 w-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            )}
+            <span>{item.timeLabel}</span>
+          </div>
         </div>
       </div>
 

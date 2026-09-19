@@ -58,6 +58,11 @@ export type ApprovalItem = {
   hook?: string;
   visualPrompt?: string;
   format?: string;
+  isEvergreen?: boolean;
+  evergreenIntervalDays?: number;
+  evergreenRecycleCount?: number;
+  evergreenLastRecycledAt?: string | null;
+  evergreenAutoRemix?: boolean;
 };
 
 export type TeamMemberOption = { userId: string; name: string; role?: "owner" | "admin" | "member" };

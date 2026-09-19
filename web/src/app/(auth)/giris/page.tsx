@@ -1,14 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TentamarkIcon } from "@/components/TentamarkLogo";
 
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Same param name middleware.ts already sets when it bounces an
+  // unauthenticated visitor off a protected route (see PROTECTED_PREFIXES) —
+  // that redirect was previously being set and then silently ignored here,
+  // always landing back on /dashboard regardless of where the user was
+  // actually headed (e.g. /oauth/authorize for the MCP consent screen).
+  // Only ever an internal path — never followed if it looks like it could
+  // send the user somewhere off-site after a successful login.
+  const redirectParam = searchParams.get("redirect");
+  const nextPath = redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//") ? redirectParam : "/dashboard";
   const supabase = createClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,10 +47,10 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/dashboard");
+      router.push(nextPath);
     } catch (err) {
       console.error("Login error:", err);
-      router.push("/dashboard");
+      router.push(nextPath);
     } finally {
       setLoading(false);
     }
@@ -280,5 +290,13 @@ export default function LoginPage() {
         </video>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

@@ -64,6 +64,8 @@ export default function ReportsAnalyticsPage() {
 
   useEffect(() => {
     let ignore = false;
+    // Loading is intentionally reset when the active brand changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     (async () => {
       const [data, { data: campaignRows }] = await Promise.all([
@@ -83,6 +85,8 @@ export default function ReportsAnalyticsPage() {
   useEffect(() => {
     if (scope !== "campaign" || !selectedCampaignId) return;
     let ignore = false;
+    // Loading is intentionally reset when the selected campaign changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingCampaign(true);
     (async () => {
       const [{ data: campaignRow }, { data: contentRows }] = await Promise.all([

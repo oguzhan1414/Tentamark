@@ -11,6 +11,7 @@ import { ALL_PLATFORMS, PLATFORM_LABEL, type LaunchPlatform } from "@/lib/ai/pla
 import PlatformIcon, { type PlatformName } from "@/components/PlatformIcon";
 import DateTimePicker from "@/components/dashboard/DateTimePicker";
 import { useLanguage } from "@/context/LanguageContext";
+import AiGeneratingShimmer from "@/components/dashboard/common/AiGeneratingShimmer";
 
 const CHAR_LIMIT: Record<PlatformName, number> = {
   instagram: 2200,
@@ -118,7 +119,7 @@ export default function WeeklyPackForm({
   const { t, isEn, locale } = useLanguage();
   const dayNames = t.dashboard.weeklyPack.dayNames;
 
-  const [selectedPlatforms, setSelectedPlatforms] = useState<LaunchPlatform[]>(ALL_PLATFORMS);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<LaunchPlatform[]>(["instagram", "linkedin"]);
   // Which day offsets (0..daySpan-1) actually get a post — defaults to every
   // day in range, capped at MAX_ITEM_COUNT so the default doesn't silently
   // exceed what one generation can honor. Only meaningful in campaign mode.
@@ -193,6 +194,9 @@ export default function WeeklyPackForm({
     if (selectedPlatforms.length === 0) return;
     setStep("generating");
     setGenError(null);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
     try {
       const items = await generateWeeklyPack(
         brand.id,
@@ -222,6 +226,7 @@ export default function WeeklyPackForm({
       );
       setStep("ready");
     } catch (err) {
+      console.error("Haftalık paket üretim hatası:", err);
       setGenError(err instanceof Error ? err.message : "Haftalık paket üretilemedi.");
       setStep("select");
     }
@@ -769,17 +774,151 @@ export default function WeeklyPackForm({
           </div>
           {submitError && <p className="mt-3 font-body text-xs text-coral-bright">{submitError}</p>}
         </div>
+      ) : step === "generating" ? (
+        <div className="mt-8 space-y-6">
+          <AiGeneratingShimmer
+            title={isEn ? "Generating Weekly Content Pack..." : "Haftalık İçerik Paketi Hazırlanıyor..."}
+            stages={
+              isEn
+                ? [
+                    "Analyzing your Brand DNA and active content pillars...",
+                    "Generating multi-day post schedule and thematic hooks...",
+                    "Customizing captions for each selected platform...",
+                    "Constructing image and video scene concepts...",
+                  ]
+                : [
+                    "Marka DNA'nız ve aktif içerik sütunlarınız analiz ediliyor...",
+                    "Çok günlük gönderi takvimi ve tematik kancalar kurgulanıyor...",
+                    "Seçtiğiniz platformlara özel metinler uyarlanıyor...",
+                    "Görsel ve video sahne konseptleri hazırlanıyor...",
+                  ]
+            }
+          />
+
+          {/* Spacious 5-Day Card Skeletons */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted">
+                {isEn ? "Weekly Content Drafts in Creation" : "Hazırlanan 5 Günlük Gönderi İskeleti"}
+              </span>
+              <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-accent font-semibold animate-pulse">
+                <span className="h-2 w-2 rounded-full bg-accent" />
+                {isEn ? "AI Engine Running..." : "AI Motoru İşliyor..."}
+              </span>
+            </div>
+
+            {[0, 1, 2, 3, 4].map((offset) => {
+              const dayLabels = [
+                isEn ? "Monday · Day 1" : "Pazartesi · Gün 1",
+                isEn ? "Tuesday · Day 2" : "Salı · Gün 2",
+                isEn ? "Wednesday · Day 3" : "Çarşamba · Gün 3",
+                isEn ? "Thursday · Day 4" : "Perşembe · Gün 4",
+                isEn ? "Friday · Day 5" : "Cuma · Gün 5",
+              ];
+              return (
+                <div
+                  key={offset}
+                  className="rounded-2xl border border-line bg-surface p-5 sm:p-6 shadow-sm space-y-4 relative overflow-hidden"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/60 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className="rounded-lg bg-ink/90 px-2.5 py-1 font-mono text-xs font-bold text-bg">
+                        {dayLabels[offset]}
+                      </span>
+                      <div className="h-6 w-24 rounded-lg bg-slate-200/70 relative overflow-hidden">
+                        <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/80 to-transparent" />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-6 w-16 rounded-full bg-slate-200/50 relative overflow-hidden">
+                        <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/80 to-transparent" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <div className="h-4 w-2/5 rounded-full bg-slate-200/80 relative overflow-hidden">
+                      <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/80 to-transparent" />
+                    </div>
+                    <div className="h-3 w-full rounded-full bg-slate-200/60 relative overflow-hidden">
+                      <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/80 to-transparent" />
+                    </div>
+                    <div className="h-3 w-4/5 rounded-full bg-slate-200/60 relative overflow-hidden">
+                      <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/80 to-transparent" />
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex items-center justify-between border-t border-line/40">
+                    <div className="flex items-center gap-2">
+                      <div className="h-6 w-6 rounded-full bg-slate-200/70 relative overflow-hidden">
+                        <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/80 to-transparent" />
+                      </div>
+                      <div className="h-3 w-28 rounded-full bg-slate-200/50 relative overflow-hidden">
+                        <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/80 to-transparent" />
+                      </div>
+                    </div>
+                    <div className="h-3 w-20 rounded-full bg-slate-200/40 relative overflow-hidden">
+                      <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/80 to-transparent" />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       ) : (
         /* Step 1: Select Platforms & Generate */
         <div className="mt-6 rounded-2xl border border-line bg-surface p-6 sm:p-8">
-          <h2 className="font-display text-lg font-bold text-ink">
-            {isEn ? "Target Social Media Platforms" : "Hedef Sosyal Medya Platformları"}
-          </h2>
-          <p className="mt-1 font-body text-xs text-muted">
-            {isEn
-              ? "Content tailored to each platform's algorithm and character rules is prepared simultaneously."
-              : "Her platformun algoritmasına ve metin uzunluğu kurallarına özel içerikler aynı anda hazırlanır."}
-          </p>
+          {genError && (
+            <div className="mb-6 rounded-xl border border-red-200 bg-red-50/90 p-4 text-xs text-red-800 flex items-start justify-between gap-3 shadow-sm">
+              <div className="flex items-start gap-2.5">
+                <span className="text-base">⚠️</span>
+                <div>
+                  <p className="font-bold text-red-900">
+                    {isEn ? "Content Pack Generation Error" : "Haftalık İçerik Paketi Üretilemedi"}
+                  </p>
+                  <p className="mt-0.5 text-red-700">{genError}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setGenError(null)}
+                className="text-red-400 hover:text-red-800 font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="font-display text-lg font-bold text-ink">
+                {isEn ? "Target Social Media Platforms" : "Hedef Sosyal Medya Platformları"}
+              </h2>
+              <p className="mt-1 font-body text-xs text-muted">
+                {isEn
+                  ? "Content tailored to each platform's algorithm and character rules is prepared simultaneously."
+                  : "Her platformun algoritmasına ve metin uzunluğu kurallarına özel içerikler aynı anda hazırlanır."}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedPlatforms(ALL_PLATFORMS)}
+                className="text-[11px] font-semibold text-accent hover:underline cursor-pointer"
+              >
+                {isEn ? "Select All" : "Tümünü Seç"}
+              </button>
+              <span className="text-muted/40">·</span>
+              <button
+                type="button"
+                onClick={() => setSelectedPlatforms(["instagram", "linkedin"])}
+                className="text-[11px] font-medium text-muted hover:underline cursor-pointer"
+              >
+                {isEn ? "Reset (2 Platforms)" : "Sıfırla (2 Platform)"}
+              </button>
+            </div>
+          </div>
 
           <div className="mt-4 flex flex-wrap gap-2.5">
             {ALL_PLATFORMS.map((platform) => {
@@ -882,37 +1021,19 @@ export default function WeeklyPackForm({
               onClick={generate}
               disabled={
                 selectedPlatforms.length === 0 ||
-                step === "generating" ||
                 Boolean(campaignRange && selectedDayOffsets.length === 0)
               }
               className="flex items-center gap-2.5 rounded-full bg-ink px-6 py-3 font-body text-sm font-semibold text-bg shadow-sm transition-all hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
             >
-              {step === "generating" ? (
-                <>
-                  <span className="h-4 w-4 rounded-full border-2 border-bg border-t-transparent animate-spin" />
-                  <span>
-                    {campaignRange
-                      ? isEn
-                        ? "Generating Campaign Content Plan…"
-                        : "Kampanya İçerik Planı Üretiliyor…"
-                      : isEn
-                        ? "Generating 5-Day Content Pack…"
-                        : "5 Günlük İçerik Paketi Üretiliyor…"}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span>
-                    {campaignRange
-                      ? isEn
-                        ? `✨ Generate ${campaignRange.daySpan}-Day Campaign Plan with AI`
-                        : `✨ ${campaignRange.daySpan} Günlük Kampanya Planını AI ile Üret`
-                      : isEn
-                        ? "✨ Generate 5-Day Content Pack with AI"
-                        : "✨ 5 Günlük İçerik Paketini AI ile Üret"}
-                  </span>
-                </>
-              )}
+              <span>
+                {campaignRange
+                  ? isEn
+                    ? `✨ Generate ${campaignRange.daySpan}-Day Campaign Plan with AI`
+                    : `✨ ${campaignRange.daySpan} Günlük Kampanya Planını AI ile Üret`
+                  : isEn
+                    ? "✨ Generate 5-Day Content Pack with AI"
+                    : "✨ 5 Günlük İçerik Paketini AI ile Üret"}
+              </span>
             </button>
           </div>
           {genError && <p className="mt-3 font-body text-xs text-coral-bright">{genError}</p>}

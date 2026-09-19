@@ -41,7 +41,7 @@ function toSocialMessage(d: (typeof DEMO_INBOX_MESSAGES)[number]): SocialMessage
   };
 }
 
-function timeAgo(iso: string, inboxT: any) {
+function timeAgo(iso: string, inboxT: { time: { justNow: string; mAgo: string; hAgo: string; dAgo: string } }) {
   const diffMs = Date.now() - new Date(iso).getTime();
   const mins = Math.round(diffMs / 60000);
   if (mins < 1) return inboxT.time.justNow;

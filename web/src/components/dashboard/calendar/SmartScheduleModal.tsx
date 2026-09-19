@@ -104,6 +104,8 @@ export default function SmartScheduleModal({
 
   useEffect(() => {
     if (isOpen && targetDateStr) {
+      // Opening the modal intentionally starts a new generation request.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       void generate(targetDateStr);
     }
   }, [isOpen, targetDateStr]);

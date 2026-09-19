@@ -216,6 +216,22 @@ export default function ApprovalDetailModal({
             <span>{item.campaignName || (isTr ? "Kampanya yok" : "No campaign")}</span>
           </span>
 
+          {/* Evergreen Badge */}
+          {item.isEvergreen && (
+            <span
+              title={`Evergreen: Her ${item.evergreenIntervalDays ?? 30} günde bir tekrarlanır (${item.evergreenRecycleCount ?? 0} kez paylaşıldı)`}
+              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800 shadow-2xs"
+            >
+              <span>🌱</span>
+              <span>Evergreen ({item.evergreenIntervalDays ?? 30}g)</span>
+              {(item.evergreenRecycleCount ?? 0) > 0 && (
+                <span className="rounded-full bg-emerald-200/80 px-1.5 py-0.2 text-[10px] text-emerald-900 font-extrabold">
+                  {item.evergreenRecycleCount}x
+                </span>
+              )}
+            </span>
+          )}
+
           {/* Tags */}
           {onEditTags && (
             <button

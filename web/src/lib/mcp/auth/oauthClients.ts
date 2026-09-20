@@ -67,6 +67,40 @@ export async function registerOAuthClient(params: {
 
 export async function getOAuthClient(clientId: string) {
   const admin = createAdminClient();
+  const normalizedId = clientId.trim();
+
+  // Known / well-known clients (Claude AI, CIMD)
+  if (
+    normalizedId === "claude" ||
+    normalizedId === "claude-ai" ||
+    normalizedId === "https://claude.ai" ||
+    normalizedId.startsWith("https://claude.ai/")
+  ) {
+    const { data: existing } = await admin
+      .from("mcp_oauth_clients")
+      .select("client_id, client_name, redirect_uris, is_confidential")
+      .eq("client_id", normalizedId)
+      .maybeSingle();
+
+    if (existing) return existing;
+
+    const { data: inserted, error: insertError } = await admin
+      .from("mcp_oauth_clients")
+      .insert({
+        client_id: normalizedId,
+        client_name: "Claude AI",
+        redirect_uris: [
+          "https://claude.ai/api/mcp/auth_callback",
+          "https://claude.ai/oauth/callback",
+        ],
+        is_confidential: false,
+      })
+      .select("client_id, client_name, redirect_uris, is_confidential")
+      .maybeSingle();
+
+    if (!insertError && inserted) return inserted;
+  }
+
   const { data, error } = await admin
     .from("mcp_oauth_clients")
     .select("client_id, client_name, redirect_uris, is_confidential")
@@ -75,3 +109,4 @@ export async function getOAuthClient(clientId: string) {
   if (error) throw McpErrors.temporarilyUnavailable(error.message);
   return data;
 }
+

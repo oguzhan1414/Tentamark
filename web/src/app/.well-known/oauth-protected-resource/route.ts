@@ -7,9 +7,23 @@ import { MCP_ISSUER_URL, MCP_RESOURCE_URL } from "@/lib/mcp/config";
 // of that endpoint existing, is intentional: a client's discovery flow
 // starts by fetching this document from the resource URL it already knows,
 // so the metadata needs to be live before the endpoint itself has to be.
-export async function GET() {
-  return NextResponse.json({
-    resource: MCP_RESOURCE_URL,
-    authorization_servers: [MCP_ISSUER_URL],
-  });
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "*",
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
 }
+
+export async function GET() {
+  return NextResponse.json(
+    {
+      resource: MCP_RESOURCE_URL,
+      authorization_servers: [MCP_ISSUER_URL],
+    },
+    { headers: CORS_HEADERS }
+  );
+}
+

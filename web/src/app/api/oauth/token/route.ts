@@ -17,8 +17,18 @@ async function readParams(req: NextRequest): Promise<Record<string, string>> {
   return Object.fromEntries(Array.from(form.entries()).map(([k, v]) => [k, String(v)]));
 }
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type",
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+}
+
 function oauthError(error: string, description: string, status = 400) {
-  return NextResponse.json({ error, error_description: description }, { status });
+  return NextResponse.json({ error, error_description: description }, { status, headers: CORS_HEADERS });
 }
 
 export async function POST(req: NextRequest) {
@@ -32,26 +42,32 @@ export async function POST(req: NextRequest) {
         return oauthError("invalid_request", "code, client_id, redirect_uri, and code_verifier are all required.");
       }
       const tokens = await exchangeAuthorizationCode({ code, clientId, redirectUri, codeVerifier });
-      return NextResponse.json({
-        access_token: tokens.accessToken,
-        refresh_token: tokens.refreshToken,
-        token_type: "Bearer",
-        expires_in: tokens.expiresIn,
-        scope: tokens.scope,
-      });
+      return NextResponse.json(
+        {
+          access_token: tokens.accessToken,
+          refresh_token: tokens.refreshToken,
+          token_type: "Bearer",
+          expires_in: tokens.expiresIn,
+          scope: tokens.scope,
+        },
+        { headers: CORS_HEADERS }
+      );
     }
 
     if (grantType === "refresh_token") {
       const { refresh_token: refreshToken, client_id: clientId } = params;
       if (!refreshToken || !clientId) return oauthError("invalid_request", "refresh_token and client_id are required.");
       const tokens = await refreshOAuthTokens({ refreshToken, clientId });
-      return NextResponse.json({
-        access_token: tokens.accessToken,
-        refresh_token: tokens.refreshToken,
-        token_type: "Bearer",
-        expires_in: tokens.expiresIn,
-        scope: tokens.scope,
-      });
+      return NextResponse.json(
+        {
+          access_token: tokens.accessToken,
+          refresh_token: tokens.refreshToken,
+          token_type: "Bearer",
+          expires_in: tokens.expiresIn,
+          scope: tokens.scope,
+        },
+        { headers: CORS_HEADERS }
+      );
     }
 
     return oauthError("unsupported_grant_type", `grant_type must be authorization_code or refresh_token, got: ${grantType ?? "(none)"}`);
@@ -67,3 +83,4 @@ export async function POST(req: NextRequest) {
     return oauthError("server_error", "Unexpected error.", 500);
   }
 }
+

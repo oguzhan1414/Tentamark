@@ -100,8 +100,8 @@ export type OAuthTokenResult = { accessToken: string; refreshToken: string; expi
 */
 export async function exchangeAuthorizationCode(params: {
   code: string;
-  clientId: string;
-  redirectUri: string;
+  clientId?: string;
+  redirectUri?: string;
   codeVerifier: string;
 }): Promise<OAuthTokenResult> {
   const admin = createAdminClient();
@@ -112,18 +112,36 @@ export async function exchangeAuthorizationCode(params: {
     .select("*")
     .eq("code_hash", codeHash)
     .maybeSingle();
-  if (readError) throw McpErrors.temporarilyUnavailable(readError.message);
-  if (!authCode) throw McpErrors.unauthenticated("Invalid or already-used authorization code.");
-  if (authCode.consumed_at) throw McpErrors.unauthenticated("This authorization code was already used.");
+  if (readError) {
+    console.error("exchangeAuthorizationCode readError:", readError);
+    throw McpErrors.temporarilyUnavailable(readError.message);
+  }
+  if (!authCode) {
+    console.error("exchangeAuthorizationCode: authCode not found for hash");
+    throw McpErrors.unauthenticated("Invalid or already-used authorization code.");
+  }
+  if (authCode.consumed_at) {
+    console.error("exchangeAuthorizationCode: authCode already consumed at", authCode.consumed_at);
+    throw McpErrors.unauthenticated("This authorization code was already used.");
+  }
   if (new Date(authCode.expires_at).getTime() <= Date.now()) {
+    console.error("exchangeAuthorizationCode: authCode expired at", authCode.expires_at);
     throw McpErrors.unauthenticated("This authorization code has expired.");
   }
-  const authCodeRedirect = authCode.redirect_uri.replace(/\/$/, "");
-  const paramsRedirect = params.redirectUri.replace(/\/$/, "");
-  if (authCodeRedirect !== paramsRedirect) {
-    throw McpErrors.unauthenticated("redirect_uri does not match the one used to request this code.");
+  if (params.clientId && authCode.client_id !== params.clientId) {
+    console.error("exchangeAuthorizationCode: clientId mismatch", { expected: authCode.client_id, got: params.clientId });
+    throw McpErrors.unauthenticated("client_id does not match this code.");
+  }
+  if (params.redirectUri) {
+    const authCodeRedirect = authCode.redirect_uri.replace(/\/$/, "");
+    const paramsRedirect = params.redirectUri.replace(/\/$/, "");
+    if (authCodeRedirect !== paramsRedirect) {
+      console.error("exchangeAuthorizationCode: redirectUri mismatch", { expected: authCodeRedirect, got: paramsRedirect });
+      throw McpErrors.unauthenticated("redirect_uri does not match the one used to request this code.");
+    }
   }
   if (!verifyPkce(params.codeVerifier, authCode.code_challenge)) {
+    console.error("exchangeAuthorizationCode: PKCE verification failed");
     throw McpErrors.unauthenticated("code_verifier does not match code_challenge.");
   }
 
@@ -134,23 +152,28 @@ export async function exchangeAuthorizationCode(params: {
     .is("consumed_at", null)
     .select("code_hash")
     .maybeSingle();
-  if (claimError) throw McpErrors.temporarilyUnavailable(claimError.message);
+  if (claimError) {
+    console.error("exchangeAuthorizationCode claimError:", claimError);
+    throw McpErrors.temporarilyUnavailable(claimError.message);
+  }
   if (!claimed) throw McpErrors.unauthenticated("This authorization code was already used.");
 
-  const client = await getOAuthClient(params.clientId);
+  const effectiveClientId = authCode.client_id;
+  const client = await getOAuthClient(effectiveClientId);
   const { data: connection, error: connectionError } = await admin
     .from("mcp_connections")
     .insert({
       organization_id: authCode.organization_id,
       created_by: authCode.user_id,
       connection_type: "oauth",
-      client_name: client?.client_name ?? params.clientId,
-      oauth_client_id: params.clientId,
+      client_name: client?.client_name ?? effectiveClientId,
+      oauth_client_id: effectiveClientId,
       scopes: authCode.scopes,
     })
     .select("id")
     .single();
   if (connectionError || !connection) {
+    console.error("exchangeAuthorizationCode connectionError:", connectionError);
     throw McpErrors.temporarilyUnavailable(connectionError?.message ?? "Could not create connection.");
   }
 
@@ -158,6 +181,7 @@ export async function exchangeAuthorizationCode(params: {
     .from("mcp_connection_brands")
     .insert((authCode.brand_ids as string[]).map((brandId) => ({ connection_id: connection.id, brand_id: brandId })));
   if (brandsError) {
+    console.error("exchangeAuthorizationCode brandsError:", brandsError);
     await admin.from("mcp_connections").delete().eq("id", connection.id);
     throw McpErrors.temporarilyUnavailable(brandsError.message);
   }
@@ -295,8 +319,13 @@ export async function resolveActorFromOAuthToken(rawToken: string): Promise<McpA
     .select("connection_id, access_token_expires_at")
     .eq("access_token_hash", hash)
     .maybeSingle();
-  if (tokenError || !tokenRow) throw McpErrors.unauthenticated();
+  if (tokenError) console.error("resolveActorFromOAuthToken tokenError:", tokenError);
+  if (!tokenRow) {
+    console.error("resolveActorFromOAuthToken: tokenRow not found for access_token_hash");
+    throw McpErrors.unauthenticated();
+  }
   if (new Date(tokenRow.access_token_expires_at).getTime() <= Date.now()) {
+    console.error("resolveActorFromOAuthToken: access token expired at", tokenRow.access_token_expires_at);
     throw McpErrors.unauthenticated("Access token has expired — use the refresh token to get a new one.");
   }
 
@@ -305,14 +334,24 @@ export async function resolveActorFromOAuthToken(rawToken: string): Promise<McpA
     .select("id, organization_id, created_by, scopes, status, client_name")
     .eq("id", tokenRow.connection_id)
     .maybeSingle();
-  if (connectionError || !connection) throw McpErrors.unauthenticated();
-  if (connection.status !== "active") throw McpErrors.unauthenticated("This connection has been revoked.");
+  if (connectionError) console.error("resolveActorFromOAuthToken connectionError:", connectionError);
+  if (!connection) {
+    console.error("resolveActorFromOAuthToken: connection not found for id", tokenRow.connection_id);
+    throw McpErrors.unauthenticated();
+  }
+  if (connection.status !== "active") {
+    console.error("resolveActorFromOAuthToken: connection revoked");
+    throw McpErrors.unauthenticated("This connection has been revoked.");
+  }
 
   const { data: brandRows, error: brandError } = await admin
     .from("mcp_connection_brands")
     .select("brand_id")
     .eq("connection_id", connection.id);
-  if (brandError) throw McpErrors.temporarilyUnavailable(brandError.message);
+  if (brandError) {
+    console.error("resolveActorFromOAuthToken brandError:", brandError);
+    throw McpErrors.temporarilyUnavailable(brandError.message);
+  }
 
   admin
     .from("mcp_connections")

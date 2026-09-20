@@ -88,10 +88,15 @@ export async function POST(req: NextRequest) {
   try {
     if (grantType === "authorization_code") {
       const { code, client_id: clientId, redirect_uri: redirectUri, code_verifier: codeVerifier } = params;
-      if (!code || !clientId || !redirectUri || !codeVerifier) {
-        return oauthError("invalid_request", "code, client_id, redirect_uri, and code_verifier are all required.");
+      if (!code || !codeVerifier) {
+        return oauthError("invalid_request", "code and code_verifier are required.");
       }
-      const tokens = await exchangeAuthorizationCode({ code, clientId, redirectUri, codeVerifier });
+      const tokens = await exchangeAuthorizationCode({
+        code,
+        clientId: clientId || undefined,
+        redirectUri: redirectUri || undefined,
+        codeVerifier,
+      });
       return NextResponse.json(
         {
           access_token: tokens.accessToken,

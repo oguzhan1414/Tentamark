@@ -50,7 +50,7 @@ export async function recordAuditEvent(input: AuditActionInput): Promise<void> {
     actor_type: actor.actorType,
     mcp_connection_id: isMcpActor(actor) ? actor.connectionId : null,
     request_id: input.requestId ?? null,
-    tool_name: input.toolName ?? null,
+    tool_name: input.toolName ?? (isMcpActor(actor) ? actor.currentToolName : undefined) ?? null,
     outcome: input.outcome,
     before_state: input.beforeState ?? null,
     after_state: input.afterState ?? null,

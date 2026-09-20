@@ -34,6 +34,13 @@ export type CalendarEntry = {
   title: string;
   status: string;
   platform: string;
+  // The content_platforms row's own status/failure_code — distinct from
+  // (and can lag behind) the parent content's status above: a content row
+  // can stay APPROVED while every one of its platform rows already failed
+  // out to NEEDS_USER_ACTION after retries, and a caller only looking at
+  // `status` would wrongly read that as "ready to publish".
+  platformStatus: string;
+  failureCode: string | null;
   caption: string;
   scheduledAt: string | null;
   publishedAt: string | null;
@@ -54,7 +61,9 @@ export async function getWeeklyCalendar(
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("content_platforms")
-    .select("platform, caption, scheduled_at, published_at, content:content_id!inner(id, title, status, brand_id)")
+    .select(
+      "platform, caption, scheduled_at, published_at, status, failure_code, content:content_id!inner(id, title, status, brand_id)"
+    )
     .eq("content.brand_id", brandId)
     .gte("scheduled_at", start.toISOString())
     .lt("scheduled_at", end.toISOString())
@@ -68,6 +77,8 @@ export async function getWeeklyCalendar(
         title: content!.title,
         status: content!.status,
         platform: row.platform,
+        platformStatus: row.status,
+        failureCode: row.failure_code,
         caption: row.caption,
         scheduledAt: row.scheduled_at,
         publishedAt: row.published_at,

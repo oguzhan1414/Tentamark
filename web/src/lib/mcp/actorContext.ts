@@ -35,6 +35,11 @@ export type McpActorContext = {
   // revoked connection's history stays attributable after revocation.
   connectionId: string;
   clientName?: string;
+  // Set by dispatch.ts's callTool() right before invoking a handler — lets
+  // audit.ts default tool_name from the actor instead of every domain
+  // function having to thread it through and pass it to recordAuditEvent
+  // by hand (all six existing call sites forgot to).
+  currentToolName?: string;
 };
 
 export function assertScopes(actor: McpActorContext, required: McpScope[]): void {

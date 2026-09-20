@@ -145,6 +145,7 @@ export async function callTool(actor: McpActorContext, name: string, rawArgs: un
   const args = (rawArgs ?? {}) as ToolArgs;
   validateToolInput(contract.inputSchema, args);
   assertScopes(actor, contract.requiredScopes);
+  actor = { ...actor, currentToolName: name };
 
   if (contract.riskClass === "read") return HANDLERS[name](actor, args);
 

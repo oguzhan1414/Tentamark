@@ -13,6 +13,17 @@ import { createAdminClient } from "@/lib/supabase/admin";
   can just report "done" unconditionally rather than looking anything up —
   no request-tracking table needed for a same-request-complete operation.
 */
+
+// The App Settings field that holds this URL validates it's reachable with a
+// plain GET before Meta will save it — the real deletion callback below only
+// ever receives POST, so without this the field save fails with "should
+// represent a valid URL" even though the POST handler works correctly.
+export async function GET() {
+  return NextResponse.json({
+    message: "Send a POST with Meta's signed_request to trigger data deletion. See https://developers.facebook.com/docs/development/create-an-app/app-dashboard/data-deletion-callback.",
+  });
+}
+
 export async function POST(request: Request) {
   const appSecret = process.env.INSTAGRAM_APP_SECRET;
   if (!appSecret) {

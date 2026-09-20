@@ -37,7 +37,12 @@ const HANDLERS: Record<string, ToolHandler> = {
   },
 
   async get_weekly_calendar(actor, args) {
-    return getWeeklyCalendar(actor, { brandId: args.brandId as string | undefined, weekStart: args.weekStart as string });
+    // Wrapped in an object rather than returned as a bare array — some MCP
+    // clients validate tools/call's structuredContent as a JSON object and
+    // reject a top-level array outright (seen live against a non-Claude
+    // client during testing).
+    const entries = await getWeeklyCalendar(actor, { brandId: args.brandId as string | undefined, weekStart: args.weekStart as string });
+    return { entries };
   },
 
   async get_pending_approvals(actor, args) {

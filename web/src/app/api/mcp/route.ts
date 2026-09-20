@@ -23,7 +23,8 @@ import { MCP_ISSUER_URL } from "@/lib/mcp/config";
 
 // This hand-written endpoint implements the initialize-based protocol era.
 // Advertise 2026 only after server/discover and its per-request envelope are
-// implemented (or after this route moves to the official SDK hanconst SUPPORTED_PROTOCOL_VERSIONS = [
+// implemented (or after this route moves to the official SDK handler).
+const SUPPORTED_PROTOCOL_VERSIONS = [
   "2024-11-05",
   "2025-03-26",
   "2025-06-18",
@@ -31,6 +32,7 @@ import { MCP_ISSUER_URL } from "@/lib/mcp/config";
   "2026-07-28",
 ] as const;
 const DEFAULT_PROTOCOL_VERSION = "2024-11-05";
+
 
 type JsonRpcRequest = {
   jsonrpc: "2.0";

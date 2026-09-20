@@ -28,6 +28,16 @@ export const metadata: Metadata = {
   description:
     "Marka bilgilerinize göre sosyal medya içerik taslakları ve haftalık plan hazırlayın; içerikleri gözden geçirip onay akışını yönetin.",
   metadataBase: new URL("https://tentamark.com"),
+  icons: {
+    icon: [
+      { url: "/brand/tentamark-mark-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icon.png", sizes: "512x512", type: "image/png" },
+      { url: "/favicon.ico" },
+    ],
+    apple: [
+      { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
   openGraph: {
     title: "Tentamark | AI Marketing Manager",
     description: "Markanıza uygun içerikleri planlayın, gözden geçirin ve yayın sürecini tek yerden yönetin.",
@@ -35,6 +45,20 @@ export const metadata: Metadata = {
     siteName: "Tentamark",
     locale: "tr_TR",
     type: "website",
+    images: [
+      {
+        url: "https://tentamark.com/brand/tentamark-mark-512.png",
+        width: 512,
+        height: 512,
+        alt: "Tentamark Logo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "Tentamark | AI Marketing Manager",
+    description: "Markanıza uygun içerikleri planlayın, gözden geçirin ve yayın sürecini tek yerden yönetin.",
+    images: ["https://tentamark.com/brand/tentamark-mark-512.png"],
   },
 };
 

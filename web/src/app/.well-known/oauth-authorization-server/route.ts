@@ -29,6 +29,8 @@ export async function GET() {
       code_challenge_methods_supported: ["S256"],
       token_endpoint_auth_methods_supported: ["none"], // public clients only — see oauthClients.ts
       scopes_supported: [...MCP_SCOPES],
+      logo_uri: `${MCP_ISSUER_URL}/brand/tentamark-mark-512.png`,
+      client_uri: MCP_ISSUER_URL,
     },
     { headers: CORS_HEADERS }
   );

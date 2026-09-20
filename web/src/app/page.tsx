@@ -21,6 +21,12 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
+        url: `${siteUrl}/brand/tentamark-mark-512.png`,
+        width: 512,
+        height: 512,
+        alt: "Tentamark Logo",
+      },
+      {
         url: `${siteUrl}/images/footer.png`,
         width: 1200,
         height: 630,
@@ -60,7 +66,8 @@ const homeStructuredData = {
       "@id": `${siteUrl}/#organization`,
       name: "Tentamark",
       url: siteUrl,
-      logo: `${siteUrl}/brand/tentamark-mark.svg`,
+      logo: `${siteUrl}/brand/tentamark-mark-512.png`,
+      image: `${siteUrl}/brand/tentamark-mark-512.png`,
       sameAs: [
         "https://instagram.com",
         "https://tiktok.com",

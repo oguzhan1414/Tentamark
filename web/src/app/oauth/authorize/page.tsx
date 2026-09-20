@@ -54,7 +54,7 @@ export default async function OAuthAuthorizePage({
   const client = await getOAuthClient(clientId);
   if (!client) return <ErrorScreen message="Bilinmeyen istemci (client_id)." />;
   const isRedirectAllowed = client.redirect_uris.some(
-    (uri) => uri === redirectUri || uri.replace(/\/$/, "") === redirectUri.replace(/\/$/, "")
+    (uri: string) => uri === redirectUri || uri.replace(/\/$/, "") === redirectUri.replace(/\/$/, "")
   );
   if (!isRedirectAllowed) {
     return <ErrorScreen message="redirect_uri bu istemci için kayıtlı adreslerden biriyle eşleşmiyor." />;

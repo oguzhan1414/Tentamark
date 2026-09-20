@@ -34,7 +34,7 @@ export async function createAuthorizationCode(params: {
   const client = await getOAuthClient(params.clientId);
   if (!client) throw McpErrors.validationError("Unknown client_id.");
   const isRedirectAllowed = client.redirect_uris.some(
-    (uri) => uri === params.redirectUri || uri.replace(/\/$/, "") === params.redirectUri.replace(/\/$/, "")
+    (uri: string) => uri === params.redirectUri || uri.replace(/\/$/, "") === params.redirectUri.replace(/\/$/, "")
   );
   if (!isRedirectAllowed) {
     throw McpErrors.validationError("redirect_uri does not match any URI registered for this client.");

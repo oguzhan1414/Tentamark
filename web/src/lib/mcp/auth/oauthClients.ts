@@ -65,7 +65,14 @@ export async function registerOAuthClient(params: {
   return { clientId, clientName: params.clientName.trim(), redirectUris };
 }
 
-export async function getOAuthClient(clientId: string) {
+export interface RegisteredOAuthClient {
+  client_id: string;
+  client_name: string;
+  redirect_uris: string[];
+  is_confidential: boolean;
+}
+
+export async function getOAuthClient(clientId: string): Promise<RegisteredOAuthClient | null> {
   const admin = createAdminClient();
   const normalizedId = clientId.trim();
 
@@ -90,15 +97,16 @@ export async function getOAuthClient(clientId: string) {
       .maybeSingle();
 
     if (existing) {
-      const merged = Array.from(new Set([...(existing.redirect_uris ?? []), ...claudeRedirectUris]));
-      if (merged.length > (existing.redirect_uris?.length ?? 0)) {
+      const existingUris = (existing.redirect_uris as string[]) ?? [];
+      const merged = Array.from(new Set([...existingUris, ...claudeRedirectUris]));
+      if (merged.length > existingUris.length) {
         await admin
           .from("mcp_oauth_clients")
           .update({ redirect_uris: merged })
           .eq("client_id", normalizedId);
         existing.redirect_uris = merged;
       }
-      return existing;
+      return existing as unknown as RegisteredOAuthClient;
     }
 
     const { data: inserted, error: insertError } = await admin
@@ -112,7 +120,7 @@ export async function getOAuthClient(clientId: string) {
       .select("client_id, client_name, redirect_uris, is_confidential")
       .maybeSingle();
 
-    if (!insertError && inserted) return inserted;
+    if (!insertError && inserted) return inserted as unknown as RegisteredOAuthClient;
   }
 
   const { data, error } = await admin
@@ -121,6 +129,6 @@ export async function getOAuthClient(clientId: string) {
     .eq("client_id", clientId)
     .maybeSingle();
   if (error) throw McpErrors.temporarilyUnavailable(error.message);
-  return data;
+  return (data as unknown as RegisteredOAuthClient) ?? null;
 }
 

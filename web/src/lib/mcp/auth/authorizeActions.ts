@@ -26,7 +26,7 @@ export async function approveAuthorization(formData: FormData): Promise<void> {
   const unknownScopes = requestedScopes.filter((scope) => !isMcpScope(scope));
   const client = await getOAuthClient(clientId);
   const isRedirectAllowed = client?.redirect_uris.some(
-    (uri) => uri === redirectUri || uri.replace(/\/$/, "") === redirectUri.replace(/\/$/, "")
+    (uri: string) => uri === redirectUri || uri.replace(/\/$/, "") === redirectUri.replace(/\/$/, "")
   );
   if (!client || !isRedirectAllowed || unknownScopes.length > 0) {
     redirect("/oauth/authorize?error=invalid_request");

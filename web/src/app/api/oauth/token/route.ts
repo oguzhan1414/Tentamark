@@ -8,13 +8,63 @@ import { McpToolError } from "@/lib/mcp/contracts/errors";
 // since it costs nothing extra and makes this endpoint easier to exercise
 // by hand while there's no MCP client wired up yet to test against.
 async function readParams(req: NextRequest): Promise<Record<string, string>> {
+  const result: Record<string, string> = {};
+
+  // 1. Basic Auth check (RFC 6749 §2.3.1)
+  const authHeader = req.headers.get("authorization");
+  if (authHeader?.startsWith("Basic ")) {
+    try {
+      const decoded = Buffer.from(authHeader.slice(6), "base64").toString("utf-8");
+      const colonIdx = decoded.indexOf(":");
+      if (colonIdx !== -1) {
+        result.client_id = decodeURIComponent(decoded.slice(0, colonIdx));
+        result.client_secret = decodeURIComponent(decoded.slice(colonIdx + 1));
+      } else {
+        result.client_id = decodeURIComponent(decoded);
+      }
+    } catch {}
+  }
+
+  // 2. Query string fallback
+  try {
+    for (const [k, v] of req.nextUrl.searchParams.entries()) {
+      if (!result[k]) result[k] = v;
+    }
+  } catch {}
+
+  // 3. Body
   const contentType = req.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
-    const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-    return Object.fromEntries(Object.entries(body).map(([k, v]) => [k, String(v ?? "")]));
+    try {
+      const body = (await req.json()) as Record<string, unknown>;
+      for (const [k, v] of Object.entries(body)) {
+        if (v !== undefined && v !== null) result[k] = String(v);
+      }
+      return result;
+    } catch {}
   }
-  const form = await req.formData();
-  return Object.fromEntries(Array.from(form.entries()).map(([k, v]) => [k, String(v)]));
+
+  // Standard urlencoded parsing via text() + URLSearchParams
+  try {
+    const rawText = await req.text();
+    if (rawText) {
+      const parsed = new URLSearchParams(rawText);
+      for (const [k, v] of parsed.entries()) {
+        result[k] = v;
+      }
+      return result;
+    }
+  } catch {}
+
+  // Fallback to formData
+  try {
+    const form = await req.formData();
+    for (const [k, v] of form.entries()) {
+      result[k] = String(v);
+    }
+  } catch {}
+
+  return result;
 }
 
 const CORS_HEADERS = {
@@ -72,15 +122,14 @@ export async function POST(req: NextRequest) {
 
     return oauthError("unsupported_grant_type", `grant_type must be authorization_code or refresh_token, got: ${grantType ?? "(none)"}`);
   } catch (err) {
+    console.error("OAuth token exchange error:", err);
     if (err instanceof McpToolError) {
       const status = err.code === "UNAUTHENTICATED" ? 400 : err.code === "TEMPORARILY_UNAVAILABLE" ? 503 : 400;
-      // OAuth's token endpoint uses "invalid_grant" for a bad/expired/reused
-      // code or refresh token — not the MCP-tool-facing error codes this
-      // McpToolError normally carries.
       const oauthCode = err.code === "TEMPORARILY_UNAVAILABLE" ? "server_error" : "invalid_grant";
       return oauthError(oauthCode, err.message, status);
     }
-    return oauthError("server_error", "Unexpected error.", 500);
+    const message = err instanceof Error ? err.message : "Unexpected error.";
+    return oauthError("server_error", message, 500);
   }
 }
 

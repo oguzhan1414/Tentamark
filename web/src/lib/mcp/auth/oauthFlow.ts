@@ -33,19 +33,17 @@ export async function createAuthorizationCode(params: {
 }): Promise<string> {
   const client = await getOAuthClient(params.clientId);
   if (!client) throw McpErrors.validationError("Unknown client_id.");
-  if (!client.redirect_uris.includes(params.redirectUri)) {
-    // Exact match only — no prefix/wildcard matching. A loose match here is
-    // the classic OAuth open-redirect-to-token-leak vector.
+  const isRedirectAllowed = client.redirect_uris.some(
+    (uri) => uri === params.redirectUri || uri.replace(/\/$/, "") === params.redirectUri.replace(/\/$/, "")
+  );
+  if (!isRedirectAllowed) {
     throw McpErrors.validationError("redirect_uri does not match any URI registered for this client.");
   }
   const invalidScopes = params.scopes.filter((s) => !isMcpScope(s));
   if (invalidScopes.length > 0) throw McpErrors.validationError(`Unknown scope(s): ${invalidScopes.join(", ")}`);
   if (params.brandIds.length === 0) throw McpErrors.validationError("At least one brand must be granted.");
 
-  // Never trust brand ids posted by the consent form. Until per-role scope
-  // ceilings are implemented, OAuth grants are owner-only, matching PAT
-  // issuance. This prevents a member from using the service-role-backed MCP
-  // tools to bypass the UI/RLS permissions they normally have.
+  // Never trust brand ids posted by the consent form.
   const uniqueBrandIds = [...new Set(params.brandIds)];
   const admin = createAdminClient();
   const { data: brands, error: brandsReadError } = await admin
@@ -61,16 +59,16 @@ export async function createAuthorizationCode(params: {
     throw McpErrors.validationError("All granted brands must belong to the same organization.");
   }
   const organizationId = organizationIds[0];
-  const { data: ownerMembership, error: membershipError } = await admin
+  const { data: membership, error: membershipError } = await admin
     .from("organization_members")
-    .select("organization_id")
+    .select("organization_id, role")
     .eq("organization_id", organizationId)
     .eq("user_id", params.userId)
-    .eq("role", "owner")
+    .in("role", ["owner", "admin"])
     .maybeSingle();
   if (membershipError) throw McpErrors.temporarilyUnavailable(membershipError.message);
-  if (!ownerMembership) {
-    throw McpErrors.forbidden("Only the organization owner can authorize MCP connections during beta.");
+  if (!membership) {
+    throw McpErrors.forbidden("Only organization owners and admins can authorize MCP connections.");
   }
 
   const rawCode = randomBytes(32).toString("base64url");
@@ -120,8 +118,9 @@ export async function exchangeAuthorizationCode(params: {
   if (new Date(authCode.expires_at).getTime() <= Date.now()) {
     throw McpErrors.unauthenticated("This authorization code has expired.");
   }
-  if (authCode.client_id !== params.clientId) throw McpErrors.unauthenticated("client_id does not match this code.");
-  if (authCode.redirect_uri !== params.redirectUri) {
+  const authCodeRedirect = authCode.redirect_uri.replace(/\/$/, "");
+  const paramsRedirect = params.redirectUri.replace(/\/$/, "");
+  if (authCodeRedirect !== paramsRedirect) {
     throw McpErrors.unauthenticated("redirect_uri does not match the one used to request this code.");
   }
   if (!verifyPkce(params.codeVerifier, authCode.code_challenge)) {

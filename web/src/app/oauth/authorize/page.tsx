@@ -53,7 +53,10 @@ export default async function OAuthAuthorizePage({
 
   const client = await getOAuthClient(clientId);
   if (!client) return <ErrorScreen message="Bilinmeyen istemci (client_id)." />;
-  if (!client.redirect_uris.includes(redirectUri)) {
+  const isRedirectAllowed = client.redirect_uris.some(
+    (uri) => uri === redirectUri || uri.replace(/\/$/, "") === redirectUri.replace(/\/$/, "")
+  );
+  if (!isRedirectAllowed) {
     return <ErrorScreen message="redirect_uri bu istemci için kayıtlı adreslerden biriyle eşleşmiyor." />;
   }
 
@@ -82,10 +85,10 @@ export default async function OAuthAuthorizePage({
 
   const [{ data: profile }, { data: membership }] = await Promise.all([
     supabase.from("profiles").select("full_name, active_brand_id").eq("id", user.id).maybeSingle(),
-    supabase.from("organization_members").select("organization_id").eq("user_id", user.id).eq("role", "owner").limit(1).maybeSingle(),
+    supabase.from("organization_members").select("organization_id, role").eq("user_id", user.id).in("role", ["owner", "admin"]).limit(1).maybeSingle(),
   ]);
 
-  if (!membership) return <ErrorScreen message="Bu hesap herhangi bir organizasyona bağlı değil." />;
+  if (!membership) return <ErrorScreen message="Bu hesap herhangi bir organizasyona bağlı değil veya yönetici yetkisi bulunmuyor." />;
 
   const { data: brands } = await supabase
     .from("brands")

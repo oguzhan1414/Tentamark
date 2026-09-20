@@ -76,23 +76,37 @@ export async function getOAuthClient(clientId: string) {
     normalizedId === "https://claude.ai" ||
     normalizedId.startsWith("https://claude.ai/")
   ) {
+    const claudeRedirectUris = [
+      "https://claude.ai/api/mcp/auth_callback",
+      "https://claude.ai/api/mcp/auth_callback/",
+      "https://claude.ai/oauth/callback",
+      "https://claude.ai/oauth/callback/",
+    ];
+
     const { data: existing } = await admin
       .from("mcp_oauth_clients")
       .select("client_id, client_name, redirect_uris, is_confidential")
       .eq("client_id", normalizedId)
       .maybeSingle();
 
-    if (existing) return existing;
+    if (existing) {
+      const merged = Array.from(new Set([...(existing.redirect_uris ?? []), ...claudeRedirectUris]));
+      if (merged.length > (existing.redirect_uris?.length ?? 0)) {
+        await admin
+          .from("mcp_oauth_clients")
+          .update({ redirect_uris: merged })
+          .eq("client_id", normalizedId);
+        existing.redirect_uris = merged;
+      }
+      return existing;
+    }
 
     const { data: inserted, error: insertError } = await admin
       .from("mcp_oauth_clients")
       .insert({
         client_id: normalizedId,
         client_name: "Claude AI",
-        redirect_uris: [
-          "https://claude.ai/api/mcp/auth_callback",
-          "https://claude.ai/oauth/callback",
-        ],
+        redirect_uris: claudeRedirectUris,
         is_confidential: false,
       })
       .select("client_id, client_name, redirect_uris, is_confidential")

@@ -25,6 +25,7 @@ export async function createContentBrief(
   assertScopes(actor, ["draft:create"]);
   const brandId = assertBrandAccess(actor, params.brandId);
   const platform = (params.platform || "instagram") as LaunchPlatform;
+  const admin = createAdminClient();
 
   const brief = await executeAiOperation({
     actor,
@@ -34,7 +35,7 @@ export async function createContentBrief(
     input: params,
     selfLogs: true, // generateDrafts logs its own ai_runs row
     run: async () => {
-      const drafts = await generateDrafts(brandId, params.topic, [platform]);
+      const drafts = await generateDrafts(brandId, params.topic, [platform], "post", undefined, "brand", admin);
       return drafts[platform] ?? "";
     },
   });
@@ -59,6 +60,7 @@ export async function createPostDraft(
   assertScopes(actor, ["draft:create"]);
   const brandId = assertBrandAccess(actor, params.brandId);
   if (params.platforms.length === 0) throw McpErrors.validationError("At least one platform is required.");
+  const admin = createAdminClient();
 
   const drafts = await executeAiOperation({
     actor,
@@ -67,10 +69,9 @@ export async function createPostDraft(
     idempotencyKey: params.idempotencyKey,
     input: params,
     selfLogs: true,
-    run: () => generateDrafts(brandId, params.idea, params.platforms, params.format ?? "post"),
+    run: () => generateDrafts(brandId, params.idea, params.platforms, params.format ?? "post", undefined, "brand", admin),
   });
 
-  const admin = createAdminClient();
   const title = params.idea.trim().slice(0, 80) || "Untitled";
 
   const { data: content, error: contentError } = await admin
@@ -145,6 +146,7 @@ export async function generateWeeklyPlanDrafts(
     return d;
   })();
   if (Number.isNaN(weekStartDate.getTime())) throw McpErrors.validationError("weekStart must be a valid ISO date.");
+  const admin = createAdminClient();
 
   const items = await executeAiOperation({
     actor,
@@ -153,10 +155,9 @@ export async function generateWeeklyPlanDrafts(
     idempotencyKey: params.idempotencyKey,
     input: params,
     selfLogs: true, // generateWeeklyPack logs its own ai_runs row
-    run: () => generateWeeklyPack(brandId, params.platforms, { start: weekStartDate, daySpan: 5 }),
+    run: () => generateWeeklyPack(brandId, params.platforms, { start: weekStartDate, daySpan: 5 }, undefined, admin),
   });
 
-  const admin = createAdminClient();
   const created: CreatedDraft[] = [];
   const failed: { title: string; error: string }[] = [];
 

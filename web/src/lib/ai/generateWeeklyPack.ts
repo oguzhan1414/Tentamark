@@ -144,7 +144,10 @@ export async function generateWeeklyPack(
   brandId: string,
   platforms: LaunchPlatform[],
   range?: WeeklyPackRange,
-  campaignContext?: CampaignContext
+  campaignContext?: CampaignContext,
+  // MCP callers (no browser session) must pass an admin client — see
+  // getBrandContext's comment for why this can't default to createClient().
+  client?: Awaited<ReturnType<typeof createClient>>
 ): Promise<WeeklyPackItem[]> {
   if (platforms.length === 0) {
     throw new Error("En az bir platform seçilmeli.");
@@ -153,10 +156,10 @@ export async function generateWeeklyPack(
   const validOffsets = computeValidOffsets(range);
   const itemCount = resolveItemCount(range, validOffsets);
   const daySpan = range?.daySpan ?? 5;
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
 
   const [brandCtx, { data: recentContent }] = await Promise.all([
-    getBrandContext(brandId),
+    getBrandContext(brandId, { client: supabase }),
     supabase
       .from("content")
       .select("title")

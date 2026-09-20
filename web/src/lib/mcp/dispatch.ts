@@ -4,6 +4,7 @@ import { getToolContract } from "./contracts/tools";
 import { McpErrors } from "./contracts/errors";
 import { validateToolInput } from "./validation";
 import { checkIdempotency, completeIdempotency, failIdempotency } from "./idempotency";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getBrandContext } from "@/lib/brand/getBrandContext";
 import { getLatestStrategy } from "@/lib/ai/generateStrategy";
 import { getAnalyticsOverview } from "@/lib/ai/getAnalyticsOverview";
@@ -27,7 +28,11 @@ const HANDLERS: Record<string, ToolHandler> = {
   async get_brand_profile(actor, args) {
     assertScopes(actor, ["brand:read"]);
     const brandId = assertBrandAccess(actor, args.brandId as string | undefined);
-    const [context, strategy] = await Promise.all([getBrandContext(brandId), getLatestStrategy(brandId)]);
+    const admin = createAdminClient();
+    const [context, strategy] = await Promise.all([
+      getBrandContext(brandId, { client: admin }),
+      getLatestStrategy(brandId, admin),
+    ]);
     return { brand: context, strategy };
   },
 

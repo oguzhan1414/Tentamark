@@ -87,15 +87,18 @@ export async function generateDrafts(
   // "founder" only ever does anything if brand_dna.founder_name is actually
   // set (Compose only offers the toggle in that case) — falls back to the
   // normal brand voice otherwise rather than writing as an unnamed "founder".
-  voiceMode: "brand" | "founder" = "brand"
+  voiceMode: "brand" | "founder" = "brand",
+  // MCP callers (no browser session) must pass an admin client — see
+  // getBrandContext's comment for why this can't default to createClient().
+  client?: Awaited<ReturnType<typeof createClient>>
 ): Promise<GeneratedDrafts> {
   if (platforms.length === 0) {
     throw new Error("En az bir platform seçilmeli.");
   }
 
-  const brandCtx = await getBrandContext(brandId);
+  const supabase = client ?? (await createClient());
+  const brandCtx = await getBrandContext(brandId, { client: supabase });
   const brandContext = brandCtx.formattedText || "Marka kimliği henüz tanımlanmadı, genel ve profesyonel bir ton kullan.";
-  const supabase = await createClient();
 
   const platformList = platforms.map((p) => PLATFORM_LABEL[p]).join(", ");
   const platformRules = platforms.map((p) => `- ${PLATFORM_RULE[p]}`).join("\n");

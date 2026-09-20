@@ -55,9 +55,14 @@ export type BrandContext = {
 
 export async function getBrandContext(
   brandId: string,
-  options?: { excludeStrategy?: boolean }
+  options?: { excludeStrategy?: boolean; client?: Awaited<ReturnType<typeof createClient>> }
 ): Promise<BrandContext> {
-  const supabase = await createClient();
+  // MCP tool calls have no browser session to key a cookie-based client off
+  // of — callers reached from lib/mcp/* must pass an admin (service-role)
+  // client explicitly, or every RLS-protected select below silently returns
+  // no rows and this function quietly falls back to generic placeholder text
+  // ("Marka", "Teknoloji / Dijital", ...) instead of throwing.
+  const supabase = options?.client ?? (await createClient());
 
   const [{ data: brandRow }, { data: dnaRow }, { data: strategyRow }] = await Promise.all([
     supabase.from("brands").select("name, website").eq("id", brandId).maybeSingle(),

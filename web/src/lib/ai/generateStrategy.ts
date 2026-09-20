@@ -124,8 +124,11 @@ function computeChangedInputs(prev: InputSnapshot | null, current: InputSnapshot
   return changes;
 }
 
-export async function getLatestStrategy(brandId: string): Promise<BrandStrategyRecord | null> {
-  const supabase = await createClient();
+export async function getLatestStrategy(
+  brandId: string,
+  client?: Awaited<ReturnType<typeof createClient>>
+): Promise<BrandStrategyRecord | null> {
+  const supabase = client ?? (await createClient());
   const { data } = await supabase
     .from("brand_strategy")
     .select("id, version, payload, change_notes, generated_at")

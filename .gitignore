@@ -27,3 +27,17 @@ supabase/.temp/
 web/all_dash_files.txt
 web/has_language_files.txt
 *.backup.tsx
+
+# Agent skill packages (e.g. `npx skills add`) - dev tooling, not the product
+/.agents/
+/skills-lock.json
+
+# Video-feature scratch: standalone prototype project, test render outputs,
+# and one-off test scripts/audio - not part of the shipped feature
+/promo-video/
+/rendered-test-videos/
+web/test-render.ts
+web/render-viral-benchmark.ts
+web/public/audio/test-voice.mp3
+web/public/audio/test-voice.vtt
+web/public/audio/voiceover-*.mp3

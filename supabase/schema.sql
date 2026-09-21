@@ -548,6 +548,15 @@ create policy "Brand DNA update" on public.brand_dna
   ) with check (
     exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
   );
+-- INSERT policy: required even though handle_new_user() pre-seeds a row for
+-- every brand — `.upsert()` compiles to INSERT ... ON CONFLICT DO UPDATE,
+-- which needs INSERT privilege to even attempt the statement, regardless of
+-- whether the conflict path (falling back to UPDATE) ends up being taken.
+create policy "Brand DNA insert" on public.brand_dna
+  for insert to authenticated
+  with check (
+    exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
+  );
 
 -- Content: Accessible through brand membership
 create policy "Content select" on public.content

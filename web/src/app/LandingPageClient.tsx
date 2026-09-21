@@ -7,6 +7,7 @@ import ConnectStrip from "@/components/ConnectStrip";
 import FaqSection from "@/components/FaqSection";
 import FeaturesGrid from "@/components/FeaturesGrid";
 import HeroSpotlight from "@/components/HeroSpotlight";
+import PromoVideoSection from "@/components/PromoVideoSection";
 import FinalCta from "@/components/FinalCta";
 import LoopSection from "@/components/LoopSection";
 import PositioningStrip from "@/components/PositioningStrip";
@@ -28,6 +29,7 @@ export default function LandingPageClient() {
       <SiteHeader />
       <main key={`main-${locale}`} className="flex-1 overflow-x-clip">
         <HeroSpotlight />
+        <PromoVideoSection />
         <AdShowcaseSection />
         <InteractiveDemoWidget />
         <ConnectStrip />

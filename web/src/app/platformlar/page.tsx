@@ -274,7 +274,7 @@ function PlatformlarHubContent() {
                         {copy.getApiKey}
                       </Link>
                       <Link
-                        href="/nasil-calisir"
+                        href="/gelistiriciler"
                         className="rounded-full border border-line bg-surface px-5 py-3 text-sm font-semibold text-ink hover:bg-surface-soft transition-colors"
                       >
                         {copy.viewDocs}
@@ -282,15 +282,14 @@ function PlatformlarHubContent() {
                     </div>
                   </div>
 
-                  {/* Clean Code Preview Block */}
+                  {/* Clean Code Preview Block — mirrors the real MCP connect snippet on /gelistiriciler */}
                   <div className="overflow-hidden rounded-2xl border border-line bg-surface p-5 font-mono text-xs leading-relaxed text-ink shadow-lg">
                     <p className="text-faint">{copy.codeComment}</p>
-                    <p className="mt-1 font-bold text-accent">POST https://api.tentamark.com/v1/posts</p>
+                    <p className="mt-1 font-bold text-accent">npx mcp-remote https://tentamark.com/api/mcp</p>
                     <p className="text-muted mt-2">&#123;</p>
-                    <p className="pl-4 text-ink">&quot;channel&quot;: &quot;instagram&quot;,</p>
-                    <p className="pl-4 text-ink">&quot;format&quot;: &quot;carousel&quot;,</p>
-                    <p className="pl-4 text-ink">&quot;topic&quot;: &quot;{copy.codeTopic}&quot;,</p>
-                    <p className="pl-4 text-ink">&quot;autoSchedule&quot;: true</p>
+                    <p className="pl-4 text-ink">&quot;tool&quot;: &quot;create_post_draft&quot;,</p>
+                    <p className="pl-4 text-ink">&quot;idea&quot;: &quot;{copy.codeTopic}&quot;,</p>
+                    <p className="pl-4 text-ink">&quot;platforms&quot;: [&quot;instagram&quot;]</p>
                     <p className="text-muted">&#125;</p>
                     <p className="mt-3 font-semibold text-emerald-600">{copy.codeSuccess}</p>
                   </div>

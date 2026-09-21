@@ -6,11 +6,7 @@ import Link from "next/link";
 import { useGSAP } from "@gsap/react";
 import { gsap, SplitText } from "@/lib/gsap";
 import { useLanguage } from "@/context/LanguageContext";
-import {
-  HiOutlineArrowRight,
-  HiOutlinePlay,
-  HiOutlineCheckCircle,
-} from "react-icons/hi2";
+import { HiOutlineCheckCircle } from "react-icons/hi2";
 import {
   FaInstagram,
   FaLinkedin,
@@ -21,7 +17,14 @@ import {
   FaGoogle,
   FaYoutube,
 } from "react-icons/fa6";
-import { SiCanva } from "@/components/PlatformIcon";
+import { SiClaude, SiCursor } from "react-icons/si";
+import { SiCanva, SiOpenAI } from "@/components/PlatformIcon";
+
+const MCP_CLIENTS = [
+  { name: "Claude", icon: SiClaude, color: "#D97757" },
+  { name: "ChatGPT", icon: SiOpenAI, color: "#10A37F" },
+  { name: "Cursor", icon: SiCursor, color: "#000000" },
+];
 
 const CONNECTED_PLATFORMS = [
   { name: "Canva", icon: SiCanva, color: "#00C4CC", bg: "bg-[#00C4CC]/10" },
@@ -41,36 +44,59 @@ export default function HeroSpotlight() {
   useGSAP(
     () => {
       const mm = gsap.matchMedia();
+      const ENTRANCE_TARGETS = [
+        ".hs-eyebrow",
+        ".hs-headline",
+        ".hs-copy",
+        ".hs-actions > *",
+        ".hs-trust",
+        ".hs-waterfall-stage",
+      ];
+
+      // Hard safety net: whatever GSAP/SplitText end up doing (this has been seen
+      // getting stuck invisible intermittently in dev, most likely React Strict
+      // Mode's double-invoke racing SplitText's line/mask revert), the hero's
+      // primary CTA must never stay invisible-but-clickable. 2.5s comfortably
+      // clears the ~2s entrance timeline below, so this never visibly interrupts
+      // a normal playthrough — it only rescues a stuck one.
+      const rescueTimer = window.setTimeout(() => {
+        gsap.set(ENTRANCE_TARGETS, { opacity: 1, clearProps: "transform" });
+      }, 2500);
 
       mm.add("(prefers-reduced-motion: no-preference)", () => {
-        const split = SplitText.create(".hs-headline", {
-          type: "lines",
-          mask: "lines",
-          linesClass: "hs-line",
-        });
+        try {
+          const split = SplitText.create(".hs-headline", {
+            type: "lines",
+            mask: "lines",
+            linesClass: "hs-line",
+          });
 
-        const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+          const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
-        tl.from(".hs-eyebrow", { opacity: 0, y: 14, duration: 0.5 })
-          .from(split.lines, { opacity: 0, yPercent: 110, duration: 0.75, stagger: 0.08 }, "-=0.25")
-          .from(".hs-copy", { opacity: 0, y: 16, duration: 0.6 }, "-=0.4")
-          .from(".hs-actions > *", { opacity: 0, y: 14, duration: 0.5, stagger: 0.1 }, "-=0.35")
-          .from(".hs-trust", { opacity: 0, y: 10, duration: 0.5 }, "-=0.3")
-          .from(
-            ".hs-waterfall-stage",
-            { opacity: 0, y: 45, scale: 0.93, duration: 1.1, ease: "power3.out" },
-            "-=0.75"
-          );
+          tl.from(".hs-eyebrow", { opacity: 0, y: 14, duration: 0.5 })
+            .from(split.lines, { opacity: 0, yPercent: 110, duration: 0.75, stagger: 0.08 }, "-=0.25")
+            .from(".hs-copy", { opacity: 0, y: 16, duration: 0.6 }, "-=0.4")
+            .from(".hs-actions > *", { opacity: 0, y: 14, duration: 0.5, stagger: 0.1 }, "-=0.35")
+            .from(".hs-trust", { opacity: 0, y: 10, duration: 0.5 }, "-=0.3")
+            .from(
+              ".hs-waterfall-stage",
+              { opacity: 0, y: 45, scale: 0.93, duration: 1.1, ease: "power3.out" },
+              "-=0.75"
+            );
 
-        return () => split.revert();
+          return () => split.revert();
+        } catch (err) {
+          console.error("HeroSpotlight entrance animation failed, showing content without animation:", err);
+          gsap.set(ENTRANCE_TARGETS, { opacity: 1, clearProps: "transform" });
+          return undefined;
+        }
       });
 
       mm.add("(prefers-reduced-motion: reduce)", () => {
-        gsap.set(
-          [".hs-eyebrow", ".hs-headline", ".hs-copy", ".hs-actions > *", ".hs-trust", ".hs-waterfall-stage"],
-          { opacity: 1, clearProps: "transform" }
-        );
+        gsap.set(ENTRANCE_TARGETS, { opacity: 1, clearProps: "transform" });
       });
+
+      return () => window.clearTimeout(rescueTimer);
     },
     { scope: rootRef }
   );
@@ -111,27 +137,8 @@ export default function HeroSpotlight() {
             {t.hero.copy}
           </p>
 
-          {/* İkili Eylem Butonları */}
-          <div className="hs-actions mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5">
-            <Link
-              href="/kayit"
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-[#FA5252] px-8 py-3.5 font-bold text-white text-sm sm:text-base shadow-lg shadow-rose-500/25 hover:bg-[#e04545] hover:shadow-xl hover:scale-[1.02] transition-all cursor-pointer"
-            >
-              <span>{t.hero.tryFreeButton}</span>
-              <HiOutlineArrowRight className="h-4 w-4" />
-            </Link>
-
-            <a
-              href="#otonom-akis"
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200/90 bg-white px-6 py-3.5 font-semibold text-slate-700 text-sm hover:bg-slate-50 hover:border-slate-300 transition-all shadow-xs"
-            >
-              <HiOutlinePlay className="h-4 w-4 text-[#FA5252]" />
-              <span>{t.hero.howItWorksButton}</span>
-            </a>
-          </div>
-
           {/* Güven ve Mikro Bilgi */}
-          <p className="hs-actions mt-3 text-xs text-slate-400 font-medium flex items-center gap-2">
+          <p className="hs-actions mt-6 text-xs text-slate-400 font-medium flex items-center gap-2">
             <HiOutlineCheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
             <span>{t.hero.trustBadge}</span>
           </p>
@@ -164,6 +171,37 @@ export default function HeroSpotlight() {
                 className="text-[11px] font-bold text-[#FA5252] hover:underline px-2 py-1"
               >
                 {t.hero.seeAllPlatforms}
+              </Link>
+            </div>
+          </div>
+
+          {/* AI Asistan Şeridi (MCP) */}
+          <div className="hs-trust mt-5 pt-5 border-t border-slate-200/70">
+            <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-violet-500 font-semibold mb-1">
+              {t.hero.mcpTitle}
+            </p>
+            <p className="text-xs text-slate-500 max-w-md mb-3">{t.hero.mcpDescription}</p>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+              {MCP_CLIENTS.map((client) => {
+                const Icon = client.icon;
+                return (
+                  <div
+                    key={client.name}
+                    className="group flex items-center gap-1.5 rounded-xl border border-violet-200/80 bg-violet-50/60 px-2.5 py-1.5 shadow-2xs transition-all hover:border-violet-300 hover:scale-105"
+                    title={client.name}
+                  >
+                    <Icon className="h-3.5 w-3.5" style={{ color: client.color }} />
+                    <span className="text-[11px] font-bold text-slate-700 group-hover:text-slate-900">
+                      {client.name}
+                    </span>
+                  </div>
+                );
+              })}
+              <Link
+                href="/gelistiriciler"
+                className="text-[11px] font-bold text-violet-600 hover:underline px-2 py-1"
+              >
+                {t.hero.mcpLink}
               </Link>
             </div>
           </div>

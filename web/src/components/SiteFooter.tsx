@@ -278,27 +278,30 @@ export default function SiteFooter() {
                 {footerData.columns.resources.title}
               </p>
               <ul className="mt-4 space-y-2.5">
-                {footerData.columns.resources.items.map((item, idx) => (
-                  <li key={idx}>
-                    {item.href ? (
-                      <Link
-                        href={item.href}
-                        className="text-xs sm:text-[13px] text-slate-600 hover:text-slate-950 font-medium transition block"
-                      >
-                        {item.label}
-                      </Link>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 text-xs sm:text-[13px] text-slate-500 font-medium">
-                        {item.label}
-                        {item.badge && (
-                          <span className="rounded bg-slate-100 border border-slate-200/90 px-1.5 py-0.5 font-mono text-[9px] font-semibold text-slate-600">
-                            {item.badge}
-                          </span>
-                        )}
-                      </span>
-                    )}
-                  </li>
-                ))}
+                {footerData.columns.resources.items.map((item, idx) => {
+                  const badge = (item as { badge?: string }).badge;
+                  return (
+                    <li key={idx}>
+                      {item.href ? (
+                        <Link
+                          href={item.href}
+                          className="text-xs sm:text-[13px] text-slate-600 hover:text-slate-950 font-medium transition block"
+                        >
+                          {item.label}
+                        </Link>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-xs sm:text-[13px] text-slate-500 font-medium">
+                          {item.label}
+                          {badge && (
+                            <span className="rounded bg-slate-100 border border-slate-200/90 px-1.5 py-0.5 font-mono text-[9px] font-semibold text-slate-600">
+                              {badge}
+                            </span>
+                          )}
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
 

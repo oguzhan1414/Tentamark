@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // @remotion/bundler transitively pulls in @remotion/studio (the
+  // interactive editor UI, including optional Whisper/WebGPU transcription
+  // deps that aren't installed) — Next's own bundler tries to statically
+  // resolve all of that for the /api/video/jobs route and fails on the
+  // missing optional peer dep. This opts Remotion's packages out of Next's
+  // bundling entirely; they're `require()`d natively at runtime instead,
+  // exactly like any plain Node.js script would.
+  serverExternalPackages: ["remotion", "@remotion/bundler", "@remotion/renderer", "@remotion/google-fonts", "@remotion/transitions"],
   // Next blocks cross-origin dev-server requests by default. Needed to test
   // OAuth callbacks (Instagram Business Login requires HTTPS, so a tunnel
   // like ngrok stands in for localhost during development) — remove or

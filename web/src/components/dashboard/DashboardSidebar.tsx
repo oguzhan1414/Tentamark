@@ -10,6 +10,7 @@ import {
   HiOutlineSquare3Stack3D,
   HiOutlineInbox,
   HiOutlineMegaphone,
+  HiOutlineFilm,
   HiOutlineFingerPrint,
   HiOutlineSparkles,
   HiOutlineChartBar,
@@ -21,6 +22,7 @@ export type NavItemKey =
   | "posts"
   | "inbox"
   | "campaigns"
+  | "video"
   | "brand"
   | "assistant"
   | "analytics"
@@ -40,6 +42,7 @@ export const NAV_ITEMS: NavItemConfig[] = [
   { key: "posts", href: "/dashboard/posts", icon: HiOutlineSquare3Stack3D, group: "content" },
   { key: "inbox", href: "/dashboard/inbox", icon: HiOutlineInbox, group: "content" },
   { key: "campaigns", href: "/dashboard/campaigns", icon: HiOutlineMegaphone, group: "content" },
+  { key: "video", href: "/dashboard/video", icon: HiOutlineFilm, group: "content" },
   { key: "brand", href: "/dashboard/brand", icon: HiOutlineFingerPrint, group: "intelligence" },
   { key: "assistant", href: "/dashboard/assistant", icon: HiOutlineSparkles, group: "intelligence" },
   { key: "analytics", href: "/dashboard/analytics", icon: HiOutlineChartBar, group: "intelligence" },

@@ -86,25 +86,44 @@ export async function callGroq(
     throw new Error("GROQ_API_KEY tanımlı değil.");
   }
 
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: options?.model ?? MODEL,
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...(options?.history ?? []),
-        { role: "user", content: userMessage },
-      ],
-      temperature: options?.temperature ?? 0.8,
-      ...(options?.maxTokens ? { max_tokens: options.maxTokens } : {}),
-      ...(options?.reasoningEffort ? { reasoning_effort: options.reasoningEffort } : {}),
-      ...(options?.jsonMode === false ? {} : { response_format: { type: "json_object" } }),
-    }),
-  });
+  // A hung Groq request would otherwise block its caller indefinitely — this
+  // has been observed taking down onboarding (a slow/stalled call ran past
+  // the serverless function's own execution window, killing the request
+  // before the caller's try/catch ever got a chance to run). 45s is well
+  // past normal generation time for MODEL's largest structured responses.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 45_000);
+
+  let res: Response;
+  try {
+    res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: options?.model ?? MODEL,
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...(options?.history ?? []),
+          { role: "user", content: userMessage },
+        ],
+        temperature: options?.temperature ?? 0.8,
+        ...(options?.maxTokens ? { max_tokens: options.maxTokens } : {}),
+        ...(options?.reasoningEffort ? { reasoning_effort: options.reasoningEffort } : {}),
+        ...(options?.jsonMode === false ? {} : { response_format: { type: "json_object" } }),
+      }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("Groq API isteği zaman aşımına uğradı (45sn).");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const json = await res.json();
   if (!res.ok) {

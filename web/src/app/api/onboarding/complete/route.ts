@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { COUNTRY_TIMEZONES, getUpcomingHolidayForCountry } from "@/lib/calendar/marketingHolidays";
 import { autofillFromWebsite } from "@/lib/brand/autofillFromWebsite";
@@ -175,12 +175,6 @@ export async function POST(request: NextRequest) {
             );
           if (dnaError) throw dnaError;
 
-          // Generate initial Brand Strategy
-          try {
-            await generateBrandStrategy(brandId);
-          } catch (strategyErr) {
-            console.warn("Brand strategy generation failed during onboarding:", strategyErr);
-          }
         }
       } catch (scrapeErr) {
         if (aiAutofillSucceeded) throw scrapeErr;
@@ -228,14 +222,17 @@ export async function POST(request: NextRequest) {
           { onConflict: "brand_id" }
         );
       if (dnaError) throw dnaError;
-
-      // Attempt to generate initial Brand Strategy
-      try {
-        await generateBrandStrategy(brandId);
-      } catch (strategyErr) {
-        console.warn("Preset brand strategy generation notice:", strategyErr);
-      }
     }
+
+    // Brand Strategy generation is a slow AI call (can exceed the function's
+    // execution window) and is best-effort by design — it must never be able
+    // to block or fail onboarding completion itself. Runs after the response
+    // is sent instead of inline.
+    after(() =>
+      generateBrandStrategy(brandId).catch((strategyErr) => {
+        console.warn("Brand strategy generation failed after onboarding:", strategyErr);
+      })
+    );
 
     // 3. Mark profile onboarding as completed and record active_brand_id
     const { error: profileUpdateError } = await supabase

@@ -15,6 +15,12 @@ type Props = {
   message?: string;
   cancelLabel?: string;
   confirmLabel?: string;
+  badgeLabel?: string;
+  // Omit (or pass "") to hide the reassurance box entirely — the default
+  // text is specific to the "unsaved changes" framing this dialog started
+  // as, so other destructive confirmations (delete, disconnect) should
+  // supply their own or leave it out rather than inherit that wording.
+  noticeText?: string;
 };
 
 /*
@@ -36,6 +42,8 @@ export default function ConfirmDiscardDialog({
   message = "Şu an çıkarsanız yaptığınız değişiklikler kaybolur. Yine de çıkmak istiyor musunuz?",
   cancelLabel = "Düzenlemeye Devam Et",
   confirmLabel = "Kaydetmeden Çık",
+  badgeLabel = "Kaydedilmedi",
+  noticeText = "Kapatırsanız girilen veriler veya üretilen taslaklar silinir.",
 }: Props) {
   // Listen for Escape key to safely cancel
   useEffect(() => {
@@ -73,7 +81,7 @@ export default function ConfirmDiscardDialog({
               <HiOutlineExclamationCircle className="h-5 w-5 stroke-[1.75]" />
             </div>
             <span className="rounded-full bg-rose-50 border border-rose-200/70 px-2.5 py-0.5 text-[10px] font-bold text-rose-700 tracking-wider uppercase">
-              Kaydedilmedi
+              {badgeLabel}
             </span>
           </div>
 
@@ -98,12 +106,12 @@ export default function ConfirmDiscardDialog({
         </div>
 
         {/* Informational reassurance notice */}
-        <div className="mt-4 flex items-center gap-2.5 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2 text-xs text-slate-600">
-          <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0 animate-pulse" />
-          <span className="text-[11px] text-slate-500">
-            Kapatırsanız girilen veriler veya üretilen taslaklar silinir.
-          </span>
-        </div>
+        {noticeText && (
+          <div className="mt-4 flex items-center gap-2.5 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2 text-xs text-slate-600">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0 animate-pulse" />
+            <span className="text-[11px] text-slate-500">{noticeText}</span>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="mt-5 flex items-center gap-2.5">

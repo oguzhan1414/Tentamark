@@ -20,6 +20,8 @@ export const BLOG_POSTS: BlogPost[] = [
     ],
     "featured": true,
     "excerpt": "Bir müşterinin ilk gördüğü anda markanızdan satın alma ihtimali neden %1'in altındadır? 7 saatlik içerik tüketimi, 11 farklı temas noktası ve 4 ayrı kanal mantığıyla sürdürülebilir marka güveni inşa etmenin formülü.",
+    "question": "7-11-4 Kuralı nedir ve marka güveni nasıl inşa edilir?",
+    "shortAnswer": "7-11-4 Kuralı, bir potansiyel müşterinin satın alma kararı vermesi için ortalama 7 saatlik içerik tüketmesi, 11 ayrı temas noktasında markayla karşılaşması ve bunu en az 4 farklı mecrada deneyimlemesi gerektiğini belirten modern pazarlama psikolojisi modelidir.",
     "sections": [
       {
         "id": "nedir-bu-7-11-4",
@@ -90,7 +92,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "paragraphs": [
           "Tüketici psikolojisinde tek bir mecrada var olan marka 'geçici bir heves' veya 'basit bir reklam hesabı' gibi algılanabilir. Ancak aynı marka hem Instagram'da canlı bir topluluğa sahipse, hem Google organik aramalarda ilk sayfadaysa, hem YouTube'da teknik derinliğini kanıtlıyorsa hem de LinkedIn'de profesyonel bir saygınlık uyandırıyorsa; zihindeki meşruiyet bariyerleri anında aşılır.",
           "Nöropazarlamada buna 'Çok Kanallı Doğrulama' (Cross-Platform Social Verification) denir. Beyin, farklı mecralardan gelen tutarlı sinyalleri birleştirerek şu sonuca varır: 'Bu marka köklü, işinde ciddi ve sektörde kalıcı.'",
-          "Tentamark gibi otonom yapay zeka sistemleri, tam olarak bu çok kanallı varlığı tek bir merkezden koordine etmek için tasarlanmıştır. İçeriğiniz her platformun kendi yerel kültürüne (native format) göre biçimlenir ama markanızın çekirdek mesajı daima tutarlı kalır."
+          "[Tentamark](/neden-tentamark) gibi otonom [yapay zeka ile sosyal medya yönetimi](/blog/yapay-zeka-ile-sosyal-medya-yonetimi) sistemleri, tam olarak bu çok kanallı varlığı tek bir merkezden koordine etmek için tasarlanmıştır. Marka sesinizi [Marka DNA'sı](/blog/marka-dna-nedir-nasil-olusturulur) ile kodlayabilir ve [Tentamark'ı 14 gün ücretsiz deneyebilirsiniz](/register)."
         ],
         "callout": {
           "type": "checklist",
@@ -157,6 +159,8 @@ export const BLOG_POSTS: BlogPost[] = [
       "Tutarlılık"
     ],
     "excerpt": "İnsanlar markaları yalnızca logodan değil; renk, ambalaj, fotoğraf dili, tipografi, slogan, ses tonu ve tekrar eden görsel unsurlardan hatırlar. Distinctive brand assets ve nörolojik tutarlılığın rehberi.",
+    "question": "Marka hafızası (Brand Recall) nasıl oluşturulur?",
+    "shortAnswer": "Marka hafızası; görsel tutarlılık, ayırt edici renk kodları, tekrarlayan ses tonu ve bilişsel kolaylık sağlayan sabit mesaj sütunlarının en az 6-8 hafta boyunca aralıksız sürdürülmesiyle inşa edilir.",
     "sections": [
       {
         "id": "beyin-markalari-nasil-kodlar",
@@ -212,7 +216,7 @@ export const BLOG_POSTS: BlogPost[] = [
           "Kullanıcıların başparmaklarıyla saniyede 15 santimetre hızla içerik kaydırdığı günümüz sosyal medyasında hafıza oluşturmak özel bir taktik gerektirir.",
           "Kural 1: İlk Kareden Renk İmzası. Gönderinin veya videonun ilk salisesinde markanızın baskın rengi ve kontrastı gözü durdurmalıdır.",
           "Kural 2: Değişmeyen Başlık Hiyerarşisi. Başlıklarınızın konumu, fontu ve arka plan kutucuğu her zaman aynı görsel ritmi takip etmelidir.",
-          "Kural 3: Karakteristik Yüz veya Maskot. İnsan beyni yüzleri nesnelerden 10 kat daha hızlı hatırlar. Founder-led pazarlama veya tutarlı bir marka yüzü akılda kalıcılığı katlar.",
+          "Kural 3: Karakteristik Yüz veya Maskot. İnsan beyni yüzleri nesnelerden 10 kat daha hızlı hatırlar. [Founder-Led Marketing](/blog/founder-led-marketing-kurucu-markasi-nasil-yapilir) veya tutarlı bir kurucu markası akılda kalıcılığı katlar. Marka tonunu tek bir merkezde kodlamak için [Marka DNA'sı](/blog/marka-dna-nedir-nasil-olusturulur) rehberimizi inceleyin.",
           "Kural 4: Tekrarlanan İletişim Ritüeli. Her hafta aynı gün paylaşılan seriler veya gönderi sonlarındaki imza kapanış cümleleri zihinde güçlü nöron bağları kurar."
         ],
         "keyPoints": [
@@ -271,6 +275,8 @@ export const BLOG_POSTS: BlogPost[] = [
       "Müşteri Deneyimi"
     ],
     "excerpt": "Marka güvenini oluşturan sosyal kanıt, tutarlılık, uzmanlık, şeffaflık, kaliteli deneyim, yorumlar ve tekrar eden olumlu temasların ardındaki bilimsel mekanizma ve 6 uygulama stratejisi.",
+    "question": "Tüketiciler bir markaya neden güvenir?",
+    "shortAnswer": "Marka güveni; vaat ve teslimat tutarlılığı, şeffaf müşteri kanıtları (UGC), sektör uzmanlığı sunan eğitici içerikler ve kriz anlarında sergilenen dürüst editoryal kontrolle kazanılır.",
     "sections": [
       {
         "id": "guven-bilesenleri",
@@ -323,7 +329,7 @@ export const BLOG_POSTS: BlogPost[] = [
           "2. Koşulsuz Garanti ve İade Politikası: İade sürecini karmaşık kurallarla gizlemek yerine gururla en öne koyun.",
           "3. Güvenlik ve Ödeme Rozetleri: SSL, BDDK onaylı ödeme altyapıları ve veri güvenliği taahhütleri.",
           "4. Gerçek Ekip Fotoğrafları: Stok fotoğraflar yerine şirkette gerçekten çalışan insanların doğal fotoğrafları.",
-          "5. Canlı ve Hızlı Müşteri Desteği: Sorulara saniyeler içinde cevap veren akıllı veya insan destek kanalları."
+          "5. Canlı ve Hızlı Müşteri Desteği: Sorulara saniyeler içinde cevap veren akıllı veya insan destek kanalları. Ayrıca yayınlanan tüm içeriklerde kurumsal vaatlerin tutarlılığını sağlamak için [sosyal medya gönderi onay süreci](/blog/sosyal-medya-gonderi-onay-sureci) ve [Tentamark Onay Masası](/neden-tentamark) kullanılmalıdır."
         ],
         "keyPoints": [
           "Stok model fotoğraflarını derhal kaldırın; kendi ekibinizi ve ofisinizi sergileyin.",
@@ -381,6 +387,8 @@ export const BLOG_POSTS: BlogPost[] = [
       "Müşteri Deneyimi"
     ],
     "excerpt": "Logo, visual identity, brand voice, positioning, values, customer experience ve Brand DNA arasındaki farklar. Yalnızca bir grafik değil, yaşayan bir organizma inşa etmenin metodolojisi.",
+    "question": "Marka kimliği nedir ve logodan farkı nedir?",
+    "shortAnswer": "Marka kimliği yalnızca bir logo veya renk paleti değildir; markanın karakterini, dünya görüşünü, konuşma dilini, müşteriyle kurduğu duygusal bağı ve tüm temas noktalarındaki tutarlı deneyim vaadini kapsar.",
     "sections": [
       {
         "id": "logo-vs-kimlik-karsilastirmasi",
@@ -439,7 +447,7 @@ export const BLOG_POSTS: BlogPost[] = [
           "Adım 1: İdeal Müşteri Profilinizi (ICP) ve Düşmanınızı Tanımlayın. İyi bir marka sadece neyi sevdiğini değil, neye karşı savaştığını da bilir.",
           "Adım 2: 3 Kelimelik Karakter Matrisi Çıkarın. Markanızı üç zıt sıfat çiftiyle sınırlandırın (Örn: 'Uzman ama kibirli değil', 'Samimi ama yılışık değil', 'Yenilikçi ama karmaşık değil').",
           "Adım 3: Görsel ve Dil Kılavuzunu Belgeleyin. Renk kodları, font boyutları ve örnek yasaklı cümleleri içeren tek sayfalık bir kılavuz oluşturun.",
-          "Adım 4: Tüm Ekiplere ve Araçlara Entegre Edin. İster insan ekibiniz ister Tentamark gibi AI yöneticileriniz olsun; her içerik üretilmeden önce bu filtrelerden geçmelidir."
+          "Adım 4: Tüm Ekiplere ve Araçlara Entegre Edin. İster insan ekibiniz ister [Tentamark](/neden-tentamark) gibi [yapay zeka pazarlama yöneticileriniz](/blog/otonom-pazarlama-nedir-ai-pazarlama-yoneticisi) olsun; her içerik üretilmeden önce [Marka DNA'sı](/blog/marka-dna-nedir-nasil-olusturulur) filtrelerinden geçmelidir."
         ],
         "keyPoints": [
           "Logoya harcayacağınız bütçenin yarısını müşteri deneyimi süreçlerini iyileştirmeye ayırın.",
@@ -498,6 +506,8 @@ export const BLOG_POSTS: BlogPost[] = [
       "Do and Dont"
     ],
     "excerpt": "Brand Voice ve Tone of Voice farkı, marka kişiliğinin yazıya dönüştürülmesi, kelime seçimi, Do/Don't kuralları, platformlar arası dil adaptasyonu ve yaşayan bir iletişim rehberi oluşturmak.",
+    "question": "Kurumsal marka sesi ve tonu nasıl oluşturulur?",
+    "shortAnswer": "Marka sesi; markanın 3-4 temel kişilik sıfatının belirlenmesi, benimsenen ve yasaklanan kelimeler sözlüğünün yazılması ve farklı platformlara göre değişen esnek ton matrisinin kodlanmasıyla kurulur.",
     "sections": [
       {
         "id": "voice-vs-tone-farki",
@@ -556,7 +566,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "title": "4. Yaşayan Bir Marka Dili Rehberi Nasıl Hayata Geçirilir?",
         "paragraphs": [
           "Rafa kaldırılan 80 sayfalık PDF dosyaları kimsenin işine yaramaz. Marka dili rehberiniz Notion veya Google Docs üzerinde tek sayfalık bir özet tablo halinde herkesin elinin altında olmalıdır.",
-          "Tentamark gibi yeni nesil AI pazarlama yöneticileri, bu ses kurallarını doğrudan prompt mimarisine ve Brand Guardian koruma katmanına işler. Böylece üretilen her sosyal medya metni, blog yazısı veya bülten cümlesi, otomatik olarak marka sesinizin testinden geçer ve tutarsız hiçbir içerik yayına çıkamaz."
+          "[Tentamark](/neden-tentamark) gibi yeni nesil [AI pazarlama yöneticileri](/blog/otonom-pazarlama-nedir-ai-pazarlama-yoneticisi), bu ses kurallarını doğrudan [Marka DNA'sı](/blog/marka-dna-nedir-nasil-olusturulur) katmanına işler. Böylece üretilen her sosyal medya metni veya carousel kancası otomatik olarak marka sesinizin testinden geçer. İlk takviminizi görmek için [Tentamark'ı ücretsiz deneyebilirsiniz](/register)."
         ],
         "keyPoints": [
           "Markanızın sesini 3 temel sıfatla özetleyin ve her sıfata bir zıt sınır koyun.",
@@ -614,6 +624,8 @@ export const BLOG_POSTS: BlogPost[] = [
       "Strateji"
     ],
     "excerpt": "Hedef kitle, kategori, rakipler, farklılaşma ve value proposition üzerinden positioning oluşturma. Al Ries ve Jack Trout'tan April Dunford'a modern konumlandırma formülleri.",
+    "question": "Marka konumlandırması (Positioning) nedir ve nasıl yapılır?",
+    "shortAnswer": "Konumlandırma, bir markanın hedef kitlenin zihninde rakiplerinden tamamen ayrışan tek bir net kelime veya faydaya sahip olma sanatıdır. 'Herkes için her şey' olmaktan çıkıp 'özel bir kitle için vazgeçilmez tek seçenek' olmayı hedefler.",
     "sections": [
       {
         "id": "positioning-felsefesi",
@@ -665,7 +677,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "title": "4. Konumlandırmanızın Sağlamlığını Test Edin",
         "paragraphs": [
           "Bir web sitesine girdiğinizde ekranın ilk açılan bölümünde (hero section) 5 saniye içinde şu 3 sorunun cevabını veremiyorsanız konumlandırma başarısızdır: 1. Bu ne?, 2. Benim için ne yapar?, 3. Neden diğerleri yerine bunu seçmeliyim?",
-          "Tentamark, kendisini 'basit bir sosyal medya zamanlayıcısı' olarak değil; 'Büyüyen KOBİ ve Ajanslar için Otonom AI Marketing Manager' olarak konumlandırır. Bu konumlandırma onu Buffer veya Hootsuite gibi eski nesil mekanik araçlardan ayırıp, strateji kuran ve üreten yeni bir ligin lideri yapar."
+          "[Tentamark](/neden-tentamark), kendisini 'basit bir sosyal medya zamanlayıcısı' olarak değil; 'Büyüyen KOBİ ve Ajanslar için [Otonom Yapay Zeka Pazarlama Yöneticisi](/blog/otonom-pazarlama-nedir-ai-pazarlama-yoneticisi)' olarak konumlandırır. Detaylı kriterler için [Neden Tentamark? Rakip Analizi](/neden-tentamark) sayfamızı inceleyebilir veya [14 gün ücretsiz başlayabilirsiniz](/register)."
         ],
         "keyPoints": [
           "Rakiplerinizin güçlü olduğu alanda onlarla kafa kafaya yarışmayın.",
@@ -724,6 +736,8 @@ export const BLOG_POSTS: BlogPost[] = [
     ],
     "featured": true,
     "excerpt": "Hedef → audience → platform → content pillars → üretim → takvim → yayın → KPI → analiz → optimizasyon süreci. Sosyal medyayı bir hobi değil, öngörülebilir bir müşteri edinme makinesine dönüştürmenin rehberi.",
+    "question": "2026'da başarılı bir sosyal medya stratejisi nasıl kurulur?",
+    "shortAnswer": "2026 sosyal medya stratejisi; yüzeysel beğeniler yerine kaydetme (Save) ve DM paylaşımlarını hedefleyen, yapay zeka ile 15 dakikada otopilota alınan editoryal takvim ve platforma özel kanca mühendisliği üzerine kurulur.",
     "sections": [
       {
         "id": "2026-sosyal-medya-gercegi",
@@ -786,8 +800,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "title": "4. Yapay Zeka ve Otonom Pazarlama ile Ölçeklenme",
         "paragraphs": [
           "Bir pazarlama ekibinin haftada 15-20 parça özgün içerik üretip bunların hepsini analiz etmesi yüzlerce saatlik insan emeği gerektirir. Küçük ve orta ölçekli markaların bütçesi genellikle bu boyuttaki ajans faturalarına yetmez.",
-          "İşte bu noktada Tentamark devreye girer: Markanızın Brand DNA'sını öğrenir, hedef kitlenizin dilini çözümler, haftalık stratejik takvimi hazırlar, görselleri ve kancaları üretir, en doğru saatlerde yayına alır ve performans verilerini analiz ederek bir sonraki haftanın stratejisini otomatik olarak iyileştirir.",
-          "2026'da kazananlar daha çok çalışanlar değil; yapay zekayı bir içerik asistanı değil, stratejik bir yönetici olarak konumlandıran markalar olacaktır."
+          "İşte bu noktada [Tentamark](/neden-tentamark) devreye girer: Markanızın [Marka DNA'sını](/blog/marka-dna-nedir-nasil-olusturulur) öğrenir, haftalık stratejik [sosyal medya içerik takvimini](/blog/sosyal-medya-icerik-takvimi-nasil-hazirlanir) hazırlar, görselleri ve kancaları üretir. 2026'da kazananlar yapay zekayı stratejik bir yönetici olarak konumlandıran markalar olacaktır. [Tentamark'ı 14 gün ücretsiz deneyebilirsiniz](/register)."
         ],
         "image": {
           "url": "/blog/7/Strategist_studying_customer_res…_20260917181558.jpeg",
@@ -846,6 +859,8 @@ export const BLOG_POSTS: BlogPost[] = [
       "Takvim Yönetimi"
     ],
     "excerpt": "Markanın 3-5 ana içerik alanı belirlemesi, bunları farklı formatlara dönüştürmesi ve dengeli bir takvime dağıtması. İçerik tıkanıklığını kökten çözen profesyonel metodoloji.",
+    "question": "Content pillar (içerik sütunları) nedir ve nasıl belirlenir?",
+    "shortAnswer": "Content pillar; bir markanın sosyal medyada paylaştığı tüm içeriklerin toplandığı 3 ila 5 ana tematik kategoridir (Eğitici, Güven/Sosyal Kanıt, İlham, Teklif). Takvim kaosunu bitirir ve içerik üretimini disipline sokar.",
     "sections": [
       {
         "id": "content-pillar-tanimi",
@@ -896,7 +911,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "title": "4. Sütunlarınızı Yönetirken Dikkat Edilmesi Gerekenler",
         "paragraphs": [
           "En yaygın hata, sütunlardan birini aşırı besleyip diğerlerini tamamen ihmal etmektir. Sürekli ürün ve teklif paylaşan hesaplar takipçi kaybeder; sürekli sadece eğlenceli memeler paylaşan hesaplar ise takipçi kazansa bile hiç satış yapamaz.",
-          "İçerik takviminizin her haftasında bu sütunların dengeli bir şekilde rotasyona girdiğinden emin olun. Tentamark, aylık içerik planınızı hazırlarken sütun ağırlıklarını otomatik olarak dengeler ve hesabınızın hem etkileşim hem de satış odaklı kalmasını garanti eder."
+          "İçerik takviminizin her haftasında bu sütunların dengeli bir şekilde rotasyona girdiğinden emin olun. [Tentamark](/neden-tentamark), [sosyal medya içerik takvimi](/blog/sosyal-medya-icerik-takvimi-nasil-hazirlanir) hazırlarken sütun ağırlıklarını otomatik olarak dengeler ve hesabınızın hem etkileşim hem de satış odaklı kalmasını garanti eder. [Tentamark'ı 14 gün ücretsiz deneyebilirsiniz](/register)."
         ],
         "keyPoints": [
           "Markanız için en fazla 4-5 ana sütun seçin; daha fazlası odağı dağıtır.",
@@ -953,6 +968,8 @@ export const BLOG_POSTS: BlogPost[] = [
       "İstikrar"
     ],
     "excerpt": "Kanıtlanmış temel içerik, büyümeyi tetikleyen trendler ve cesur deneysel formatların dengelenmesi. Coca-Cola'nın inovasyon formülünü sosyal medya içerik portföyünüze uygulama kılavuzu.",
+    "question": "70-20-10 içerik kuralı nedir?",
+    "shortAnswer": "70-20-10 kuralı; içeriklerin %70'inin kitleye doğrudan fayda sağlayan eğitici konulardan, %20'sinin viral/trend formatlardan, %10'unun ise deneysel ve doğrudan satış tekliflerinden oluştuğu risksiz büyüme matrisidir.",
     "sections": [
       {
         "id": "70-20-10-kokeni",
@@ -1001,7 +1018,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "title": "4. Aylık 20 Gönderilik Bir Takvimde Dağılım",
         "paragraphs": [
           "Ayda 20 parça içerik üreten bir işletme için matematik son derece sadedir: 14 gönderi kanıtlanmış temel eğitim ve ürün içerikleri; 4 gönderi sektörel trendler, haber yorumları ve yeni formatlar; 2 gönderi ise tamamen sınırları zorlayan cesur deneyler.",
-          "Bu disiplin, hesabınızın hem istikrarlı hem de taze kalmasını sağlar. Takipçileriniz hem her zaman güvendikleri kaliteyi bulurlar hem de 'Bakalım bu hafta ne sürpriz yapacaklar?' merakıyla hesabınızı takip etmeye devam ederler."
+          "Bu disiplin, hesabınızın hem istikrarlı hem de taze kalmasını sağlar. Daha derin organik büyüme yöntemleri için [Sosyal Medyada Organik Etkileşim Artırma](/blog/sosyal-medyada-etkilesim-artirma-yollari) rehberimizi okuyabilir ve [Tentamark'ın otonom içerik motorunu](/neden-tentamark) 14 gün ücretsiz deneyebilirsiniz."
         ],
         "keyPoints": [
           "70-20-10 katı bir pranga değil; dengeli bir pusuladır.",
@@ -1059,6 +1076,8 @@ export const BLOG_POSTS: BlogPost[] = [
       "Otomasyon"
     ],
     "excerpt": "Hedeflerden başlayarak pillar, haftalık tema, format, CTA ve platformların 30 günlük takvime dönüştürülmesi. Batch production zihniyetiyle stressiz içerik yönetimi rehberi.",
+    "question": "30 günlük sosyal medya içerik planı nasıl yapılır?",
+    "shortAnswer": "30 günlük plan; içerik sütunlarını belirlemek, haftalık sabit tema ritmi atamak (eğitici carousel, vaka analizi, teklif), taslakları toplu üretmek ve insan onayıyla zamanlamak suretiyle hazırlanır.",
     "sections": [
       {
         "id": "batch-production-felsefesi",
@@ -1114,8 +1133,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "id": "tentamark-ile-30-gun",
         "title": "4. Tentamark ile 30 Günlük Planı 15 Dakikada Tamamlayın",
         "paragraphs": [
-          "Geleneksel yöntemlerle 9-10 saat süren bu montaj hattı, Tentamark'ın AI Marketing Manager altyapısı sayesinde dakikalara iner. Markanızın Brand DNA'sını analiz eden sistem, 30 günlük stratejik takviminizi temalarına göre otomatik dizer, kancaları ve metinleri üretir, görsel önerilerini sunar ve onayınıza sunar.",
-          "Size sadece kahvenizi yudumlayıp tek tıkla 'Onayla' demek kalır. Sosyal medya yönetiminiz stres kaynağı olmaktan çıkar, işinizi büyüten sessiz bir motora dönüşür."
+          "Geleneksel yöntemlerle 9-10 saat süren bu montaj hattı, [Tentamark](/neden-tentamark)'ın [otonom pazarlama](/blog/otonom-pazarlama-nedir-ai-pazarlama-yoneticisi) altyapısı sayesinde dakikalara iner. Markanızın [Marka DNA'sını](/blog/marka-dna-nedir-nasil-olusturulur) analiz eden sistem, [sosyal medya içerik takviminizi](/blog/sosyal-medya-icerik-takvimi-nasil-hazirlanir) temalarına göre otomatik dizer, kancaları üretir ve onay masanıza getirir. Hemen başlamak için [Tentamark'ı 14 gün ücretsiz deneyin](/register)."
         ],
         "keyPoints": [
           "Asla günübirlik içerik üretmeyin; ayda bir gün toplu üretim yapın.",
@@ -1173,6 +1191,8 @@ export const BLOG_POSTS: BlogPost[] = [
       "İçerik Dönüştürme"
     ],
     "excerpt": "Her platformun farklı kullanıcı davranışları, algoritmik beklentileri ve kültürü. Tembel cross-posting yerine akıllı içerik dönüştürme (content repurposing) sanatının formülü.",
+    "question": "Aynı sosyal medya içeriğini her platformda paylaşmak neden yanlıştır?",
+    "shortAnswer": "Platform algoritmaları ve tüketim alışkanlıkları farklıdır; Instagram kaydırmalı görsel kurgusu, LinkedIn profesyonel sektör içgörüsü, X ise vurucu kısalık ister. Tembelce çapraz paylaşım etkileşimi ve erişimi yarı yarıya düşürür.",
     "sections": [
       {
         "id": "tembel-cross-posting-tehlikesi",
@@ -1230,8 +1250,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "id": "tentamark-akilli-uyarlama",
         "title": "4. Tentamark ile Tek Tıkla Çok Kanallı Yerelleştirme",
         "paragraphs": [
-          "Bu uyarlamaları manuel yapmak saatler alabilir. Tentamark'ın AI motoru, tek bir girdiğiniz temel konsepti analiz eder ve saniyeler içinde her ağın karakter sınırına, emoji kuralına, tonuna ve görsel en-boy oranına göre otomatik olarak 5 farklı yerel versiyona dönüştürür.",
-          "Cross-posting'in tembelliğinden kurtulup, repurposing'in devasa kaldıraç gücünden faydalanmanın en modern yolu budur."
+          "Bu uyarlamaları manuel yapmak saatler alabilir. [Tentamark](/neden-tentamark)'ın AI motoru, tek bir girdiğiniz temel konsepti analiz eder ve saniyeler içinde [Instagram carousel](/blog/instagram-carousel-nasil-hazirlanir-algoritma), [LinkedIn makalesi](/blog/b2b-linkedin-icerik-stratejisi) ve X dizisi formatına dönüştürür. [Tentamark'ı 14 gün ücretsiz deneyerek](/register) çok kanallı gücü keşfedebilirsiniz."
         ],
         "keyPoints": [
           "TikTok logolu videoları asla doğrudan Instagram Reels'e yüklemeyin.",
@@ -1291,13 +1310,15 @@ export const BLOG_POSTS: BlogPost[] = [
     ],
     "featured": true,
     "excerpt": "Profil, Reels, Carousel, Stories, community, CTA, conversion ve analytics dahil uçtan uca Instagram marka stratejisi. Keşfet algoritmasını lehinize çevirmenin ve takipçiyi müşteriye dönüştürmenin eksiksiz reçetesi.",
+    "question": "Instagram'da 2026'da organik olarak nasıl büyünür?",
+    "shortAnswer": "Instagram'da organik büyüme; keşfet algoritmasını besleyen ilk 3 saniye kancalı Reels videoları, kaydetme oranını uçuran carousel paylaşımları ve hikayelerde DM sohbeti başlatan etkileşim etiketleri ile sağlanır.",
     "sections": [
       {
         "id": "instagram-2026-mimari",
         "title": "1. 2026'da Instagram Algoritması Nasıl Karar Veriyor?",
         "paragraphs": [
           "2026 yılında Instagram, basit bir fotoğraf paylaşım uygulamasından küresel bir öneri motoruna (Discovery Engine) evrilmiştir. Akıştaki gönderilerin %50'sinden fazlası artık kullanıcının takip etmediği ama yapay zekanın onun ilgisini çekeceğini tahmin ettiği yabancı hesaplardan gelmektedir.",
-          "Bu devrimsel değişim, küçük ve yeni kurulan markalar için tarihin en büyük organik fırsatını doğurmuştur. Eğer içeriğiniz kullanıcıyı ekranda tutuyor ve başkalarına göndermesini sağlıyorsa; sıfır reklam bütçesiyle yüz binlerce potansiyel müşteriye ulaşabilirsiniz.",
+          "Bu devrimsel değişim, küçük ve yeni kurulan markalar için tarihin en büyük organik fırsatını doğurmuştur. Eğer içeriğiniz kullanıcıyı ekranda tutuyor ve başkalarına göndermesini sağlıyorsa; [Sosyal Medyada Etkileşim Artırma Rehberi](/blog/sosyal-medyada-etkilesim-artirma-yollari) yazımızda incelediğimiz gibi sıfır reklam bütçesiyle yüz binlerce potansiyel müşteriye ulaşabilirsiniz.",
           "Algoritmanın en yüksek puanı verdiği iki aksiyon: 1. Paylaşım (DM üzerinden bir arkadaşa gönderme) ve 2. Kaydetme (Daha sonra okumak üzere saklama) aksiyonlarıdır. Beğeniler ise algoritmanın gözünde en düşük ağırlığa sahiptir."
         ],
         "image": {
@@ -1332,7 +1353,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "paragraphs": [
           "Her formatın hesabınızın büyüme hunisinde farklı bir görevi vardır:",
           "Reels (Keşif ve Büyüme - Top of Funnel): Sizi henüz tanımayan soğuk kitlelere ulaşır. Viral potansiyeli en yüksek formattır. Temel hedefi profil ziyareti getirmektir.",
-          "Carousel (Eğitim ve Güven - Middle of Funnel): Takipçilerinize derinlemesine değer sunar, sektörel otoritenizi pekiştirir ve en yüksek 'kaydetme' oranını üretir.",
+          "Carousel (Eğitim ve Güven - Middle of Funnel): Takipçilerinize derinlemesine değer sunar, sektörel otoritenizi pekiştirir ve [Instagram Carousel Hazırlama Rehberi](/blog/instagram-carousel-nasil-hazirlanir-algoritma) ilkeleriyle en yüksek 'kaydetme' oranını üretir.",
           "Stories ve Yayın Kanalları (Samimiyet ve Satış - Bottom of Funnel): Yalnızca mevcut takipçilerinize görünür. Günlük perde arkasını gösterir, anketlerle etkileşim kurar ve doğrudan DM üzerinden satışa yönlendirir."
         ],
         "image": {
@@ -1347,7 +1368,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "paragraphs": [
           "Instagram'da doğrudan post altına 'Satın almak için linke tıklayın' demek çok düşük dönüşüm getirir; çünkü insanlar uygulamadan çıkmak istemezler.",
           "2026'nın en karlı yöntemi DM Otomasyonu stratejisidir. Gönderinizde 'Yorumlara REHBER yazın, linki size DM'den hemen atalım' dersiniz. Kullanıcı tek kelime yorum yapar; akıllı sistem anında kullanıcının DM kutusuna özel bir link ve sıcak bir karşılama mesajı gönderir.",
-          "Bu yöntem iki büyük avantaj sağlar: Gönderiye yüzlerce yorum geldiği için algoritma içeriği keşfete taşır; diğer yandan müşteriyle birebir sohbet penceresi açılarak sıcak bir satış kanalı kurulur."
+          "Bu yöntem iki büyük avantaj sağlar: Gönderiye yüzlerce yorum geldiği için algoritma içeriği keşfete taşır; diğer yandan müşteriyle birebir sohbet penceresi açılarak sıcak bir satış kanalı kurulur. [Tentamark Sosyal Medya Yönetimi](/neden-tentamark) ile tüm bu DM ve içerik süreçlerini dakikalar içinde otopilota alarak [ücretsiz kaydolabilirsiniz](/register)."
         ],
         "keyPoints": [
           "İsim alanınıza mutlaka arama hacmi yüksek anahtar kelimeleri ekleyin.",
@@ -1412,6 +1433,8 @@ export const BLOG_POSTS: BlogPost[] = [
       "Viral Büyüme"
     ],
     "excerpt": "Hook, retention, storytelling, CTA, seri içerikler ve viral görüntülenmenin gerçek marka büyümesinden farkı. Başparmakları durduran kısa video mimarisi.",
+    "question": "Instagram Reels algoritmasında keşfete nasıl düşülür?",
+    "shortAnswer": "Reels başarısının %80'i ilk 3 saniyedeki görsel ve metinsel kancaya (hook) bağlıdır. Videonun tam izlenme oranı %70'in üzerine çıktığında algoritma içeriği otomatik olarak keşfete taşır.",
     "sections": [
       {
         "id": "reels-3-saniye-kurali",
@@ -1420,7 +1443,7 @@ export const BLOG_POSTS: BlogPost[] = [
           "Kullanıcılar Reels akışını kaydırırken her videoya dikkatlerini verip vermeyeceklerine ilk 1.5 ila 3 saniye arasında karar verirler. Bu ilk karelerde gözü ve zihni yakalayamazsanız; videonuzun geri kalanı dünyanın en harika içeriği olsa bile kimse onu izlemeyecektir.",
           "Kötü bir giriş örneği: 'Merhaba arkadaşlar, bugün sizlere sosyal medya yönetimi hakkında harika ipuçları vereceğim...' (Kullanıcı bu cümleyi bitirmeden videoyu kaydırdı bile).",
           "Güçlü bir kanca örneği: 'Markaların %90'ının sosyal medyada batmasının asıl sebebi bu hata...' veya 'Eğer bir e-ticaret siteniz varsa bu ayarı derhal kapatın.'",
-          "Güçlü kancalar beyinde 'Merak Boşluğu' (Curiosity Gap) yaratır. Beyin açılan bu sorunun cevabını almadan rahat edemez ve videoda kalır."
+          "Güçlü kancalar beyinde 'Merak Boşluğu' (Curiosity Gap) yaratır. Beyin açılan bu sorunun cevabını almadan rahat edemez ve videoda kalır. En etkili video başlıkları için [Sosyal Medya Kancası Örnekleri](/blog/sosyal-medya-kancasi-hook-ornekleri) rehberimize göz atabilirsiniz."
         ],
         "callout": {
           "type": "takeaway",
@@ -1469,7 +1492,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "title": "4. Seri İçeriklerin Gücü: 'Takip Et' Direncini Kırmak",
         "paragraphs": [
           "Kullanıcı tek bir videonuzu beğendiğinde genellikle sadece beğenir ve geçer; takip etmez. Ancak videonuzun başında 'Marka Büyütme Serimizin 3. Bölümü' ifadesini duyarsa ve sağ köşede 'Bölüm 3/10' görürse; zihninde önceki ve sonraki bölümleri kaçırmama dürtüsü (FOMO) uyanır.",
-          "Her zaman tematik seriler üretin: 'Sıfırdan E-Ticaret Günlükleri', 'Bunu Yapmayın Serisi', 'Haftanın AI Aracı' gibi kalıcı konseptler sadık bir kitle inşa etmenin en hızlı kestirmesidir."
+          "Her zaman tematik seriler üretin: 'Sıfırdan E-Ticaret Günlükleri', 'Bunu Yapmayın Serisi', 'Haftanın AI Aracı' gibi kalıcı konseptler sadık bir kitle inşa etmenin en hızlı kestirmesidir. Video içeriklerinizi [Instagram Marketing Rehberi](/blog/instagram-marketing-rehberi-2026) takviminizle uyumlu yönetmek için [Tentamark Platformunu](/platformlar) hemen deneyebilirsiniz."
         ],
         "keyPoints": [
           "İlk 1 saniyede ekranda mutlaka büyük ve kontrastlı bir başlık olsun.",
@@ -1527,13 +1550,15 @@ export const BLOG_POSTS: BlogPost[] = [
       "Yaratıcılık"
     ],
     "excerpt": "Eğitim, hikaye, ürün, sosyal kanıt, kurucu, sahne arkası, topluluk ve eğlence kategorilerinde 50 uygulanabilir konsept. Asla içeriksiz kalmamanın formülü.",
+    "question": "İşletmeler için Instagram'da ne paylaşılmalı?",
+    "shortAnswer": "İşletmeler; kamera arkası hazırlık süreçlerini, müşteri problem-çözüm hikayelerini, sektör mitlerini yıkan rehberleri ve ürünün hayatı nasıl kolaylaştırdığını gösteren kısa videoları düzenli olarak paylaşmalıdır.",
     "sections": [
       {
         "id": "fikir-sistematigi",
         "title": "1. İçerik Üretiminde İlham Değil Sistem Kazanır",
         "paragraphs": [
           "Yaratıcılık havadan inen bir peri değildir; kanıtlanmış zihinsel çerçevelerin birleştirilmesidir. Dünyanın en büyük ajansları ve en üretken içerik üreticileri her gün sıfırdan fikir aramaz; ellerindeki kategori şablonlarını kendi markalarının güncel durumuna uyarlarlar.",
-          "Aşağıda markanızın sosyal medya takvimini aylarca dolduracak 8 stratejik kategori ve bu kategorilerin altındaki 50 somut içerik fikrini bulacaksınız. Bu listeyi yer imlerinize ekleyin ve içerik tıkandığınız her an başvurun."
+          "Aşağıda markanızın sosyal medya takvimini aylarca dolduracak 8 stratejik kategori ve 50 somut içerik fikrini bulacaksınız. Bu fikirleri sistemleştirmek için [Sosyal Medya İçerik Takvimi Hazırlama Rehberi](/blog/sosyal-medya-icerik-takvimi-nasil-hazirlanir) metodolojimizi uygulayabilirsiniz."
         ],
         "image": {
           "url": "/blog/14/Creating_content_in_a_studio_20260917185432.jpeg",
@@ -1630,7 +1655,7 @@ export const BLOG_POSTS: BlogPost[] = [
           "Her hafta bu 50 fikirden 4 tanesini seçip takviminize yerleştirin.",
           "Aynı fikri 3 ay sonra farklı bir görsel ve örnekle yeniden paylaşabilirsiniz.",
           "Tutulan fikirlerin alt serilerini üreterek başarıyı çoğaltın.",
-          "Tentamark, bu 50 fikri markanızın DNA'sına göre otomatik olarak özelleştirir."
+          "[Tentamark Otonom Pazarlama](/neden-tentamark), bu 50 fikri markanızın [Marka DNA'sına](/blog/marka-dna-nedir-nasil-olusturulur) göre saniyeler içinde özelleştirip görselleriyle birlikte yayına hazır hale getirir."
         ]
       }
     ],
@@ -1682,6 +1707,8 @@ export const BLOG_POSTS: BlogPost[] = [
       "Dönüşüm"
     ],
     "excerpt": "Reach, retention, saves, shares, profile visits, CTR, leads ve conversion. Gösteriş metrikleri ile ticari büyüme metrikleri arasındaki uçurum ve haftalık analitik rutini.",
+    "question": "Instagram algoritmasında hangi metrikler en önemlidir?",
+    "shortAnswer": "2026 Instagram algoritmasının öncelik sıralaması: 1. DM ile Paylaşım (Share), 2. Kaydetme (Save), 3. Nitelikli Yorum (Comment) ve 4. Ortalama İzlenme Süresidir. Beğeni en düşük ağırlıklı metriktir.",
     "sections": [
       {
         "id": "vanity-vs-business-ayrimi",
@@ -1689,7 +1716,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "paragraphs": [
           "Sosyal medya yöneticilerinin sunduğu raporlarda genellikle şu cümleleri duyarsınız: 'Bu ay 50.000 beğeni aldık ve takipçi sayımız %20 arttı!' Ancak şirket sahibinin ilk sorusu şudur: 'Peki kasaya kaç lira girdi?'",
           "Beğeni (Like) ve Takipçi Sayısı birer 'Vanity Metric'tir (Gösteriş Metriği). İnsanın egosunu okşar, şirket içi sunumlarda renkli grafikler oluşturur; ancak kiranızı veya maaşlarınızı ödemez.",
-          "Buna karşılık 'Business Metrics' (İş Metrikleri); web sitesi ziyareti, nitelikli lead sayısı, müşteri edinme maliyeti (CAC) ve doğrudan gelire dönüşen eylemlerdir. Sosyal medyanız bu metrikleri beslemiyorsa, sadece pahalı bir hobi işletiyorsunuz demektir."
+          "Buna karşılık 'Business Metrics' (İş Metrikleri); web sitesi ziyareti, nitelikli lead sayısı, müşteri edinme maliyeti (CAC) ve doğrudan gelire dönüşen eylemlerdir. Bu metrikleri katlamak için [Sosyal Medyada Organik Etkileşim Artırma](/blog/sosyal-medyada-etkilesim-artirma-yollari) taktiklerimizi devreye alabilirsiniz."
         ],
         "image": {
           "url": "/blog/15/Business_owner_analyzing_analytics_20260917185542.jpeg",
@@ -1734,7 +1761,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "title": "4. Veriyi Eyleme Dönüştürmek: Haftalık Optimizasyon",
         "paragraphs": [
           "Ölçmek tek başına hiçbir şeyi değiştirmez; önemli olan veriye göre kararlar almaktır. Eğer bir formatınız yüksek paylaşım alıyorsa, haftaya o formatın ikinci bölümünü çekin. Eğer bir gönderiniz çok erişim alıp sıfır profil ziyareti ürettiyse, kancanızı değil ama eyleme çağrı (CTA) cümlenizi sorgulayın.",
-          "Tentamark Analytics paneli, bu metrikleri ham sayılar olarak değil; doğrudan uygulanabilir stratejik öneriler olarak sunar: 'Bu hafta Carousel formatınız Reels'ten %40 daha fazla dönüşüm sağladı, gelecek takvimde Carousel ağırlığını artırıyoruz.'"
+          "[Tentamark Analitik Paneli](/neden-tentamark), bu metrikleri ham sayılar olarak değil; doğrudan uygulanabilir stratejik öneriler olarak sunar: 'Bu hafta Carousel formatınız Reels'ten %40 daha fazla dönüşüm sağladı, gelecek takvimde Carousel ağırlığını artırıyoruz.' Siz de veriye dayalı büyümek için [Tentamark'a kaydolun](/register)."
         ],
         "keyPoints": [
           "Raporlarınızdan beğeni sayılarını ikinci plana atın; kaydetme ve paylaşımları öne koyun.",
@@ -1792,6 +1819,8 @@ export const BLOG_POSTS: BlogPost[] = [
       "TikTok SEO"
     ],
     "excerpt": "Discovery, hooks, trends, creator-native content, UGC, storytelling, conversion ve analytics. 'Don't Make Ads, Make TikToks' felsefesini karlı bir müşteri kazanım kanalına dönüştürme rehberi.",
+    "question": "TikTok'ta markalar nasıl organik müşteri kazanır?",
+    "shortAnswer": "TikTok'ta organik müşteri kazanımı; aşırı prodüksiyonlu reklamlar yerine doğal ışıkla çekilmiş kurucu ve UGC videoları, merak uyandıran kancalar ve yorumları video ile yanıtlama stratejisiyle sağlanır.",
     "sections": [
       {
         "id": "tiktok-ilgi-grafigi",
@@ -1812,7 +1841,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "title": "2. 'Don't Make Ads, Make TikToks' Ne Anlama Gelir?",
         "paragraphs": [
           "TikTok'un resmi sloganı olan 'Don't Make Ads, Make TikToks' (Reklam Yapmayın, TikTok Üretin), platformun ruhunu özetler. Televizyon reklamı gibi kokan, aşırı stüdyo ışıklı, profesyonel mankenlerin rol kestiği reklamlar TikTok kullanıcıları tarafından 0.5 saniyede tespit edilir ve aşağı kaydırılır.",
-          "TikTok'ta kazanan estetik 'Lo-Fi' ve 'Creator-Native' estetiktir. Doğal ışıkla bir iPhone kamerasından çekilmiş, fonda hafif ofis sesleri olan, konuşanın doğrudan kameranın gözünün içine baktığı samimi videolar; milyon liralık prodüksiyonları her zaman ezer geçer.",
+          "TikTok'ta kazanan estetik 'Lo-Fi' ve 'Creator-Native' estetiktir. Doğal ışıkla bir iPhone kamerasından çekilmiş, fonda hafif ofis sesleri olan, konuşanın doğrudan kameranın gözünün içine baktığı samimi videolar; milyon liralık prodüksiyonları her zaman ezer geçer. İlk saniyede dikkat çekmek için [Sosyal Medya Kancası Örnekleri](/blog/sosyal-medya-kancasi-hook-ornekleri) taktiklerini kullanabilirsiniz.",
           "Kullanıcı burada bir şirketle değil, şirketin içindeki gerçek bir insanla sohbet etmek ister."
         ],
         "callout": {
@@ -1847,7 +1876,7 @@ export const BLOG_POSTS: BlogPost[] = [
           "TikTok trafiğini web sitenize akıtmak için şu 3 köprüyü kurun:",
           "1. Merak Kurgulu Biyo Linki: Videonun sonunda 'Şablonu profilimdeki linke bıraktım' veya 'Test sonuçları profil linkinde' diyerek güçlü bir sebep verin.",
           "2. Yorumları Sabitleme ve Video Yanıtları: En çok soru sorulan yorumu alıp ona yeni bir video ile yanıt verin. Bu, kullanıcıların soru sorma motivasyonunu artırır.",
-          "3. TikTok Shop ve Doğrudan Entegrasyonlar: E-ticaret yapıyorsanız ürünlerinizi doğrudan video içine etiketleyerek kullanıcının uygulamadan çıkmadan satın almasını sağlayın."
+          "3. TikTok Shop ve Doğrudan Entegrasyonlar: E-ticaret yapıyorsanız ürünlerinizi doğrudan video içine etiketleyerek kullanıcının uygulamadan çıkmadan satın almasını sağlayın. Çok kanallı içerik üretimi için [Tentamark Platformunu](/platformlar) hemen test edin."
         ],
         "keyPoints": [
           "Pahalı stüdyo ekipmanlarını unutun; sadece iyi ışık alan bir pencere ve telefon mikrofonu kullanın.",
@@ -1911,13 +1940,15 @@ export const BLOG_POSTS: BlogPost[] = [
       "UGC Konseptleri"
     ],
     "excerpt": "Kurucu, eğitim, ürün testi, müşteri tepkisi, sahne arkası, mit çürütme ve trend adaptasyonları. Kamera karşısında donup kalmayı engelleyen 30 net senaryo taslağı.",
+    "question": "TikTok için en etkili video senaryoları nelerdir?",
+    "shortAnswer": "TikTok için en yüksek etkileşimli video senaryoları; dürüst kurucu hikayeleri, sektördeki yaygın mitleri çürüten dayanıklılık testleri ve müşterilerden gelen sorulara verilen samimi video yanıtlarıdır.",
     "sections": [
       {
         "id": "tiktok-senaryo-mantigi",
         "title": "1. Bir TikTok Senaryosu Nasıl Yazılır?",
         "paragraphs": [
           "TikTok videosu çekmek uzun tiyatro metinleri ezberlemek değildir. İyi bir TikTok senaryosu 3 yapı taşından oluşur: 1. Kanca (0-3 sn: Merak uyandıran başlık ve hareket), 2. Gövde (3-25 sn: Hızlı, kesintisiz ve dinamik bilgi/hikaye akışı), 3. Çağrı (25-30 sn: Yorum yapmaya veya profile bakmaya yönlendiren kapanış).",
-          "Aşağıda markanız için hemen yarın çekebileceğiniz, denenmiş ve algoritma dostu 30 spesifik video konseptini bulacaksınız."
+          "Aşağıda markanız için hemen yarın çekebileceğiniz, denenmiş ve algoritma dostu 30 spesifik video konseptini bulacaksınız. Platform dinamiklerini öğrenmek için [TikTok Marketing Rehberi](/blog/tiktok-marketing-rehberi-2026) makalemizi de inceleyebilirsiniz."
         ],
         "image": {
           "url": "/blog/17/Four_creator_scenarios_in_collage_20260917190114.jpeg",
@@ -1986,7 +2017,7 @@ export const BLOG_POSTS: BlogPost[] = [
           "Videoları çekerken mükemmel cümleler kurmaya çalışmayın, takılmalarınızı kesmeyin.",
           "Günde en az 1 video paylaşarak algoritmanın sizi tanımasını hızlandırın.",
           "Tutan videolarınızın yorumlarındaki soruları yeni video konusu yapın.",
-          "Tentamark, bu 30 senaryoyu her ay sektörünüze göre güncellenmiş hazır taslaklar olarak sunar."
+          "[Tentamark Otonom Pazarlama](/neden-tentamark), bu 30 senaryoyu her ay [Sosyal Medya İçerik Takviminize](/blog/sosyal-medya-icerik-takvimi-nasil-hazirlanir) uygun hazır taslaklar olarak sunar."
         ]
       }
     ],
@@ -2039,6 +2070,8 @@ export const BLOG_POSTS: BlogPost[] = [
     ],
     "featured": true,
     "excerpt": "Thought leadership, founder content, company content, networking, case studies, comments ve B2B lead generation. LinkedIn'i CV bankasından dev bir B2B ciro motoruna dönüştürmenin eksiksiz stratejisi.",
+    "question": "LinkedIn'de B2B potansiyel müşteri (lead) nasıl toplanır?",
+    "shortAnswer": "LinkedIn'de B2B lead toplamak; kurucunun kişisel profilinden vaka analizleri ve PDF carousel kılavuzları paylaşarak yorumlarda ücretsiz kaynak teklif etmek ve bu etkileşimi sıcak DM sohbetine dönüştürmekle yapılır.",
     "sections": [
       {
         "id": "linkedin-paradigma-degisimi",
@@ -2059,7 +2092,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "title": "2. Şirket Sayfası vs Kurucu Profili: İnsanlar İnsanları Takip Eder",
         "paragraphs": [
           "Yapılan tüm araştırmalar şirket logolu kurumsal sayfaların, insan yüzlü kişisel profillere kıyasla ortalama 8 ila 10 kat daha az organik erişim aldığını göstermektedir. İnsanlar logolarla değil, etten ve kemikten diğer insanlarla bağ kurmak ister.",
-          "Bu sebeple B2B şirketlerin birincil pazarlama stratejisi 'Kurucu ve Lider Odaklı İçerik' (Founder-Led Content) olmalıdır. Şirketin kurucuları, ürün yöneticileri veya pazarlama liderleri kendi profillerinden sektörel dersler, vaka analizleri ve vizyon paylaşımları yapmalıdır.",
+          "Bu sebeple B2B şirketlerin birincil pazarlama stratejisi [Founder-Led Marketing Rehberi](/blog/founder-led-marketing-kurucu-markasi-nasil-yapilir) ile kurucu odaklı içerik olmalıdır. Şirketin kurucuları, ürün yöneticileri veya pazarlama liderleri kendi profillerinden sektörel dersler, vaka analizleri ve vizyon paylaşımları yapmalıdır.",
           "Şirket sayfası ise bu kişisel içeriklerin arkasında resmi doğrulama, iş ilanları ve resmi basın duyurularının yapıldığı güvenli bir merkez üs olarak konumlandırılmalıdır."
         ],
         "callout": {
@@ -2079,7 +2112,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "paragraphs": [
           "1. Sayılarla Vaka Analizi (Case Study): 'X müşterimiz 90 günde churn oranını %14'ten %3'e nasıl indirdi? İşte adım adım uyguladığımız 4 strateji.' (Veri odaklı, kanıtlanmış başarı hikayeleri karar vericileri anında yakalar).",
           "2. Karşıt Görüş (Contrarian Take): Sektördeki herkesin doğru kabul ettiği bir klişeye saygılı ama cesurca meydan okumak. 'Neden soğuk e-posta pazarlaması 2026'da ölü bir stratejidir?' gibi yazılar devasa tartışmalar başlatır.",
-          "3. Belge / PDF Carousel Paylaşımları: 10-15 sayfalık özet sektörel kılavuzlar, kontrol listeleri ve infografikler. En yüksek kaydetme ve indirme oranını sağlar.",
+          "3. Belge / PDF Carousel Paylaşımları: 10-15 sayfalık özet sektörel kılavuzlar, kontrol listeleri ve infografikler. [B2B LinkedIn İçerik Stratejisi](/blog/b2b-linkedin-icerik-stratejisi) yazımızda vurguladığımız gibi en yüksek kaydetme ve indirme oranını sağlar.",
           "4. Kurucu Dersi ve Öğrenilen Hatalar: 'İlk girişimimde 150.000 dolar batırmama sebep olan 3 ortaklık hatası.' Savunmasız ve dürüst paylaşımlar derin bir saygı ve güven inşa eder."
         ],
         "image": {
@@ -2094,7 +2127,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "paragraphs": [
           "LinkedIn'de sadece alkış almak yeterli değildir; bu etkileşimi nitelikli satış toplantılarına (demo call) dönüştürmek gerekir.",
           "Yorumlarda Değer Verme Taktiği: Gönderinizin sonunda 'Bu stratejiyi adım adım uyguladığımız Notion şablonunu hazırladım. Yorumlara ŞABLON yazanlara DM'den gönderiyorum' deyin. Yorum yapan her profil sizin için sıcak bir potansiyel müşteridir.",
-          "Sıcak DM Mesajı: Şablonu gönderirken asla doğrudan satış yapmayın. 'Merhaba Ahmet Bey, şablonu buraya bıraktım. Sizin şirkette şu an içerik süreçleri nasıl ilerliyor, en çok nerede zorlanıyorsunuz?' diyerek doğal bir danışmanlık sohbeti başlatın."
+          "Sıcak DM Mesajı: Şablonu gönderirken asla doğrudan satış yapmayın. 'Merhaba Ahmet Bey, şablonu buraya bıraktım. Sizin şirkette şu an içerik süreçleri nasıl ilerliyor, en çok nerede zorlanıyorsunuz?' diyerek doğal bir danışmanlık sohbeti başlatın. [Tentamark B2B Otomasyonu](/neden-tentamark) ile tüm bu süreçleri kolayca yönetebilirsiniz."
         ],
         "keyPoints": [
           "Haftada en az 3, ideal olarak 5 derinlikli metin veya carousel paylaşımı yapın.",
@@ -2153,6 +2186,8 @@ export const BLOG_POSTS: BlogPost[] = [
       "Startup Büyümesi"
     ],
     "excerpt": "Kurucunun şirketin görünür insan yüzü olması, uzmanlığını paylaşması, hikâye anlatması, güven oluşturması ve bunun şirket markasına aktarılması. Sıfır bütçeyle organik müşteri çekmenin formülü.",
+    "question": "Founder-Led Marketing (Kurucu Odaklı Pazarlama) nedir?",
+    "shortAnswer": "Founder-Led Marketing, şirket kurucusunun kişisel uzmanlığını, inşa sürecini ve sektör vizyonunu şeffafça paylaşarak şirketin en güçlü organik müşteri kazanım ve güven motoru haline gelmesidir.",
     "sections": [
       {
         "id": "founder-led-nedir",
@@ -2160,7 +2195,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "paragraphs": [
           "Geleneksel pazarlama anlayışında kurucular sahne arkasında oturur; şirket markası ise ajansların hazırladığı soğuk reklam kampanyalarıyla pazarda görünürlük arardı. Ancak kurumsal reklamların güvenilirliğini yitirdiği günümüz dünyasında bu model çökmüştür.",
           "Founder-Led Marketing (Kurucu Odaklı Pazarlama), şirketin kurucusunun bizzat sahaya çıkıp markanın en görünür, en ses getiren ve en güvenilir yüzü olması stratejisidir. Elon Musk'ın Tesla'dan, Steve Jobs'ın Apple'dan veya Brian Chesky'nin Airbnb'den daha çok konuşulması tesadüf değildir.",
-          "Erken aşama girişimler ve büyüyen KOBİ'ler için kurucu pazarlaması, milyon liralık reklam bütçelerine sahip dev rakipleri alt etmenin tek asimetrik avantajıdır."
+          "Erken aşama girişimler ve büyüyen KOBİ'ler için kurucu pazarlaması, milyon liralık reklam bütçelerine sahip dev rakipleri alt etmenin tek asimetrik avantajıdır. Bu yaklaşımı uygulamak için [Kurucu Markası İnşa Etme Rehberi](/blog/founder-led-marketing-kurucu-markasi-nasil-yapilir) adımlarını izleyebilirsiniz."
         ],
         "image": {
           "url": "/blog/19/Founder_speaking_at_community_event_20260917191155.jpeg",
@@ -2208,7 +2243,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "paragraphs": [
           "Pek çok kurucunun en büyük itirazı şudur: 'Ben kod yazıyorum, satış yapıyorum, operasyonla uğraşıyorum; her gün sosyal medyada içerik yazmaya nasıl vakit bulayım?'",
           "Çözüm saatlerce klavye başında oturmak değil; 'Düşünce İndirme' (Brain Dump) modelini kullanmaktır. Kurucu haftada sadece 20 dakika ses kaydı alır; karşılaştığı bir problemi veya müşteriyle yaptığı bir konuşmayı anlatır.",
-          "Tentamark, kurucunun bu ses kayıtlarını ve ham düşüncelerini analiz eder; markanın Brand DNA'sı ile harmanlayarak LinkedIn makalelerine, X flood'larına ve video senaryolarına dönüştürür. Kurucu yalnızca 5 dakikasını ayırıp içerikleri onaylar."
+          "Tentamark, kurucunun bu ses kayıtlarını ve ham düşüncelerini analiz eder; markanın [Marka DNA'sı](/blog/marka-dna-nedir-nasil-olusturulur) ile harmanlayarak LinkedIn makalelerine, X flood'larına ve video senaryolarına dönüştürür. Kurucu yalnızca 5 dakikasını ayırıp içerikleri onaylar. Siz de [Tentamark'ı Ücretsiz Deneyin](/register)."
         ],
         "keyPoints": [
           "Kişisel hesabınızı sadece profesyonel bir bülten değil, sahici bir yolculuk günlüğü yapın.",
@@ -2267,6 +2302,8 @@ export const BLOG_POSTS: BlogPost[] = [
       "Şeffaflık"
     ],
     "excerpt": "Ürününüzü kapalı kapılar ardında değil, tüm dünyanın gözü önünde geliştirin. İlk günden sadık bir topluluk, erken müşteri tabanı ve organik virallik yakalamanın yol haritası.",
+    "question": "Build in Public (Açıkta İnşa Etmek) nedir ve markaya ne kazandırır?",
+    "shortAnswer": "Build in Public, bir ürünün fikir aşamasından lansmana kadar tüm zorluklarını, gelir metriklerini ve gelişim sürecini açıkça paylaşarak ilk günden sadık bir müşteri ve savunucu topluluğu oluşturma stratejisidir.",
     "sections": [
       {
         "id": "build-in-public-felsefesi",
@@ -2274,7 +2311,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "paragraphs": [
           "Eski girişimcilik dünyası gizlilik takıntılıydı. Girişimciler fikirlerinin çalınacağı korkusuyla gizlilik sözleşmeleri (NDA) imzalatır, bodrum katlarında aylarca kimseye göstermeden ürün geliştirir ve büyük bir lansman günü hayal ederlerdi. Sonuç genellikle hazindi: Kimsenin istemediği bir ürün ve sessizlik.",
           "Build in Public hareketi bu eski paradigmayı çöpe atmıştır. Bu felsefede kurucu, fikrin ilk gününden itibaren tüm süreci — ilk eskizleri, kodlama zorluklarını, gelir tablolarını, başarısızlıkları ve kullanıcı geri bildirimlerini — sosyal medyada şeffafça paylaşır.",
-          "Ürün piyasaya çıktığı gün sıfır müşteriye değil; süreci aylardır heyecanla izleyen, kendisini o ürünün bir parçası hisseden binlerce kişilik hazır ve sadık bir kitleye açılır."
+          "Ürün piyasaya çıktığı gün sıfır müşteriye değil; süreci aylardır heyecanla izleyen, kendisini o ürünün bir parçası hisseden binlerce kişilik hazır ve sadık bir kitleye açılır. Bu süreç [0'dan Marka Oluşturma](/blog/0dan-marka-olusturmak-ilk-100-musteri) yolculuğunun en büyük hızlandırıcısıdır."
         ],
         "image": {
           "url": "/blog/20/Founder_reviewing_project_timeline_20260917191513.jpeg",
@@ -2322,7 +2359,7 @@ export const BLOG_POSTS: BlogPost[] = [
           "Adım 1: Platformunuzu Seçin. Yazılım, AI ve B2B için X (Twitter) ve LinkedIn; fiziksel ürünler ve tasarım için Instagram ve TikTok en ideal sahnelerdir.",
           "Adım 2: İlk 'Gün 1' Gönderinizi Atın. 'Bugün X problemini çözmek için yola çıkıyoruz. İşte hedefimiz ve ilk tasarım taslağımız. Süreci buradan canlı paylaşacağım.'",
           "Adım 3: Haftalık Ritim Kurun. Her Cuma o hafta neyin iyi gittiğini, neyin battığını ve gelecek hafta ne yapılacağını özetleyen 1 dürüst güncelleme yayınlayın.",
-          "Adım 4: Toplulukla Sohbet Edin. Gelen önerileri ciddiye alın; 'Gelen yorum üzerine bu butonu değiştirdik' diyerek kullanıcıları ürünün ortak yaratıcısı (co-creator) yapın."
+          "Adım 4: Toplulukla Sohbet Edin. Gelen önerileri ciddiye alın; 'Gelen yorum üzerine bu butonu değiştirdik' diyerek kullanıcıları ürünün ortak yaratıcısı (co-creator) yapın. Siz de büyümenizi hızlandırmak için [Neden Tentamark?](/neden-tentamark) sayfamızı inceleyip [kaydolabilirsiniz](/register)."
         ],
         "keyPoints": [
           "Sadece başarıları değil, aldığınız 'Hayır' cevaplarını da paylaşın.",
@@ -2381,6 +2418,8 @@ export const BLOG_POSTS: BlogPost[] = [
       "Topluluk"
     ],
     "excerpt": "Broadcast etmek yerine conversation, reply strategy, short-form thought leadership, community ve gerçek zamanlı iletişim. X algoritmasını fethetmenin ve sektörünüzde kanaat önderi olmanın rehberi.",
+    "question": "X'te (Twitter) organik takipçi ve müşteri nasıl kazanılır?",
+    "shortAnswer": "X'te organik büyüme; tek taraflı duyurular yerine sektör liderlerinin gönderilerine ilk 15 dakikada değer katan analitik yanıtlar yazmak ve haftalık derinlikli flood zincirleri paylaşmakla elde edilir.",
     "sections": [
       {
         "id": "x-ekosistemi-farki",
@@ -2397,7 +2436,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "paragraphs": [
           "Sıfır takipçili bir hesapla kendi sayfanıza ne kadar parlak tweetler atarsanız atın, kimse görmez. X'te büyümenin ilk 90 günündeki en büyük kaldıracı 'Kendi Akışınız' değil; 'Başkalarının Yanıtlar Bölümü'dür.",
           "Sektörünüzde 50.000+ takipçisi olan 20 büyük kanaat önderini ve markayı bir listeye alın. Bildirimlerini açın. Bu hesaplar bir tweet attığında ilk 15 dakika içinde altına 'Çok güzel' gibi boş bir cümle değil; 3 cümlelik derinlemesine bir analiz, vaka örneği veya ufuk açıcı bir katkı bırakın.",
-          "O tweet'i okuyan on binlerce insan sizin zekice yanıtınızı görür, profilinize tıklar ve takip eder. Günde 10 kaliteli yanıt yazmak, günde 10 bağımsız tweet atmaktan 20 kat daha hızlı takipçi kazandırır."
+          "O tweet'i okuyan on binlerce insan sizin zekice yanıtınızı görür, profilinize tıklar ve takip eder. Günde 10 kaliteli yanıt yazmak, günde 10 bağımsız tweet atmaktan 20 kat daha hızlı takipçi kazandırır. Bu yöntem [Sosyal Medyada Etkileşim Artırma](/blog/sosyal-medyada-etkilesim-artirma-yollari) stratejisinin X'teki en güçlü ayağıdır."
         ],
         "callout": {
           "type": "tip",
@@ -2420,7 +2459,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "paragraphs": [
           "Müşteriler bir sorun yaşadığında e-posta atmak yerine doğrudan X'te markayı etiketleyerek seslerini duyururlar. Bu anlar bir kriz değil; markanızın ne kadar çözüm odaklı olduğunu tüm dünyaya gösterebileceğiniz bir vitrindir.",
           "Şikayet tweetlerine 5 dakika içinde samimi, kurumsal robotluktan uzak ve çözüm sunan bir yanıt vermek; o müşteriyi sadık bir marka elçisine dönüştürür.",
-          "Tentamark, X'teki marka mention'larınızı ve sektör trendlerinizi anlık olarak tarar; hangi tartışmalara ne zaman dahil olmanız gerektiğini stratejik olarak önerir."
+          "[Tentamark Otonom Sosyal Medya Yönetimi](/neden-tentamark), X'teki marka mention'larınızı ve sektör trendlerinizi anlık olarak tarar; hangi tartışmalara ne zaman dahil olmanız gerektiğini stratejik olarak önerir."
         ],
         "keyPoints": [
           "Tweetlerinizin içine doğrudan harici link gömmeyin; linki daima ilk yanıta bırakın.",
@@ -2477,6 +2516,8 @@ export const BLOG_POSTS: BlogPost[] = [
     ],
     "featured": true,
     "excerpt": "Research, competitor analysis, audience intelligence, strategy, content creation, personalization, automation ve analytics. Yapay zekayı bir içerik asistanından öteye taşıyıp tam teşekküllü bir pazarlama makinesine dönüştürmenin 360 derece rehberi.",
+    "question": "AI Marketing (Yapay Zeka Pazarlaması) 2026'da nedir ve nasıl çalışır?",
+    "shortAnswer": "AI Marketing; basit metin üretiminin ötesinde, pazar istihbaratı, marka DNA'sına uygun strateji kurgusu, çok kanallı görsel/video üretimi ve otonom performans optimizasyonunu tek elden yöneten uçtan uca pazarlama orkestrasyonudur.",
     "sections": [
       {
         "id": "ai-marketing-tanimi-2026",
@@ -2498,7 +2539,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "paragraphs": [
           "1. Derinlemesine Pazar ve Rakip İstihbaratı: Rakiplerin yayınladığı her gönderiyi, aldığı etkileşimleri, reklam harcamalarını ve müşteri şikayetlerini gerçek zamanlı tarayarak açıkta kalan pazar fırsatlarını tespit etmek.",
           "2. Hedef Kitle ve Niyet Modellemesi (Intent Modeling): Kullanıcıların arama davranışlarını ve sosyal medya sinyallerini birleştirerek kimin satın almaya hazır olduğunu tahmin etmek.",
-          "3. Marka DNA'sına Sadık İçerik Üretimi: Markanın renk paletini, tipografisini, ses tonunu ve yasaklı kelimelerini bilen sistemlerin tek bir üslup sapması olmadan çok kanallı içerik üretmesi.",
+          "3. Marka DNA'sına Sadık İçerik Üretimi: Markanın renk paletini, tipografisini, ses tonunu ve yasaklı kelimelerini bilen sistemlerin tek bir üslup sapması olmadan çok kanallı içerik üretmesi. Bu sistemin detaylarını [Marka DNA'sı Nedir?](/blog/marka-dna-nedir-nasil-olusturulur) rehberimizde bulabilirsiniz.",
           "4. Hiper-Kişiselleştirme (Hyper-Personalization): Farklı kitle segmentlerine ve müşteri yolculuğu aşamalarına göre özelleştirilmiş yüzlerce dinamik reklam ve bülten varyasyonunun anında oluşturulması.",
           "5. Otonom Yayınlama ve Dinamik Zamanlama: Algoritmaların en yoğun olduğu saatleri mikro saniyeler düzeyinde tahmin ederek içeriği en yüksek erişim anında paylaşmak.",
           "6. Tahmine Dayalı Analitik ve Otomatik Düzeltme: Hangi kancanın tutmadığını anlayıp bir sonraki hafta için stratejiyi insan müdahalesi olmadan optimize eden kapalı devre sistemler."
@@ -2520,7 +2561,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "paragraphs": [
           "Yapay zekanın tüm bu gücüne rağmen 'tamamen otopilot' bir pazarlama insan ruhundan yoksun kalabilir. En yüksek başarıyı yakalayan şirketler 'İnsan Döngüde' (Human-in-the-Loop) hibrit modelini uygulayanlardır.",
           "Yapay zeka veriyi toplar, stratejik kurguyu yapar, varyasyonları hazırlar ve takvimi kurar. İnsan lider ise stratejik vizyonu, nihai marka onayını, gerçek duygusal empatiyi ve beklenmedik kriz yönetimini üstlenir.",
-          "Tentamark tam olarak bu felsefeyle tasarlanmıştır: AI ağır işçiliği ve analitiği sırtlar; kurucu veya pazarlamacı ise tek tıkla 'Onayla' veya 'Revize Et' diyerek direksiyonu daima elinde tutar."
+          "Tentamark tam olarak bu felsefeyle tasarlanmıştır: AI ağır işçiliği ve analitiği sırtlar; kurucu veya pazarlamacı ise tek tıkla 'Onayla' veya 'Revize Et' diyerek direksiyonu daima elinde tutar. Daha fazlası için [Yapay Zeka ile Sosyal Medya Yönetimi](/blog/yapay-zeka-ile-sosyal-medya-yonetimi) yazımızı okuyabilirsiniz."
         ],
         "image": {
           "url": "/blog/22/Marketing_team_reviewing_AI_data_20260917192013.jpeg",
@@ -2533,7 +2574,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "title": "4. Kendi İşletmenizde AI Marketing'i Devreye Alma Rehberi",
         "paragraphs": [
           "Adım 1: Marka Varlıklarınızı ve DNA'nızı Dijitalleştirin. Renkleriniz, değerleriniz, müşteri profilleriniz ve örnek başarılı içerikleriniz tek bir merkezde yapılandırılmış veri haline gelmelidir.",
-          "Adım 2: Parçalı Araçları Birleştirin. 10 farklı AI aracı arasında copy-paste yapmak yerine uçtan uca entegre bir platform (Tentamark gibi) seçin.",
+          "Adım 2: Parçalı Araçları Birleştirin. 10 farklı AI aracı arasında copy-paste yapmak yerine uçtan uca entegre bir platform ([Tentamark](/neden-tentamark) gibi) seçerek [ücretsiz başlayın](/register).",
           "Adım 3: 30 Günlük Pilot Döngü Başlatın. İlk 30 gün boyunca sistemin markanızı öğrenmesine izin verin ve performansı haftalık olarak inceleyin.",
           "Adım 4: Ekibinizi 'Üretici'den 'Yönetici'ye Dönüştürün. Ekip arkadaşlarınız saatlerce görsel çizmek yerine stratejik ortaklıklar kurmaya ve müşteri deneyimini mükemmelleştirmeye odaklansın."
         ],
@@ -2594,6 +2635,8 @@ export const BLOG_POSTS: BlogPost[] = [
       "Tentamark"
     ],
     "excerpt": "Scheduler → generator → manager evrimi. AI Marketing Manager'ın markayı anlaması, karar vermesi, stratejik içerik oluşturması, yayınlaması ve performanstan öğrenmesi.",
+    "question": "AI Marketing Manager nedir ve klasik zamanlayıcılardan (scheduler) farkı ne?",
+    "shortAnswer": "AI Marketing Manager; Buffer veya Hootsuite gibi sadece içerik saatini bekleyen ya da ChatGPT gibi bağlamsız metin üreten araçlardan farklı olarak, markanın DNA'sını öğrenen, stratejik içerik takvimi oluşturan ve performanstan öğrenerek kendini optimize eden otonom bir pazarlama beynidir.",
     "sections": [
       {
         "id": "uc-nesil-pazarlama-araclari",
@@ -2602,7 +2645,7 @@ export const BLOG_POSTS: BlogPost[] = [
           "Pazarlama teknolojilerinin tarihini 3 belirgin çağa ayırabiliriz:",
           "1. Nesil (Scheduler / Zamanlayıcılar - 2010'lar): Buffer, Hootsuite gibi araçlar. Bu araçların sıfır zekası vardı; tamamen mekanik birer takvim kutusuydu. İçeriği sizin yazmanız, görseli sizin bulmanız ve saate koymanız gerekirdi.",
           "2. Nesil (Generator / Üreteçler - 2023-2024): ChatGPT, Jasper gibi araçlar. Bir kutuya prompt yazardınız, o da size bir metin verirdi. Fakat markanızı tanımazdı, takviminizi bilmezdi, dün ne paylaştığınızdan habersizdi ve yayına alamazdı.",
-          "3. Nesil (Manager / Otonom Pazarlama Yöneticileri - 2026): Tentamark gibi otonom sistemler. Artık sadece istemlere yanıt vermez; markanın geçmişini, rakiplerini ve hedeflerini bilir. Kendi kendine düşünür, strateji önerir, takvimi doldurur, tasarlar, yayınlar ve sonuçtan ders çıkarır."
+          "3. Nesil (Manager / Otonom Pazarlama Yöneticileri - 2026): Tentamark gibi otonom sistemler. Artık sadece istemlere yanıt vermez; markanın geçmişini, rakiplerini ve hedeflerini bilir. [Otonom Pazarlama Nedir?](/blog/otonom-pazarlama-nedir-ai-pazarlama-yoneticisi) makalemizde aktardığımız gibi strateji önerir, takvimi doldurur, tasarlar, yayınlar ve sonuçtan ders çıkarır."
         ],
         "image": {
           "url": "/blog/23/Manager_comparing_social_perform…_20260917191644.jpeg",
@@ -2637,7 +2680,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "title": "3. KOBİ'ler ve Ajanslar İçin Asimetrik Güç",
         "paragraphs": [
           "Bir KOBİ için tam zamanlı bir pazarlama direktörü, bir metin yazarı, bir grafik tasarımcı ve bir sosyal medya yöneticisinden oluşan bir ekip kurmanın aylık maliyeti yüz binlerce lirayı bulur. Pek çok işletme bu bütçeyi karşılayamadığı için pazarlamayı amatörce yürütür.",
-          "AI Marketing Manager, bu 4 kişilik uzman ekibin iş yükünü tek bir platformda birleştirir. Ayda 40 saat süren içerik planlama ve operasyon yükünü 30 dakikaya indirir. Bu, küçük bir işletmenin sektörün dev sermayeli markalarıyla aynı içerik kalitesinde ve hızında rekabet edebilmesini sağlar."
+          "AI Marketing Manager, bu 4 kişilik uzman ekibin iş yükünü tek bir platformda birleştirir. Ayda 40 saat süren içerik planlama ve operasyon yükünü 30 dakikaya indirir. Bu konu hakkında [Butik Ajanslar İçin Sosyal Medya Otomasyonu](/blog/butik-ajanslar-icin-sosyal-medya-otomasyonu) rehberimiz derinlemesine bilgiler sunar."
         ]
       },
       {
@@ -2645,7 +2688,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "title": "4. Tentamark'ın Gelecek Vizyonu",
         "paragraphs": [
           "Tentamark, Türkiye'nin ve bölgenin ilk tam teşekküllü otonom AI Marketing Manager'ı olarak doğdu. Kullanıcısına sadece şık butonlar değil; sıfırdan pazar payı kazandıran stratejik bir zeka sunar.",
-          "Brand DNA'nızı bir kez tanımladıktan sonra sistem sizin yerinize sektör trendlerini koklar, haftalık planları dizer ve sosyal medyanızı öngörülebilir bir müşteri edinme makinesine dönüştürür."
+          "Brand DNA'nızı bir kez tanımladıktan sonra sistem sizin yerinize sektör trendlerini koklar, haftalık planları dizer ve sosyal medyanızı öngörülebilir bir müşteri edinme makinesine dönüştürür. Siz de [Neden Tentamark?](/neden-tentamark) sayfamızı inceleyip [hemen kaydolun](/register)."
         ],
         "keyPoints": [
           "Eski nesil zamanlayıcılara boşuna para ödemeyi bırakın.",
@@ -2703,13 +2746,15 @@ export const BLOG_POSTS: BlogPost[] = [
       "Girişimcilik"
     ],
     "excerpt": "ICP, problem, positioning, MVP, landing page, distribution, outreach, first customers, feedback ve iteration. İlk 100 müşteriyi edinmenin adım adım operasyonel rehberi.",
+    "question": "Sıfırdan bir marka için ilk 100 müşteri nasıl bulunur?",
+    "shortAnswer": "İlk 100 müşteri; pahalı reklamlar yerine aşırı dar bir ideal müşteri profili (ICP) belirleyerek birebir kişiselleştirilmiş doğrudan temas (outreach), topluluklarda uzmanlık paylaşımı ve ilk müşterilere radikal ilgi göstererek tavsiye döngüsü kurmakla kazanılır.",
     "sections": [
       {
         "id": "ilk-100-musteri-miti",
         "title": "1. İlk 100 Müşteri Neden En Zordur?",
         "paragraphs": [
           "Girişimcilikte sıfırdan 100 müşteriye ulaşmak, 100 müşteriden 1.000 müşteriye ulaşmaktan fersah fersah daha zordur. Çünkü sıfır noktasındayken elinizde hiçbir şey yoktur: Marka bilinirliğiniz sıfırdır, sosyal kanıtınız (yorumlar) yoktur, Google'da çıkmazsınız ve en önemlisi ürününüzün gerçekten çalışıp çalışmadığı henüz kanıtlanmamıştır.",
-          "Bu aşamada yapılacak en büyük hata, büyük şirketlerin taktiklerini kopyalamaya çalışmaktır. Reklam panolarına çıkmak, genel kitleye yönelik Instagram reklamları basmak veya pahalı ajanslarla anlaşmak ilk 100 müşteriyi getirmez; sadece kısıtlı sermayenizi tüketir.",
+          "Bu aşamada yapılacak en büyük hata, büyük şirketlerin taktiklerini kopyalamaya çalışmaktır. Reklam panolarına çıkmak, genel kitleye yönelik Instagram reklamları basmak veya pahalı ajanslarla anlaşmak ilk 100 müşteriyi getirmez; sadece kısıtlı sermayenizi tüketir. Bunun yerine [Küçük İşletmeler İçin Sosyal Medya Yönetimi](/blog/kucuk-isletmeler-icin-sosyal-medya-yonetimi) rehberimizdeki yalın adımlarla başlamalısınız.",
           "Paul Graham'ın meşhur sözünde dediği gibi: 'Ölçeklenemeyen şeyleri elle yapın' (Do things that don't scale)."
         ],
         "image": {
@@ -2741,7 +2786,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "title": "3. Adım 3 & 4: Doğrudan İletişim (Cold Outreach) ve Topluluklar",
         "paragraphs": [
           "İlk 100 müşteriniz ayağınıza gelmeyecek; siz tek tek gidip onları ellerinizle bulacaksınız.",
-          "Taktik A: Birebir Kişiselleştirilmiş İletişim. LinkedIn, X veya Instagram'da hedef kitleniz olan 200 kişiyi listeleyin. Onlara otomatik bir satış metni atmayın. İşlerini inceleyin, yaşadıkları bir eksikliği nazikçe gösterin ve 'Sizin bu sorununuzu çözen bir araç geliştirdik, 1 ay ücretsiz denemenizi ve dürüst yorumunuzu rica edebilir miyim?' deyin.",
+          "Taktik A: Birebir Kişiselleştirilmiş İletişim. LinkedIn, X veya Instagram'da hedef kitleniz olan 200 kişiyi listeleyin. Onlara otomatik bir satış metni atmayın. İşlerini inceleyin, yaşadıkları bir eksikliği nazikçe gösterin ve [B2B LinkedIn İçerik Stratejisi](/blog/b2b-linkedin-icerik-stratejisi) metodolojisiyle değer odaklı bir sohbet başlatın.",
           "Taktik B: Topluluklara Değer Akıtmak. Hedef kitlenizin toplandığı Facebook gruplarında, Reddit başlıklarında, Discord kanallarında veya sektörel forumlarda olun. Asla ürününüzün reklamını yapmayın; sadece sorulan teknik sorulara uzmanlıkla uzun uzun cevaplar verin. Profilinizdeki link zaten gerekeni yapacaktır."
         ],
         "image": {
@@ -2756,7 +2801,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "paragraphs": [
           "İlk 10 müşterinizi bulduğunuzda onlara dünyanın en değerli insanları gibi davranın. Kurucu olarak bizzat telefonla arayın, Zoom'da ekranlarını paylaşarak ürünü kullanmalarını izleyin, takıldıkları her an anında çözün.",
           "Bu ilk müşteriler sizin ilk vaka analizleriniz (case study) ve en sadık büyüme elçileriniz olacaktır. Müşteri mutlu olduğu anda basit bir ricada bulunun: 'Ahmet Bey, bu hizmetten memnun kaldıysanız, sizin gibi bu sorunu yaşayan tanıdığınız 2 girişimci arkadaşınızla bizi tanıştırabilir misiniz?'",
-          "Her mutlu müşterinin getirdiği 2 yeni müşteriyle, ilk 100 müşteriye giden kartopu etkisi başlamış olur."
+          "Her mutlu müşterinin getirdiği 2 yeni müşteriyle, ilk 100 müşteriye giden kartopu etkisi başlamış olur. Süreci hızlandırmak için [Tentamark Büyüme Çözümlerini](/neden-tentamark) deneyebilirsiniz."
         ],
         "keyPoints": [
           "İlk 100 müşteriyi elde edene kadar ücretli reklam bütçelerine dokunmayın.",
@@ -2821,13 +2866,15 @@ export const BLOG_POSTS: BlogPost[] = [
       "Müşteri Sadakati"
     ],
     "excerpt": "Problem-solution fit, retention, repeat usage, referrals, willingness to pay ve gerçek customer pull. Bir girişimin hayatta kalmasını belirleyen en kritik eşiğin ölçümü ve stratejisi.",
+    "question": "Product-Market Fit (PMF) nedir ve nasıl ölçülür?",
+    "shortAnswer": "Product-Market Fit, ürünün doymamış bir pazarın ihtiyacını tam karşılamasıdır; aktif kullanıcıların en az %40'ının 'Bu ürün olmasa çok üzülürdüm' dediği Sean Ellis testi ve düzleşen kullanıcı tutma (retention) eğrisi ile bilimsel olarak ölçülür.",
     "sections": [
       {
         "id": "pmf-tanimi-ve-onemi",
         "title": "1. Product-Market Fit (PMF) Nedir ve Neden Hayatidir?",
         "paragraphs": [
           "Silikon Vadisi efsanesi Marc Andreessen'in unutulmaz tanımıyla: 'Product-Market Fit, büyük ve doymamış bir pazarda o pazarın ihtiyacını tam olarak karşılayan bir ürüne sahip olmaktır.'",
-          "Girişimlerin %90'ının batmasının 1 numaralı sebebi pazarın gerçekte istemediği ürünler yapmalarıdır. PMF öncesi dönemde pazarlama yapmak delik bir kovaya su doldurmaya benzer: Ne kadar reklam basarsanız basın, gelen müşteriler ürünü kullanmayı bırakır ve arka kapıdan kaçar gider (churn).",
+          "Girişimlerin %90'ının batmasının 1 numaralı sebebi pazarın gerçekte istemediği ürünler yapmalarıdır. PMF öncesi dönemde pazarlama yapmak delik bir kovaya su doldurmaya benzer: Ne kadar reklam basarsanız basın, gelen müşteriler ürünü kullanmayı bırakır ve arka kapıdan kaçar gider (churn). [Growth Loop Rehberi](/blog/growth-loop-nedir-funneldan-farki) yazımızda bu döngüleri detaylandırdık.",
           "PMF yakalandığı anda ise oyunun kuralları tersine döner. Artık siz müşterilerin peşinde koşmazsınız; müşteriler ürünü kullanabilmek için sıraya girer, sunucularınız çöker ve kulaktan kulağa tavsiye patlar."
         ],
         "image": {
@@ -2873,7 +2920,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "title": "4. PMF Öncesi vs PMF Sonrası Pazarlama Stratejisi",
         "paragraphs": [
           "PMF Öncesi (Pre-PMF): Tek amaç öğrenmektir. Büyük lansmanlar yapılmaz; kullanıcılarla birebir görüşülür, anketler yapılır ve ürün sürekli pivot edilir. Pazarlama bütçesi minimumda tutulur.",
-          "PMF Sonrası (Post-PMF): Amaç ölçeklenmektir. Artık elinizde çalışan bir makine vardır. Ücretli reklamlar, içerik otomasyonları, SEO yatırımları ve satış ekipleri devreye sokularak pazar payı hızla ele geçirilir."
+          "PMF Sonrası (Post-PMF): Amaç ölçeklenmektir. Artık elinizde çalışan bir makine vardır. Ücretli reklamlar, içerik otomasyonları, SEO yatırımları ve satış ekipleri devreye sokularak pazar payı hızla ele geçirilir. Burada [Dağıtım Stratejisi](/blog/iyi-urun-neden-tek-basina-yetmez-distribution-problemi) ve [Tentamark Otonom Pazarlama](/neden-tentamark) en büyük kozunuzdur."
         ],
         "keyPoints": [
           "Sean Ellis anketini en az 50 aktif kullanıcınıza düzenli olarak uygulayın.",
@@ -2932,13 +2979,15 @@ export const BLOG_POSTS: BlogPost[] = [
       "Ürün Odaklı Büyüme"
     ],
     "excerpt": "Linear funnel ile müşterinin yeni müşteri getirdiği compounding growth loop arasındaki fark. Referral, UGC ve product-led loop örnekleriyle kendi büyüme çarkınızı tasarlama rehberi.",
+    "question": "Growth Loop (Büyüme Döngüsü) nedir ve klasik huniden (funnel) farkı ne?",
+    "shortAnswer": "Doğrusal funnel reklam parası bittiğinde müşteri akışını durdururken; Growth Loop'ta her mevcut müşterinin eylemi (tavsiye, UGC paylaşımı veya ürün kullanımı) içeriye doğal olarak yeni müşteriler çekerek bileşik ve katlanarak büyüyen bir çark oluşturur.",
     "sections": [
       {
         "id": "funnel-modelinin-olumu",
         "title": "1. Doğrusal Funnel (Huni) Modelinin Çıkmaz Sokağı",
         "paragraphs": [
           "Yıllardır öğretilen klasik pazarlama hunisi (AIDA: Farkındalık → İlgi → Karar → Eylem) doğrusal bir boru hattıdır. Tepeden içeriye reklam parasıyla 1.000 kişi sokarsınız; borunun sonundan 10 kişi müşteri olarak çıkar ve süreç biter.",
-          "Bu modelin en büyük zayıflığı 'Doğrusal ve Tüketici' olmasıdır. Büyümeyi sürdürmek için her ay daha fazla reklam parası dökmek zorundasınızdır. Reklam bütçesini kestiğiniz gün satışlar bıçak gibi kesilir. Müşteri edinme maliyetlerinin (CAC) her yıl %30 arttığı 2026 dünyasında bu model şirketleri iflasa sürüklemektedir."
+          "Bu modelin en büyük zayıflığı 'Doğrusal ve Tüketici' olmasıdır. Büyümeyi sürdürmek için her ay daha fazla reklam parası dökmek zorundasınızdır. Reklam bütçesini kestiğiniz gün satışlar bıçak gibi kesilir. Organik döngüleri büyütmek için [Sosyal Medyada Etkileşim Artırma Yolları](/blog/sosyal-medyada-etkilesim-artirma-yollari) kılavuzumuzdan yararlanabilirsiniz."
         ],
         "image": {
           "url": "/blog/26/Customers_creating_and_sharing_c…_20260917192312.jpeg",
@@ -2985,7 +3034,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "paragraphs": [
           "Küçük bir e-ticaret markası veya B2B hizmet şirketi olsanız dahi kendi döngünüzü kurabilirsiniz:",
           "Kutu Açılışı UGC Döngüsü: Müşterinin kutusuna şık bir kart koyun: 'Paket açılış videonu bizi etiketleyerek paylaş, bir sonraki siparişinde %20 indirim kazan.' Kullanıcı paylaşır → Takipçileri görür → Yeni müşteriler gelir → Yeni paylaşımlar doğar.",
-          "Tentamark, ürettiği içeriklerin altına yerleştirdiği viral kancalar ve paylaşım tetikleyicileriyle, sosyal medya trafiğinizi kendi kendini besleyen bir büyüme döngüsüne dönüştürmenize yardımcı olur."
+          "Tentamark, ürettiği içeriklerin altına yerleştirdiği viral kancalar ve paylaşım tetikleyicileriyle, sosyal medya trafiğinizi kendi kendini besleyen bir büyüme döngüsüne dönüştürmenize yardımcı olur. Siz de döngünüzü başlatmak için [Nasıl Çalışır?](/nasil-calisir) sayfamıza bakın ve [ücretsiz deneyin](/register)."
         ],
         "keyPoints": [
           "Sadece yeni müşteri kazanmaya değil, kazandığınız müşterinin nasıl yeni müşteri getireceğine kafa yorun.",
@@ -3044,6 +3093,8 @@ export const BLOG_POSTS: BlogPost[] = [
       "Büyüme"
     ],
     "excerpt": "İyi ürünün insanların ürünü keşfetmesini garanti etmediği; SEO, social, founder content, community, outbound, partnership, referral ve paid acquisition'ın dağıtım sistemini oluşturduğu anlatılacak.",
+    "question": "Pazarlamada dağıtım (distribution) problemi nedir?",
+    "shortAnswer": "Dağıtım problemi, harika bir ürün geliştirilmesine rağmen hedef kitleye ulaşacak sürdürülebilir organik arama, sosyal medya, kurucu iletişimi veya tavsiye kanallarının kurulmaması nedeniyle ürünün sessizliğe gömülmesidir.",
     "sections": [
       {
         "id": "insa-et-gelirler-yanilgisi",
@@ -3051,7 +3102,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "paragraphs": [
           "Girişimcilik ve ürün geliştirme tarihinin en pahalıya mal olan yalanı şudur: 'Harika bir ürün yaparsan müşteriler kendiliğinden gelir.' Bu romantik mit yüzünden her yıl binlerce dahi mühendis ve yetenekli zanaatkar, kimsenin varlığından haberdar olmadığı şaheserler üretip iflas etmektedir.",
           "PayPal'ın kurucusu Peter Thiel'in 'Zero to One' kitabında altını çizdiği gibi: 'Kötü dağıtımlı harika bir ürün her zaman batar; fakat harika dağıtımlı vasat bir ürün dünyayı fethedebilir.'",
-          "Dağıtım (Distribution), ürününüzü potansiyel müşterilerin önüne koyan, onları ikna eden ve satın almalarını sağlayan tüm kanalların toplamıdır. Ürününüz ne kadar devrimsel olursa olsun, dağıtım kaslarınız zayıfsa pazar için yok hükmündesinizdir."
+          "Dağıtım (Distribution), ürününüzü potansiyel müşterilerin önüne koyan, onları ikna eden ve satın almalarını sağlayan tüm kanalların toplamıdır. Ürününüz ne kadar devrimsel olursa olsun, dağıtım kaslarınız zayıfsa pazar için yok hükmündesinizdir. İlk adımlar için [0'dan Marka Oluşturma](/blog/0dan-marka-olusturmak-ilk-100-musteri) rehberimize başvurabilirsiniz."
         ],
         "image": {
           "url": "/blog/27/Customer_recommending_product_on…_20260917192730.jpeg",
@@ -3081,7 +3132,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "id": "8-dagitim-kanali-portfoyu",
         "title": "3. Her Markanın İhtiyaç Duyduğu 8 Dağıtım Motoru",
         "paragraphs": [
-          "Modern pazarlamada dağıtım tek bir kanala emanet edilemez. Başarılı bir dağıtım portföyü şu 8 kanaldan en az 2 veya 3'ünü ustalıkla yönetir:",
+          "Modern pazarlamada dağıtım tek bir kanala emanet edilemez. Başarılı bir dağıtım portföyü şu 8 kanaldan en az 2 veya 3'ünü ustalıkla yönetir ve [Sosyal Medya İçerik Takvimi](/blog/sosyal-medya-icerik-takvimi-nasil-hazirlanir) ile senkronize eder:",
           "1. Organik Arama (SEO): İnsanların Google'da doğrudan ihtiyacı aradığı anda karşılarına çıkmak.",
           "2. Sosyal Medya ve Kısa Video (Social Discovery): Instagram, TikTok ve YouTube ile algoritmik keşfe girmek.",
           "3. Kurucu ve Kişisel Marka (Founder-Led): LinkedIn ve X üzerinden liderin sesiyle güven inşa etmek.",
@@ -3103,7 +3154,7 @@ export const BLOG_POSTS: BlogPost[] = [
         "paragraphs": [
           "Küçük bir ekibin tüm bu 8 dağıtım kanalında aynı anda yüksek kalitede varlık göstermesi insan gücüyle neredeyse imkansızdır. Birçok markanın dağıtımda çökmesinin asıl sebebi içerik yetiştirememeleridir.",
           "Tentamark, dağıtım problemini kökten çözmek için tasarlanmıştır. Tek bir ürün fikrinden onlarca kanala uygun sosyal medya içeriklerini, blog rehberlerini, video kancalarını ve kitle mesajlarını otonom olarak üretip dağıtır.",
-          "Böylece siz mükemmel ürünler geliştirmeye devam ederken; Tentamark ürününüzün tüm dünyada hak ettiği ilgiyi ve satışı görmesini sağlayan dağıtım motorunuz olur."
+          "Böylece siz mükemmel ürünler geliştirmeye devam ederken; [Tentamark Otonom Pazarlama](/neden-tentamark) ürününüzün tüm dünyada hak ettiği ilgiyi ve satışı görmesini sağlayan dağıtım motorunuz olur. Hemen [ücretsiz kaydolun](/register)."
         ],
         "keyPoints": [
           "Ürünü yapmadan önce dağıtım kanalınızı doğrulayın.",

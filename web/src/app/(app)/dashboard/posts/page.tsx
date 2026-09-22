@@ -355,10 +355,26 @@ function PostsPageContent() {
     if (!platform || !["DRAFT", "NEEDS_REVIEW", "PENDING", "NEEDS_USER_ACTION", "FAILED"].includes(platform.status)) return "Bu platform sürümü artık düzenlenemiyor.";
     if (!caption.trim()) return "Gönderi metni boş olamaz.";
     if (row?.status === "APPROVED" && (!scheduledAt || new Date(scheduledAt).getTime() <= Date.now())) return "Onaylı gönderi için gelecek bir yayın zamanı seçin.";
+    const oldCaption = platform.caption;
+    const oldScheduledAt = platform.scheduled_at ?? null;
     const { data, error } = await supabase.from("content_platforms")
       .update({ caption, hashtags: Array.from(new Set(caption.match(/#[\p{L}0-9_]+/gu) ?? [])), scheduled_at: scheduledAt })
       .eq("id", platformId).eq("content_id", contentId).in("status", ["DRAFT", "NEEDS_REVIEW", "PENDING", "NEEDS_USER_ACTION", "FAILED"]).select("id");
     if (error || !data?.length) return error?.message ?? "Gönderi değişti. Sayfayı yenileyip tekrar deneyin.";
+    // Best-effort — an admin missing "who changed this" is much less bad
+    // than the save itself failing because of a logging hiccup.
+    if (oldCaption !== caption || oldScheduledAt !== scheduledAt) {
+      supabase.from("content_edit_history").insert({
+        content_platform_id: platformId,
+        edited_by: currentUserId,
+        old_caption: oldCaption,
+        new_caption: caption,
+        old_scheduled_at: oldScheduledAt,
+        new_scheduled_at: scheduledAt,
+      }).then(({ error: historyError }) => {
+        if (historyError) console.warn("content_edit_history kaydı yazılamadı:", historyError.message);
+      });
+    }
     setRefreshKey((key) => key + 1);
     return null;
   }

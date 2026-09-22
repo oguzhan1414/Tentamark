@@ -83,18 +83,40 @@ export default async function OAuthAuthorizePage({
     redirect(`/giris?redirect=${encodeURIComponent(`/oauth/authorize?${resumeQs.toString()}`)}`);
   }
 
-  const [{ data: profile }, { data: membership }] = await Promise.all([
+  // Org-level "admin" was retired by 0044_brand_access.sql — review rights
+  // now live per-brand in brand_memberships. An owner may grant any of their
+  // org's brands; anyone else may only grant brands where they hold an
+  // 'admin' brand_memberships row (mirrors private.user_can_review_brand,
+  // which is `private`-schema and not RPC-callable from application code).
+  const [{ data: profile }, { data: ownerMembership }] = await Promise.all([
     supabase.from("profiles").select("full_name, active_brand_id").eq("id", user.id).maybeSingle(),
-    supabase.from("organization_members").select("organization_id, role").eq("user_id", user.id).in("role", ["owner", "admin"]).limit(1).maybeSingle(),
+    supabase.from("organization_members").select("organization_id").eq("user_id", user.id).eq("role", "owner").maybeSingle(),
   ]);
 
-  if (!membership) return <ErrorScreen message="Bu hesap herhangi bir organizasyona bağlı değil veya yönetici yetkisi bulunmuyor." />;
+  let organizationId = ownerMembership?.organization_id ?? null;
+  let reviewableBrandIds: string[] | null = null;
 
-  const { data: brands } = await supabase
+  if (!organizationId) {
+    const { data: adminMemberships } = await supabase
+      .from("brand_memberships")
+      .select("brand_id, brands!inner(organization_id)")
+      .eq("user_id", user.id)
+      .eq("role", "admin");
+    if (adminMemberships && adminMemberships.length > 0) {
+      organizationId = (adminMemberships[0].brands as unknown as { organization_id: string }).organization_id;
+      reviewableBrandIds = adminMemberships.map((m) => m.brand_id);
+    }
+  }
+
+  if (!organizationId) return <ErrorScreen message="Bu hesap herhangi bir organizasyona bağlı değil veya hiçbir markada yönetici yetkisi bulunmuyor." />;
+
+  let brandsQuery = supabase
     .from("brands")
     .select("id, name")
-    .eq("organization_id", membership.organization_id)
+    .eq("organization_id", organizationId)
     .order("created_at", { ascending: true });
+  if (reviewableBrandIds) brandsQuery = brandsQuery.in("id", reviewableBrandIds);
+  const { data: brands } = await brandsQuery;
 
   const activeBrandId = profile?.active_brand_id ?? null;
 

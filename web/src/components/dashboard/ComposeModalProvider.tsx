@@ -1,7 +1,10 @@
 "use client";
 
 import { createContext, useContext, useState } from "react";
+import { useRouter } from "next/navigation";
 import ComposeModal from "@/components/dashboard/ComposeModal";
+import { useBrand } from "@/components/dashboard/BrandProvider";
+import { createClient } from "@/lib/supabase/client";
 import type { MediaLibraryItem } from "@/lib/media/useMediaLibrary";
 
 type ComposeModalOptions = {
@@ -37,9 +40,30 @@ export function useComposeModal() {
 
 export function ComposeModalProvider({ children }: { children: React.ReactNode }) {
   const [options, setOptions] = useState<ComposeModalOptions | null>(null);
+  const brand = useBrand();
+  const router = useRouter();
+
+  async function open(opts?: ComposeModalOptions) {
+    // No point opening the full studio if there's nothing to publish to yet
+    // — send people to where they actually fix that instead of letting them
+    // write a draft that can never leave DRAFT status.
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("social_accounts")
+      .select("id")
+      .eq("brand_id", brand.id)
+      .eq("status", "active")
+      .limit(1)
+      .maybeSingle();
+    if (!data) {
+      router.push("/settings?tab=baglantilar&no_account=1");
+      return;
+    }
+    setOptions(opts ?? {});
+  }
 
   return (
-    <ComposeModalContext.Provider value={{ open: (opts) => setOptions(opts ?? {}) }}>
+    <ComposeModalContext.Provider value={{ open }}>
       {children}
       {options && (
         <ComposeModal

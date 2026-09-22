@@ -13,8 +13,21 @@ export function getFeaturedPost(): BlogPost {
   return ALL_POSTS.find((p) => p.featured) || ALL_POSTS[0];
 }
 
+export const SLUG_ALIASES: Record<string, string> = {
+  "sosyal-medya-icerik-plani-nasil-yapilir": "sosyal-medya-icerik-takvimi-nasil-hazirlanir",
+  "marka-sesi-ve-tonu-olusturma-rehberi": "marka-dna-nedir-nasil-olusturulur",
+  "instagram-kancasi-hook-ornekleri": "sosyal-medya-kancasi-hook-ornekleri",
+  "instagram-carousel-nasil-hazirlanir": "instagram-carousel-nasil-hazirlanir-algoritma",
+  "otonom-pazarlama-nedir": "otonom-pazarlama-nedir-ai-pazarlama-yoneticisi",
+  "e-ticaret-sosyal-medya-satis-donusumu": "e-ticaret-sosyal-medya-pazarlama-rehberi",
+  "founder-led-content-kurucu-markasi": "founder-led-marketing-kurucu-markasi-nasil-yapilir",
+  "organik-etkilesim-artirma-taktikleri": "sosyal-medyada-etkilesim-artirma-yollari",
+  "dijital-ajanslar-icin-sosyal-medya-otomasyonu": "butik-ajanslar-icin-sosyal-medya-otomasyonu",
+};
+
 export function getPostBySlug(slug: string): BlogPost | undefined {
-  return ALL_POSTS.find((p) => p.slug === slug);
+  const targetSlug = SLUG_ALIASES[slug] || slug;
+  return ALL_POSTS.find((p) => p.slug === targetSlug);
 }
 
 export function getPostsByCategory(category: BlogCategory | "all"): BlogPost[] {

@@ -242,6 +242,22 @@ create index if not exists idx_cp_platform_post_id on public.content_platforms(p
 create index if not exists idx_cp_scheduled_status on public.content_platforms(status, scheduled_at);
 create index if not exists idx_cp_content_id on public.content_platforms(content_id);
 
+-- Tracks who changed a platform draft's caption/schedule and what it looked
+-- like before (patches/0054) — content_platforms.updated_at alone doesn't
+-- say who touched it, so a reviewer had no way to know a teammate edited
+-- the AI-generated copy before approval.
+create table if not exists public.content_edit_history (
+  id uuid default gen_random_uuid() primary key,
+  content_platform_id uuid references public.content_platforms on delete cascade not null,
+  edited_by uuid references public.profiles(id) on delete set null,
+  old_caption text,
+  new_caption text,
+  old_scheduled_at timestamptz,
+  new_scheduled_at timestamptz,
+  created_at timestamptz default now() not null
+);
+create index if not exists idx_content_edit_history_platform on public.content_edit_history(content_platform_id, created_at desc);
+
 -- updated_at auto-bump (patches/0047) — without this, `updated_at` only ever
 -- reflects insert time; no application code sets it on UPDATE, which makes
 -- it useless as an optimistic-concurrency token (MCP's reschedule_draft /
@@ -478,6 +494,7 @@ alter table public.campaigns enable row level security;
 alter table public.content enable row level security;
 alter table public.content_media enable row level security;
 alter table public.content_platforms enable row level security;
+alter table public.content_edit_history enable row level security;
 alter table public.content_comments enable row level security;
 alter table public.calendar_notes enable row level security;
 alter table public.publish_attempts enable row level security;
@@ -538,25 +555,23 @@ create policy "Org members can update brands" on public.brands
   for update to authenticated using (private.is_org_member(organization_id)) with check (private.is_org_member(organization_id));
 
 -- Brand DNA: Accessible through brand membership
+-- Scoped via private.can_access_brand (brand_memberships-aware, see
+-- 0044_brand_access.sql), not raw org-membership — matches how `brands`
+-- itself is scoped. Fixed in 0053 after 0052's insert policy shipped with
+-- the org-wide check by mistake, which reopened a cross-brand leak.
 create policy "Brand DNA select" on public.brand_dna
-  for select to authenticated using (
-    exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
-  );
+  for select to authenticated using (private.can_access_brand(brand_id));
 create policy "Brand DNA update" on public.brand_dna
-  for update to authenticated using (
-    exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
-  ) with check (
-    exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
-  );
+  for update to authenticated
+  using (private.can_access_brand(brand_id))
+  with check (private.can_access_brand(brand_id));
 -- INSERT policy: required even though handle_new_user() pre-seeds a row for
 -- every brand — `.upsert()` compiles to INSERT ... ON CONFLICT DO UPDATE,
 -- which needs INSERT privilege to even attempt the statement, regardless of
 -- whether the conflict path (falling back to UPDATE) ends up being taken.
 create policy "Brand DNA insert" on public.brand_dna
   for insert to authenticated
-  with check (
-    exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
-  );
+  with check (private.can_access_brand(brand_id));
 
 -- Content: Accessible through brand membership
 create policy "Content select" on public.content
@@ -602,6 +617,31 @@ create policy "Content platforms insert" on public.content_platforms
       select 1 from public.content c
       join public.brands b on b.id = c.brand_id
       where c.id = content_id and private.is_org_member(b.organization_id)
+    )
+  );
+
+-- Content Edit History (patches/0054) — select mirrors brand access; insert
+-- mirrors Content Platforms' own real (post-0043/0044) update predicate, not
+-- the stale is_org_member version shown just above (see this file's header
+-- note on schema.sql drift), so exactly whoever could make the edit can log it.
+create policy "Content edit history select" on public.content_edit_history
+  for select to authenticated using (
+    exists (
+      select 1 from public.content_platforms cp
+      join public.content c on c.id = cp.content_id
+      where cp.id = content_platform_id and private.can_access_brand(c.brand_id)
+    )
+  );
+create policy "Content edit history insert" on public.content_edit_history
+  for insert to authenticated with check (
+    exists (
+      select 1 from public.content_platforms cp
+      join public.content c on c.id = cp.content_id
+      join public.brands b on b.id = c.brand_id
+      where cp.id = content_platform_id
+        and (private.can_review_brand(b.id)
+          or (private.can_access_brand(b.id) and c.status in ('DRAFT', 'NEEDS_REVIEW')
+            and (c.created_by = (select auth.uid()) or c.draft_assignee_id = (select auth.uid()))))
     )
   );
 

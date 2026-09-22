@@ -59,16 +59,35 @@ export async function createAuthorizationCode(params: {
     throw McpErrors.validationError("All granted brands must belong to the same organization.");
   }
   const organizationId = organizationIds[0];
-  const { data: membership, error: membershipError } = await admin
+  // Org-level "admin" was retired by 0044_brand_access.sql — review rights
+  // now live per-brand in brand_memberships. Owner still short-circuits (an
+  // owner can always authorize any of their org's brands); anyone else must
+  // hold an 'admin' brand_memberships row on EVERY brand being granted here,
+  // matching private.user_can_review_brand's own logic (that function lives
+  // in the `private` schema and isn't RPC-callable from application code,
+  // so this mirrors it rather than calling it directly).
+  const { data: ownerRow, error: ownerError } = await admin
     .from("organization_members")
-    .select("organization_id, role")
+    .select("role")
     .eq("organization_id", organizationId)
     .eq("user_id", params.userId)
-    .in("role", ["owner", "admin"])
+    .eq("role", "owner")
     .maybeSingle();
-  if (membershipError) throw McpErrors.temporarilyUnavailable(membershipError.message);
-  if (!membership) {
-    throw McpErrors.forbidden("Only organization owners and admins can authorize MCP connections.");
+  if (ownerError) throw McpErrors.temporarilyUnavailable(ownerError.message);
+
+  if (!ownerRow) {
+    const { data: adminMemberships, error: brandAdminError } = await admin
+      .from("brand_memberships")
+      .select("brand_id")
+      .eq("user_id", params.userId)
+      .eq("role", "admin")
+      .in("brand_id", uniqueBrandIds);
+    if (brandAdminError) throw McpErrors.temporarilyUnavailable(brandAdminError.message);
+    const adminBrandIds = new Set((adminMemberships ?? []).map((m) => m.brand_id));
+    const missingReview = uniqueBrandIds.some((id) => !adminBrandIds.has(id));
+    if (missingReview) {
+      throw McpErrors.forbidden("Only the organization owner or a brand admin can authorize MCP connections for a brand.");
+    }
   }
 
   const rawCode = randomBytes(32).toString("base64url");

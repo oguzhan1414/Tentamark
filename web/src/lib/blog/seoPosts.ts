@@ -1,4 +1,5 @@
 import type { BlogPost } from "./blogTypes";
+import { SEO_POSTS_BATCH2 } from "./seoPostsBatch2";
 
 const author = {
   name: "Tentamark İçerik Ekibi",
@@ -6,7 +7,7 @@ const author = {
   avatar: "/brand/tentamark-mark.svg",
 };
 
-export const SEO_POSTS: BlogPost[] = [
+const BASE_SEO_POSTS: BlogPost[] = [
   {
     id: 28,
     slug: "kucuk-isletmeler-icin-sosyal-medya-yonetimi",
@@ -20,7 +21,7 @@ export const SEO_POSTS: BlogPost[] = [
     readingTime: 6,
     publishedAt: "19 Eylül 2026",
     author,
-    coverImage: "/blog/10/Marketing_team_planning_content_20260917182622.jpeg",
+    coverImage: "/images/why-us/why-calendar-solved.jpg",
     images: [],
     tags: ["küçük işletme sosyal medya yönetimi", "sosyal medya planı", "içerik takvimi"],
     tableOfContents: [
@@ -79,7 +80,7 @@ export const SEO_POSTS: BlogPost[] = [
     readingTime: 5,
     publishedAt: "19 Eylül 2026",
     author,
-    coverImage: "/blog/10/Planning_social_media_calendar_20260917182620.jpeg",
+    coverImage: "/images/why-us/why-brand-dna-module.jpg",
     images: [],
     tags: ["sosyal medya içerik onayı", "gönderi onay süreci", "içerik iş akışı"],
     tableOfContents: [
@@ -137,7 +138,7 @@ export const SEO_POSTS: BlogPost[] = [
     readingTime: 5,
     publishedAt: "19 Eylül 2026",
     author,
-    coverImage: "/blog/10/Team_creating_social_media_content_20260917182626.jpeg",
+    coverImage: "/images/why-us/why-caption-analytics.jpg",
     images: [],
     tags: ["sosyal medya yönetim aracı", "sosyal medya planlama aracı", "araç seçimi"],
     tableOfContents: [
@@ -182,4 +183,155 @@ export const SEO_POSTS: BlogPost[] = [
       },
     ],
   },
+  {
+    id: 31,
+    slug: "yapay-zeka-ile-sosyal-medya-yonetimi",
+    title: "Yapay Zeka ile Sosyal Medya Yönetimi Nasıl Yapılır? (2026 Rehberi)",
+    subtitle: "Marka DNA'sı tanımlama, otonom takvim, çok kanallı adaptasyon ve 15 dakikalık editoryal onay iş akışı.",
+    excerpt: "Yapay zeka ile sosyal medya yönetimini sıfırdan kurmak isteyen işletmeler için adım adım uygulanabilir rehber: Marka hafızası, kanca analitiği, çok kanallı içerik üretimi ve insan onaylı güvenli yayın mimarisi.",
+    question: "Yapay zeka ile sosyal medya yönetimi nasıl yapılır?",
+    shortAnswer: "Yapay zeka ile sosyal medya yönetimi; markanızın kurumsal tonunu ve yasaklı kelimelerini (Marka DNA'sı) sisteme kodlamak, haftalık içerik sütunlarını belirlemek, Instagram, LinkedIn ve X formatlarına uygun taslakları AI ile otonom üretmek ve insan onayıyla yayın takvimine almak adımlarından oluşur.",
+    category: "yapay-zeka",
+    categoryLabel: "Yapay Zeka & Otomasyon",
+    readingTime: 8,
+    publishedAt: "22 Eylül 2026",
+    author,
+    coverImage: "/blog/ai-management/ai-social-media-management-cover.jpg",
+    images: ["/blog/ai-management/ai-social-workflow-architecture.jpg"],
+    tags: [
+      "yapay zeka ile sosyal medya yönetimi",
+      "AI sosyal medya yönetimi",
+      "sosyal medya içerik planlama",
+      "otonom sosyal medya",
+      "marka DNA",
+    ],
+    featured: true,
+    tableOfContents: [
+      { id: "chatbot-yanilgisi", title: "1. Klasik Chatbot Yanılgısı: Sosyal Medyada Neden Yetersiz Kalırlar?" },
+      { id: "bes-adimli-is-akisi", title: "2. 5 Adımda Yapay Zeka ile Sosyal Medya Yönetimi İş Akışı" },
+      { id: "karsilastirma-matrisi", title: "3. Geleneksel Zamanlayıcılar vs. Otonom AI Yönetimi" },
+      { id: "sik-yapilan-hatalar", title: "4. Yapay Zeka ile Yönetimde En Sık Yapılan 4 Hata" },
+      { id: "eylem-plani", title: "5. Küçük İşletmeler İçin 15 Dakikalık Haftalık Eylem Planı" },
+    ],
+    sections: [
+      {
+        id: "chatbot-yanilgisi",
+        title: "1. Klasik Chatbot Yanılgısı: Sosyal Medyada Neden Yetersiz Kalırlar?",
+        lead: "Pek çok işletme sahibi, yapay zeka ile sosyal medya yönetimi yapmayı ChatGPT veya benzeri genel sohbet botlarına girip her gün 'Bize bugün için dikkat çekici bir Instagram gönderisi yaz' demek zanneder. Ancak bu yaklaşım sürdürülebilir değildir ve birkaç hafta içinde yorucu bir angaryaya dönüşür.",
+        paragraphs: [
+          "Genel amaçlı yapay zeka araçları harika birer metin yazarıdır; fakat **sosyal medya pazarlama aklına** ve **kalıcı marka hafızasına** sahip değillerdir. Her yeni sohbet penceresinde markanızın kim olduğunu, hedef kitlenizi, kullandığınız kurumsal jargonu ve kesinlikle uzak durmanız gereken yasaklı kelimeleri baştan açıklamak zorunda kalırsınız. Sektörde buna **prompt yorgunluğu** denir.",
+          "İkinci büyük sorun ise 'bağlantısızlık' krizidir. Sohbet botundan kopyaladığınız bir metni alıp görsel tasarım aracına götürmek, oradan indirip bir zamanlayıcıya yüklemek ve her sosyal medya hesabı için ayrı ayrı formatlamak günde saatlerinizi çalar. [Sprout Social Tüketici Araştırması](https://sproutsocial.com/insights/index/) verilerine göre tüketicilerin **%88'i tutarlı bir marka diline** sahip işletmeleri tercih etmektedir. Her gün rastgele promptlarla üretilen kopuk içerikler bu tutarlılığı yerle bir eder.",
+          "Gerçek bir **AI sosyal medya yönetimi**, sohbet kutularıyla vakit kaybetmek değil; kurumsal kuralları bir kez sisteme öğretip tüm takvimi, kancaları ve onay masasını tek bir akışta birleştirmektir. Bunun için geleneksel yaklaşımlarla [Neden Tentamark](/neden-tentamark) gibi otonom sistemler arasındaki mimari farkı iyi anlamak gerekir.",
+        ],
+        callout: {
+          type: "takeaway",
+          title: "Stratejik Çıkarım",
+          text: "Sohbet botları siz soru sorduğunuzda reaktif metin üretir. Gerçek bir AI sosyal medya yönetim sistemi ise proaktiftir: Pazartesi sabahı takviminizi sektöre ve mecraya özel editoryal taslaklarla hazır olarak önünüze getirir.",
+        },
+        keyPoints: [
+          "Oturum bazlı chatbot'lar marka dilini kalıcı olarak hatırlayamaz.",
+          "Manuel kopyala-yapıştır trafiği haftada en az 8-10 saat zaman kaybı yaratır.",
+          "Sosyal ağ algoritmalarının görsel, karakter ve kanca kurallarını tek başına bilemezler.",
+        ],
+      },
+      {
+        id: "bes-adimli-is-akisi",
+        title: "2. 5 Adımda Yapay Zeka ile Sosyal Medya Yönetimi İş Akışı",
+        lead: "Sıfırdan sürdürülebilir, güvenli ve yüksek etkileşimli bir yapay zeka destekli sosyal medya iş akışı inşa etmek için aşağıdaki 5 adımı adım adım uygulayın:",
+        image: {
+          url: "/blog/ai-management/ai-social-workflow-architecture.jpg",
+          alt: "Yapay zeka destekli sosyal medya iş akışı şeması - Marka DNA'sından insan onayına 5 adım",
+          caption: "5 Adımlı Yapay Zeka Sosyal Medya Yönetim İş Akışı: Marka DNA'sı, Haftalık Takvim, Çok Kanallı Adaptasyon, Kanca Analitiği ve İnsan Onayı.",
+        },
+        paragraphs: [
+          "**Adım 1: Marka DNA'sını Kodlayın (Kalıcı Hafıza)** — Yapay zekaya içerik ürettirmeden önce markanızın anayasasını belirleyin. Sektörünüz ne? Hedef kitleniz kim? Hangi tonu benimsiyorsunuz (esprili mi, kurumsal mı, eğitici mi)? Hangi kelimeleri asla kullanmamalısınız? Bu bilgileri sisteme kalıcı olarak kaydettiğinizde, yapay zeka bundan sonra üreteceği her kelimede markanızın bir çalışanı gibi düşünür.",
+          "**Adım 2: İçerik Sütunlarını (Content Pillars) ve Haftalık Temaları Kurun** — Sosyal medyada her gün satış yapamazsınız. Başarılı bir içerik stratejisi en az 3 temel sütuna dayanmalıdır: 1) Eğitici & Değer katan içerikler, 2) Güven & Sosyal kanıt (vaka analizleri, müşteri yorumları), 3) Doğrudan teklif ve harekete geçirici mesajlar (CTA). Yapay zeka bu sütunları haftanın günlerine dengeli şekilde dağıtır.",
+          "**Adım 3: 1 Fikri Çok Kanallı Formata Dönüştürün (1 Girdi → 5 Çıktı)** — Aynı metni her platforma yapıştırmak etkileşimi öldürür. Instagram kaydırmalı (carousel) görsel kurgusu isterken, LinkedIn profesyonel bir sektör içgörüsü, X ise vurucu bir flood formatı bekler. Detaylar için [Aynı içeriği her platformda paylaşmak neden çalışmaz?](/blog/ayni-icerigi-her-platformda-paylasmak-neden-calismaz) rehberimizi okuyabilirsiniz. Yapay zeka, tek bir çekirdek konuyu saniyeler içinde her platformun algoritmasına özel olarak yeniden biçimlendirir.",
+          "**Adım 4: Kanca (Hook) ve Virallik Puanlaması Yapın** — Sosyal medya algoritmaları bir kullanıcının gönderinizde ilk 3 saniye durup durmadığını ölçer. Yapay zeka destekli [Caption Lab](/neden-tentamark) araçları; merak kancasını, eğitici netliği ve eyleme çağrı gücünü yayın öncesinde 100 üzerinden skorlar. Puanı düşük taslakları tek tıkla yeniden üretebilirsiniz.",
+          "**Adım 5: 15 Dakikalık İnsan Onayı (Human-in-the-Loop) ile Yayına Alın** — Yapay zekanın en büyük risklerinden biri kontrolden çıkmasıdır. Hiçbir zaman insan gözünden geçmeyen içeriği doğrudan canlıya almayın. Haftada sadece 15 dakikanızı ayırarak takvimdeki hazır taslakları inceleyin, gerekiyorsa ufak dokunuşlar yapın ve 'Onayla' butonuna basarak otonom yayını başlatın.",
+        ],
+        callout: {
+          type: "checklist",
+          title: "Uygulama Kontrol Listesi",
+          items: [
+            "Marka tonu, yasaklı kelimeler ve hedef kitle tanımlandı mı?",
+            "Haftalık içerik sütunları (Eğitici, Güven, Teklif) belirlendi mi?",
+            "Instagram, LinkedIn ve X için platforma özel formatlar ayrıldı mı?",
+            "İlk 3 saniye merak kancası test edilip puanlandı mı?",
+            "Tüm içerikler yetkili bir göz tarafından incelenip onaylandı mı?",
+          ],
+        },
+      },
+      {
+        id: "karsilastirma-matrisi",
+        title: "3. Geleneksel Zamanlayıcılar vs. Otonom AI Yönetimi",
+        lead: "Sosyal medya yönetimi dünyasında son 10 yıldır kullanılan geleneksel zamanlayıcı araçlar ile modern otonom AI yönetim platformları arasındaki yapısal farkları bilmek, bütçenizi ve zamanınızı doğru yönetmenizi sağlar.",
+        paragraphs: [
+          "Geleneksel zamanlayıcılar (Buffer, Hootsuite vb.) özünde mekanik birer **boş takvim kutusudur**. Size bir ızgara sunarlar ve 'İçeriği kendin yaz, görseli kendin bul, saatini kendin ayarla' derler. İşletme sahibinin ya da pazarlamacının vakti olmadığında, o takvim haftalarca karanlık kalır.",
+          "Otonom AI sistemleri ise boş takvim değil; **o takvimi yöneten pazarlama direktörünü** sunar. Pazartesi sabahı sisteme girdiğinizde takvim boş değildir; haftanın tüm gönderileri, platform bazlı metinleri ve kancalarıyla hazır şekilde onay masanızda bekler. Aradaki fark mekanik araç ile zeka arasındaki farktır.",
+          "Zaman maliyeti açısından bakıldığında: Geleneksel bir araçla haftalık içerik üretmek ve formatlamak ortalama **10-15 saat** sürerken; otonom bir AI sistemiyle tüm haftayı yönetmek yalnızca **15 dakika** sürer. Detaylı kriterler için [Sosyal medya yönetim aracı nasıl seçilir?](/blog/sosyal-medya-yonetim-araci-nasil-secilir) yazımızı inceleyebilirsiniz.",
+        ],
+        callout: {
+          type: "tip",
+          title: "Pazarlama Tavsiyesi",
+          text: "Yazılım seçerken 'kaç tane sosyal ağa gönderi zamanlayabiliyor?' sorusuna değil; 'o gönderiyi hazırlarken bana kaç saat mesai kazandırıyor?' sorusuna odaklanın.",
+        },
+        keyPoints: [
+          "Geleneksel araçlar boş ızgara verir; otonom araçlar hazır strateji ve taslak verir.",
+          "Haftalık mesai 15 saatten 15 dakikaya düşer.",
+          "Marka dili rastgele metin yazarlarının inisiyatifinden kurtulup sistemsel bir hafızaya bağlanır.",
+        ],
+      },
+      {
+        id: "sik-yapilan-hatalar",
+        title: "4. Yapay Zeka ile Yönetimde En Sık Yapılan 4 Hata",
+        lead: "Yapay zekanın sunduğu hız cazip gelebilir; ancak kontrolsüz kullanıldığında markanın dijital itibarını hızla zedeleyebilir. İşte kesinlikle kaçınmanız gereken 4 kritik tuzak:",
+        paragraphs: [
+          "**1. Denetimsiz ve İnsan Onaysız Otomasyona Güvenmek:** Bazı kullanıcılar yapay zekayı bir bot gibi ayarlayıp kontrolsüzce her gün 5 post paylaşmasını ister. Bu bir felaket reçetesidir. Yapay zeka bazen halüsinasyon görebilir veya güncel hassasiyetleri kaçırabilir. [Sosyal medya gönderi onay süreci](/blog/sosyal-medya-gonderi-onay-sureci) rehberimizde de vurguladığımız gibi, son onay mutlaka bir insanda kalmalıdır.",
+          "**2. Jenerik ve Klişe Cümleleri Olduğu Gibi Paylaşmak:** 'Günümüzün hızla değişen dijital dünyasında...', 'Başarıya giden yolda...' gibi beylik cümleler kullanıcıyı anında sıkar ve içeriğin yapay zeka tarafından yazıldığını ele verir. Marka DNA'nızda bu tarz basmakalıp ifadeleri yasaklayın.",
+          "**3. Görsel ve Metin Uyumu Kurmamak:** Çok iyi bir metin, alakasız veya kalitesiz bir stok görselle birleştiğinde etkisini kaybeder. Gönderi metninde anlattığınız konsept ile görselin renkleri, tipografisi ve odak noktası birbirini tamamlamalıdır.",
+          "**4. İlk 3 Saniyelik Kancayı (Hook) İhmal Etmek:** [Nielsen Norman Group Dijital Okuma Araştırması](https://www.nngroup.com/articles/how-users-read-on-the-web/) kullanıcıların içerikleri okumadığını, hızlıca taradığını kanıtlamaktadır. İlk 1-2 saniyede merak uyandırmayan veya somut bir fayda vaat etmeyen gönderiler akışta kaybolur. Yapay zekaya metin yazdırırken ilk cümlenin daima vurucu bir kanca olmasını şart koşun.",
+        ],
+        callout: {
+          type: "takeaway",
+          title: "Güvenlik Prensibi",
+          text: "Hız için kaliteden, otomasyon için marka güvenliğinden asla ödün vermeyin. İnsan denetimi olan bir yapay zeka iş akışı, hiçbir zaman itibar kaybı yaşatmaz.",
+        },
+      },
+      {
+        id: "eylem-plani",
+        title: "5. Küçük İşletmeler İçin 15 Dakikalık Haftalık Eylem Planı",
+        lead: "Pazarlama ekibiniz veya tam zamanlı bir metin yazarınız olmasa bile, yapay zeka ile profesyonel bir sosyal medya varlığını sürdürmek için uygulayabileceğiniz haftalık rutin:",
+        paragraphs: [
+          "**Pazartesi Sabahı (10 Dakika):** Sisteme giriş yapın. Yapay zekanın Brand DNA kurallarınıza göre ürettiği haftalık 5-7 içerik taslağını inceleyin. Başlıkları, görselleri ve kanca puanlarını kontrol edin. Gerekli küçük kelime düzeltmelerini yapıp 'Haftalık Paketi Onayla'ya tıklayın. Tüm haftanın yayını planlansın.",
+          "**Çarşamba Öğleden Sonra (3 Dakika):** Gelen yorum ve mesajlara göz atın. Takipçilerinizden gelen gerçek soruları not edin; bu sorular bir sonraki haftanın içerik sütunları için mükemmel birer tohumdur.",
+          "**Cuma Akşamı (2 Dakika):** Haftanın en çok kaydedilen ve paylaşılan gönderisini inceleyin. Hangi kanca açısının daha iyi çalıştığını görün.",
+          "Bu disiplinli akış sayesinde ne her gün 'Bugün ne paylaşacağım?' paniği yaşarsınız ne de sosyal medya için yüksek ajans faturaları ödemek zorunda kalırsınız. Küçük işletmeler için daha kapsamlı stratejilere [Küçük işletmeler için sosyal medya yönetimi](/blog/kucuk-isletmeler-icin-sosyal-medya-yonetimi) rehberimizden ulaşabilirsiniz.",
+          "Markanızın kurumsal dilini kalıcı bir yapay zeka aklına emanet etmek ve ilk haftalık içerik paketinizi anında görmek için [Tentamark'ı 14 gün ücretsiz deneyebilirsiniz](/register).",
+        ],
+        callout: {
+          type: "tip",
+          title: "Hemen Başlayın",
+          text: "Marka DNA'nızı oluşturmak sadece 3 dakika sürer. Web sitenizin adresini girin, yapay zeka kurumsal sesinizi çıkarsın ve ilk takviminizi dakikalar içinde hazırlasın.",
+        },
+        keyPoints: [
+          "Pazartesi 10 dakikalık editoryal inceleme haftanın tüm yayınını güvenceye alır.",
+          "Takipçi soruları doğrudan yeni içerik fikirlerine dönüştürülür.",
+          "Sıfır panik, sıfır takvim gecikmesi ve maksimum profesyonel marka görünürlüğü.",
+        ],
+      },
+    ],
+  },
 ];
+
+const FLAGSHIP_SEO_POST = BASE_SEO_POSTS.find((p) => p.id === 31)!;
+const LEGACY_SEO_POSTS = BASE_SEO_POSTS.filter((p) => p.id !== 31);
+
+// Put the 11 fresh, 100% SEO-optimized master articles at the very top of the blog engine
+export const SEO_POSTS: BlogPost[] = [
+  FLAGSHIP_SEO_POST,
+  ...SEO_POSTS_BATCH2,
+  ...LEGACY_SEO_POSTS,
+];
+
+

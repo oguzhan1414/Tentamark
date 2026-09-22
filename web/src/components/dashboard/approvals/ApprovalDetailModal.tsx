@@ -40,6 +40,14 @@ type Props = {
   onRetryPlatform?: (contentId: string, platformId: string) => Promise<string | null>;
 };
 
+type EditHistoryEntry = {
+  id: string;
+  editorName: string;
+  oldCaption: string | null;
+  newCaption: string | null;
+  createdAt: string;
+};
+
 export default function ApprovalDetailModal({
   item,
   index,
@@ -77,6 +85,9 @@ export default function ApprovalDetailModal({
   const [editDate, setEditDate] = useState("");
   const [platformError, setPlatformError] = useState<string | null>(null);
   const [platformBusy, setPlatformBusy] = useState(false);
+  const [historyByPlatform, setHistoryByPlatform] = useState<Record<string, EditHistoryEntry[]>>({});
+  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
 
   // A typed-but-unsent comment or tag used to vanish silently on Escape or
   // the X button — same "stray dismiss eats real input" bug as ComposeModal.
@@ -99,8 +110,49 @@ export default function ApprovalDetailModal({
     const error = await onSavePlatform(item.id, platformId, editCaption, iso);
     setPlatformBusy(false);
     setPlatformError(error);
-    if (!error) setEditingPlatformId(null);
+    if (!error) {
+      setEditingPlatformId(null);
+      setHistoryRefreshKey((k) => k + 1);
+    }
   }
+
+  // Self-contained fetch (mirrors this modal's own comments fetch below) —
+  // shows nothing for content that predates content_edit_history (patch
+  // 0054) rather than an empty-state message, since "no history" and "never
+  // tracked" look identical from here and aren't worth explaining.
+  useEffect(() => {
+    const platformIds = (item.platforms ?? []).map((p) => p.id).filter((id): id is string => Boolean(id));
+    let ignore = false;
+    (async () => {
+      if (platformIds.length === 0) {
+        if (!ignore) setHistoryByPlatform({});
+        return;
+      }
+      const { data } = await supabase
+        .from("content_edit_history")
+        .select("id, content_platform_id, old_caption, new_caption, created_at, profiles(full_name)")
+        .in("content_platform_id", platformIds)
+        .order("created_at", { ascending: false });
+      if (ignore || !data) return;
+      const grouped: Record<string, EditHistoryEntry[]> = {};
+      for (const row of data) {
+        const platformId = row.content_platform_id as string;
+        const profile = row.profiles as unknown as { full_name: string | null } | null;
+        (grouped[platformId] ??= []).push({
+          id: row.id as string,
+          editorName: profile?.full_name || "Bir ekip üyesi",
+          oldCaption: row.old_caption as string | null,
+          newCaption: row.new_caption as string | null,
+          createdAt: row.created_at as string,
+        });
+      }
+      setHistoryByPlatform(grouped);
+    })();
+    return () => {
+      ignore = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.id, historyRefreshKey]);
 
   async function retryPlatform(platformId: string) {
     if (!onRetryPlatform) return;
@@ -632,7 +684,34 @@ export default function ApprovalDetailModal({
                         {onRetryPlatform && p.id && ["NEEDS_USER_ACTION", "FAILED"].includes(p.rawStatus ?? "") && <button type="button" disabled={platformBusy} onClick={() => {
                           if (p.id && confirm("Bu gönderinin platformda zaten yayınlanmadığını kontrol ettiniz mi? Yeniden deneme yaklaşık 2 dakika içinde paylaşım yapabilir.")) void retryPlatform(p.id);
                         }} className="rounded-lg bg-red-600 px-2.5 py-1 text-[11px] font-bold text-white disabled:opacity-40">2 dakika içinde tekrar dene</button>}
+                        {p.id && historyByPlatform[p.id]?.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setExpandedHistoryId(expandedHistoryId === p.id ? null : p.id ?? null)}
+                            className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-100"
+                          >
+                            {expandedHistoryId === p.id ? "Geçmişi gizle" : `Düzenleme geçmişi (${historyByPlatform[p.id].length})`}
+                          </button>
+                        )}
                       </div>
+                      {p.id && expandedHistoryId === p.id && historyByPlatform[p.id] && (
+                        <div className="space-y-2 rounded-lg border border-amber-100 bg-amber-50/50 p-2.5">
+                          {historyByPlatform[p.id].map((h) => (
+                            <div key={h.id} className="text-[11px] leading-relaxed text-slate-700">
+                              <span className="font-bold text-slate-900">{h.editorName}</span>{" "}
+                              <span className="text-slate-400">
+                                · {new Date(h.createdAt).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                              {h.oldCaption !== h.newCaption && (
+                                <div className="mt-1 space-y-0.5">
+                                  <p className="text-red-700 line-through decoration-red-300">{h.oldCaption}</p>
+                                  <p className="text-emerald-700">{h.newCaption}</p>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       {p.hashtags && p.hashtags.length > 0 && (
                         <div className="flex flex-wrap gap-1 pt-1 border-t border-slate-200/40">
                           {p.hashtags.map((h, hIdx) => (

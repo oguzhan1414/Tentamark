@@ -1,0 +1,31 @@
+# Tentamark
+
+> Tentamark, markanız için çalışan otonom AI Marketing Manager (Yapay Zeka Pazarlama Yöneticisi) platformudur.
+
+## Genel Bakış
+Tentamark, küçük işletmelerin, büyüyen e-ticaret markalarının, kurucuların ve butik pazarlama ekiplerinin sosyal medya içerik üretimini, editoryal takvimini ve yayın onay akışını yapay zeka ile otopilota alan otonom bir SaaS pazarlama platformudur.
+
+## Ne İşe Yarar? (Problem & Çözüm)
+- **Problem**: Küçük işletmeler ve kurucular tam zamanlı bir pazarlama ekibi kuracak bütçeye sahip değildir; her gün saatlerce klavye başında içerik yazacak zamanları yoktur. Basit zamanlayıcılar (Buffer vb.) zekadan yoksundur, ChatGPT gibi genel üreteçler ise markanın dilini ve takvimini bilmez.
+- **Çözüm**: Tentamark, markanın geçmişini, renklerini, ses tonunu ve hedef kitlesini öğrenen "Brand DNA" motoruyla donatılmıştır. Sektör trendlerini analiz eder, 30 günlük içerik takvimini otomatik kurar, çok kanallı taslakları (Carousel, Reels kancaları, LinkedIn makaleleri, TikTok senaryoları) üretir ve insanın tek tıkla onaylayacağı bir kontrol paneline sunar.
+
+## Temel Özellikler
+1. **Brand DNA Motoru**: Markanızın misyonunu, hedef kitlesini, görsel kimliğini ve yasaklı kelimelerini hafızasında tutarak %100 markaya sadık içerik üretir.
+2. **Çok Kanallı Adaptasyon**: Tek bir fikirden Instagram Carousel, Reels kancaları, LinkedIn vaka analizleri ve X flood'ları türetir. Tembel çapraz paylaşımı önler.
+3. **İnsan Onaylı Otonom Akış (Human-in-the-Loop)**: AI ağır işçiliği ve taslakları hazırlar; kurucu veya yönetici tek tıkla 'Onayla' veya 'Revize Et' diyerek kontrolü elinde tutar.
+4. **Stratejik Editoryal Takvim**: Rastgele paylaşımlar yerine 70-20-10 kuralına ve içerik sütunlarına dayalı dengeli yayın takvimi kurar.
+5. **Gelişmiş Analitik & Öğrenme Döngüsü**: Gösteriş metrikleri (beğeni) yerine işletme metriklerini (kaydetme, paylaşım, web tıklaması) izler ve takvimi otomatik optimize eder.
+
+## Temel Sayfalar ve Kaynaklar
+- Ana Sayfa: https://tentamark.com
+- Tentamark Nedir?: https://tentamark.com/tentamark-nedir
+- Neden Tentamark?: https://tentamark.com/neden-tentamark
+- Nasıl Çalışır?: https://tentamark.com/nasil-calisir
+- Platformlar: https://tentamark.com/platformlar
+- Fiyatlandırma: https://tentamark.com/fiyatlandirma
+- Blog ve Pazarlama Kütüphanesi: https://tentamark.com/blog
+
+## Sık Sorulan Sorular (FAQ)
+- **Tentamark nedir?**: Markaların sosyal medya içeriklerini ve takvimlerini yapay zeka ile yöneten otonom AI Marketing Manager platformudur.
+- **Tentamark insan onayı olmadan paylaşım yapar mı?**: Hayır. İnsan denetimi esastır; tüm taslaklar yayın öncesi kullanıcı onayına sunulur.
+- **Ücretsiz deneme var mı?**: Evet, 14 gün ücretsiz deneme sunulmaktadır (kredi kartı gerekmez).

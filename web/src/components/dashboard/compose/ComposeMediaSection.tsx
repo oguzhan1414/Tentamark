@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import PlatformIcon from "@/components/PlatformIcon";
 import type { LaunchPlatform } from "@/lib/ai/generateDrafts";
 
@@ -67,6 +68,9 @@ export default function ComposeMediaSection({
   maxMediaItems,
   isEn,
 }: ComposeMediaSectionProps) {
+  const [zoomedIndex, setZoomedIndex] = useState<number | null>(null);
+  const zoomedItem = zoomedIndex !== null ? mediaItems[zoomedIndex] : undefined;
+
   return (
     <div className="space-y-2">
       {requiresVideo && (
@@ -134,20 +138,27 @@ export default function ComposeMediaSection({
                 key={index}
                 className="group relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-200 shadow-xs bg-slate-100"
               >
-                {mediaItemIsVideo(item) ? (
-                  <video
-                    src={mediaItemPreviewUrl(item)}
-                    muted
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={mediaItemPreviewUrl(item)}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
-                )}
+                <button
+                  type="button"
+                  onClick={() => setZoomedIndex(index)}
+                  aria-label={isEn ? "Enlarge media" : "Görseli büyüt"}
+                  className="block h-full w-full cursor-zoom-in"
+                >
+                  {mediaItemIsVideo(item) ? (
+                    <video
+                      src={mediaItemPreviewUrl(item)}
+                      muted
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={mediaItemPreviewUrl(item)}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  )}
+                </button>
                 {mediaItems.length > 1 && (
                   <span className="absolute left-1 top-1 rounded bg-black/60 px-1 text-[9px] font-bold text-white">
                     {index + 1}
@@ -157,9 +168,16 @@ export default function ComposeMediaSection({
                   type="button"
                   onClick={() => removeMediaItem(index)}
                   aria-label={isEn ? "Remove media" : "Görseli kaldır"}
-                  className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-[10px] leading-none text-white opacity-0 transition group-hover:opacity-100 cursor-pointer"
+                  className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-white shadow-sm transition hover:bg-red-600 cursor-pointer"
                 >
-                  ✕
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+                    />
+                  </svg>
                 </button>
                 {mediaItems.length > 1 && (
                   <div className="absolute inset-x-0 bottom-0 flex justify-between px-0.5 pb-0.5 opacity-0 transition group-hover:opacity-100">
@@ -226,7 +244,11 @@ export default function ComposeMediaSection({
         ) : (
           <>
             <label
-              title={isEn ? "Upload photos" : "Fotoğraf yükle"}
+              title={
+                isEn
+                  ? "Upload photos (hold Ctrl/Cmd or Shift to select several at once)"
+                  : "Fotoğraf yükle (birden fazla seçmek için Ctrl/Cmd veya Shift'e basılı tutun)"
+              }
               className={`flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition cursor-pointer ${
                 mediaItems.length >= maxMediaItems
                   ? "opacity-40 cursor-not-allowed pointer-events-none"
@@ -354,6 +376,41 @@ export default function ComposeMediaSection({
           </>
         )}
       </div>
+
+      {zoomedItem && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setZoomedIndex(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 cursor-zoom-out"
+        >
+          <button
+            type="button"
+            onClick={() => setZoomedIndex(null)}
+            aria-label={isEn ? "Close" : "Kapat"}
+            className="absolute right-5 top-5 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-lg text-white hover:bg-white/20 cursor-pointer"
+          >
+            ✕
+          </button>
+          {mediaItemIsVideo(zoomedItem) ? (
+            <video
+              src={mediaItemPreviewUrl(zoomedItem)}
+              controls
+              autoPlay
+              className="max-h-full max-w-full rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={mediaItemPreviewUrl(zoomedItem)}
+              alt=""
+              className="max-h-full max-w-full rounded-lg object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }

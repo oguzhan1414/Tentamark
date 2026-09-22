@@ -14,6 +14,7 @@ import { useWooCommerceConnection } from "@/lib/woocommerce/useWooCommerceConnec
 import { useLanguage } from "@/context/LanguageContext";
 import { HiOutlineShieldCheck, HiOutlineArrowRightOnRectangle } from "react-icons/hi2";
 import DeveloperAccessTab from "@/components/dashboard/settings/DeveloperAccessTab";
+import ConfirmDiscardDialog from "@/components/dashboard/ConfirmDiscardDialog";
 
 type SettingsTab = "genel" | "plan" | "ekip" | "bildirimler" | "baglantilar" | "gelistirici";
 
@@ -579,8 +580,10 @@ function SettingsPageContent() {
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(true);
   const [accountsRefreshKey, setAccountsRefreshKey] = useState(0);
+  const [disconnectTarget, setDisconnectTarget] = useState<ConnectedAccount | null>(null);
   const connectedParam = searchParams.get("connected");
   const connectErrorParam = searchParams.get("connect_error");
+  const noAccountParam = searchParams.get("no_account");
 
   // Team management — organizationId/myRole resolved from the session, never
   // trusted from anywhere else, so every write below is naturally scoped to
@@ -834,7 +837,7 @@ function SettingsPageContent() {
     };
   }, [supabase, brand.id, accountsRefreshKey]);
 
-  async function handleDisconnect(id: string) {
+  async function performDisconnect(id: string) {
     setAccounts((prev) => prev.filter((a) => a.id !== id));
     const { error } = await supabase.from("social_accounts").delete().eq("id", id);
     if (error) setAccountsRefreshKey((k) => k + 1);
@@ -1249,8 +1252,8 @@ function SettingsPageContent() {
                 {st.teamTab.inviteTitle}
               </h3>
 
+              <p className="text-xs font-semibold text-slate-600">Bu davet yalnızca {brand.name} markasına erişim verir.</p>
               <form onSubmit={handleInvite} className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                <p className="w-full text-xs font-semibold text-slate-600">Bu davet yalnızca {brand.name} markasına erişim verir.</p>
                 <div className="flex-1 space-y-1.5">
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-500">{st.teamTab.emailLabel}</label>
                   <input
@@ -1401,6 +1404,12 @@ function SettingsPageContent() {
               <span>{connectErrorMessage(connectErrorParam, locale === "en")}</span>
             </div>
           )}
+          {noAccountParam && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800 flex items-center gap-2">
+              <span>ℹ</span>
+              <span>{st.connectionsTab.noAccountNotice}</span>
+            </div>
+          )}
 
           <div className="rounded-[24px] border border-slate-100 bg-white p-6 sm:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.03)] space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
@@ -1453,7 +1462,7 @@ function SettingsPageContent() {
 
                       <button
                         type="button"
-                        onClick={() => handleDisconnect(acc.id)}
+                        onClick={() => setDisconnectTarget(acc)}
                         className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-500 hover:border-red-200 hover:text-red-600 transition cursor-pointer"
                       >
                         {st.connectionsTab.disconnect}
@@ -1547,6 +1556,27 @@ function SettingsPageContent() {
 
       {activeTab === "gelistirici" && <DeveloperAccessTab isOwner={isOwner} />}
 
+      <ConfirmDiscardDialog
+        isOpen={disconnectTarget !== null}
+        onCancel={() => setDisconnectTarget(null)}
+        onConfirm={() => {
+          const acc = disconnectTarget;
+          setDisconnectTarget(null);
+          if (acc) performDisconnect(acc.id);
+        }}
+        title={locale === "en" ? "Disconnect this account?" : "Bu hesabın bağlantısı kesilsin mi?"}
+        message={
+          disconnectTarget
+            ? locale === "en"
+              ? `Tentamark will stop being able to publish to "${disconnectTarget.display_name ?? disconnectTarget.username}" (${platformLabel(disconnectTarget.platform as PlatformName)}). You can reconnect it later.`
+              : `Tentamark, "${disconnectTarget.display_name ?? disconnectTarget.username}" (${platformLabel(disconnectTarget.platform as PlatformName)}) hesabına artık yayın yapamayacak. İstediğin zaman tekrar bağlayabilirsin.`
+            : ""
+        }
+        badgeLabel={locale === "en" ? "Disconnect" : "Bağlantıyı Kes"}
+        noticeText=""
+        cancelLabel={locale === "en" ? "Cancel" : "Vazgeç"}
+        confirmLabel={locale === "en" ? "Disconnect" : "Bağlantıyı Kes"}
+      />
     </div>
   );
 }

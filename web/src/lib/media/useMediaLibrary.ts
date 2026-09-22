@@ -60,34 +60,93 @@ export function useMediaLibrary(brandId: string, enabled = true) {
     if (renameError) console.error("Medya etiketi kaydedilemedi:", renameError.message);
   }
 
+  // Shared by upload() and uploadMany() — throws on failure so the caller
+  // decides how to aggregate errors across a batch instead of each upload
+  // silently clobbering the shared `error` state.
+  async function uploadOne(file: File): Promise<MediaLibraryItem> {
+    const path = `${brandId}/${crypto.randomUUID()}-${file.name}`;
+    const { error: uploadError } = await supabase.storage.from("media").upload(path, file);
+    if (uploadError) throw new Error(uploadError.message);
+
+    const { data: publicUrl } = supabase.storage.from("media").getPublicUrl(path);
+    const { data: mediaRow, error: mediaError } = await supabase
+      .from("media")
+      .insert({
+        brand_id: brandId,
+        file_name: file.name,
+        file_url: publicUrl.publicUrl,
+        file_type: file.type,
+        file_size: file.size,
+      })
+      .select("id, file_name, file_url, file_type, alt_text")
+      .single();
+    if (mediaError || !mediaRow) throw new Error(mediaError?.message ?? "Medya kaydedilemedi.");
+    return mediaRow as MediaLibraryItem;
+  }
+
   async function upload(file: File) {
     setUploading(true);
     setError(null);
     try {
-      const path = `${brandId}/${crypto.randomUUID()}-${file.name}`;
-      const { error: uploadError } = await supabase.storage.from("media").upload(path, file);
-      if (uploadError) throw new Error(uploadError.message);
-
-      const { data: publicUrl } = supabase.storage.from("media").getPublicUrl(path);
-      const { data: mediaRow, error: mediaError } = await supabase
-        .from("media")
-        .insert({
-          brand_id: brandId,
-          file_name: file.name,
-          file_url: publicUrl.publicUrl,
-          file_type: file.type,
-          file_size: file.size,
-        })
-        .select("id, file_name, file_url, file_type, alt_text")
-        .single();
-      if (mediaError || !mediaRow) throw new Error(mediaError?.message ?? "Medya kaydedilemedi.");
-
-      setItems((prev) => [mediaRow as MediaLibraryItem, ...prev]);
+      const mediaRow = await uploadOne(file);
+      setItems((prev) => [mediaRow, ...prev]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Yükleme başarısız.");
     } finally {
       setUploading(false);
     }
+  }
+
+  // Uploads land one item at a time as each finishes (rather than all-or-
+  // nothing) so a large batch shows visible progress instead of one long
+  // freeze, and one bad file doesn't lose the others' results.
+  async function uploadMany(files: File[]) {
+    setUploading(true);
+    setError(null);
+    const failures: string[] = [];
+    for (const file of files) {
+      try {
+        const mediaRow = await uploadOne(file);
+        setItems((prev) => [mediaRow, ...prev]);
+      } catch (err) {
+        failures.push(`${file.name}: ${err instanceof Error ? err.message : "Yükleme başarısız."}`);
+      }
+    }
+    if (failures.length > 0) setError(failures.join(" · "));
+    setUploading(false);
+  }
+
+  // Refuses to delete media still attached to a post — content_media.media_id
+  // cascades on delete, so removing the row here would silently blank out
+  // the image on any existing draft/post that used it. Returns the in-use
+  // count instead so the caller can show a clear reason rather than a
+  // generic failure.
+  async function remove(id: string): Promise<{ error?: string; inUseCount?: number }> {
+    const { count } = await supabase
+      .from("content_media")
+      .select("id", { count: "exact", head: true })
+      .eq("media_id", id);
+    if (count && count > 0) return { inUseCount: count };
+
+    const { error: deleteError } = await supabase.from("media").delete().eq("id", id);
+    if (deleteError) return { error: deleteError.message };
+
+    setItems((prev) => prev.filter((m) => m.id !== id));
+    return {};
+  }
+
+  // Bulk version of remove() — deletes what it safely can and reports the
+  // rest, rather than failing the whole batch the moment one item turns out
+  // to be in use on an existing post.
+  async function removeMany(ids: string[]): Promise<{ deletedCount: number; blockedCount: number }> {
+    let deletedCount = 0;
+    let blockedCount = 0;
+    for (const id of ids) {
+      const result = await remove(id);
+      if (result.inUseCount) blockedCount += 1;
+      else if (!result.error) deletedCount += 1;
+    }
+    return { deletedCount, blockedCount };
   }
 
   // For media created server-side (e.g. /api/canva/design/finalize, which
@@ -97,5 +156,5 @@ export function useMediaLibrary(brandId: string, enabled = true) {
     setItems((prev) => [item, ...prev]);
   }
 
-  return { items, loading, uploading, error, upload, addItem, rename };
+  return { items, loading, uploading, error, upload, uploadMany, remove, removeMany, addItem, rename };
 }

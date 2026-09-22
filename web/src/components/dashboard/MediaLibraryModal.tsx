@@ -5,6 +5,7 @@ import { useMediaLibrary, type MediaLibraryItem } from "@/lib/media/useMediaLibr
 import { useCanvaConnection } from "@/lib/canva/useCanvaConnection";
 import { useCanvaDesignFlow } from "@/lib/canva/useCanvaDesignFlow";
 import { useLanguage } from "@/context/LanguageContext";
+import ConfirmDiscardDialog from "@/components/dashboard/ConfirmDiscardDialog";
 
 export type { MediaLibraryItem };
 
@@ -54,11 +55,50 @@ export default function MediaLibraryModal({
 }: Props) {
   const { t, isEn } = useLanguage();
   const ml = t.dashboard.mediaLibrary;
-  const { items, loading, uploading, error, upload, addItem, rename } = useMediaLibrary(brandId);
+  const { items, loading, uploading, error, uploadMany, remove, removeMany, addItem, rename } = useMediaLibrary(brandId);
   const { connected: canvaConnected } = useCanvaConnection(brandId);
   const { busy: canvaBusy, error: canvaError, start: handleCanvaClick } = useCanvaDesignFlow(addItem);
   const [filter, setFilter] = useState<MediaFilter>("all");
   const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [zoomedItem, setZoomedItem] = useState<MediaLibraryItem | null>(null);
+  const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<MediaLibraryItem | null>(null);
+  const [confirmBulk, setConfirmBulk] = useState(false);
+
+  async function performDelete(item: MediaLibraryItem) {
+    setDeleteNotice(null);
+    setDeletingId(item.id);
+    const result = await remove(item.id);
+    setDeletingId(null);
+    if (result.inUseCount) {
+      setDeleteNotice(
+        isEn
+          ? `Can't delete — this is used in ${result.inUseCount} post${result.inUseCount > 1 ? "s" : ""}. Remove it from ${result.inUseCount > 1 ? "those posts" : "that post"} first.`
+          : `Silinemedi — bu görsel ${result.inUseCount} gönderide kullanılıyor. Önce o gönderi${result.inUseCount > 1 ? "lerden" : "den"} kaldırmanız gerekiyor.`
+      );
+    } else if (result.error) {
+      setDeleteNotice(result.error);
+    }
+  }
+
+  async function performBulkDelete() {
+    const ids = Array.from(checked);
+    if (ids.length === 0) return;
+    setDeleteNotice(null);
+    setBulkDeleting(true);
+    const { deletedCount, blockedCount } = await removeMany(ids);
+    setBulkDeleting(false);
+    setChecked(new Set());
+    if (blockedCount > 0) {
+      setDeleteNotice(
+        isEn
+          ? `Deleted ${deletedCount}. ${blockedCount} couldn't be deleted because ${blockedCount > 1 ? "they're" : "it's"} used in an existing post.`
+          : `${deletedCount} görsel silindi. ${blockedCount} görsel mevcut bir gönderide kullanıldığı için silinemedi.`
+      );
+    }
+  }
 
   // Carousel building has no video story yet (see the `multiple` prop
   // comment) — the filter toggle would just let someone check a video that
@@ -117,12 +157,13 @@ export default function MediaLibraryModal({
                 id="media_library_upload"
                 type="file"
                 accept={multiple ? "image/*" : "image/*,video/mp4,video/webm"}
+                multiple
                 className="sr-only"
                 disabled={uploading}
                 onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) upload(file);
+                  const files = Array.from(e.target.files ?? []);
                   e.target.value = "";
+                  if (files.length > 0) uploadMany(files);
                 }}
               />
             </label>
@@ -150,6 +191,7 @@ export default function MediaLibraryModal({
           </div>
           {error && <p className="text-xs text-red-600">{error}</p>}
           {canvaError && <p className="text-xs text-red-600">{canvaError}</p>}
+          {deleteNotice && <p className="text-xs text-red-600">{deleteNotice}</p>}
 
           {multiple ? (
             <p className="text-[11px] text-slate-500">
@@ -199,43 +241,87 @@ export default function MediaLibraryModal({
                 const disabled = multiple && !isChecked && atLimit;
                 return (
                   <div key={m.id} className="space-y-1">
-                    <button
-                      type="button"
-                      onClick={() => (multiple ? toggleChecked(m.id) : onSelect?.(m))}
-                      disabled={multiple ? disabled : !onSelect}
+                    <div
                       className={`group relative aspect-square w-full overflow-hidden rounded-xl border bg-slate-100 transition ${
                         isChecked
                           ? "border-rose-400 ring-2 ring-rose-400"
                           : disabled
-                            ? "border-slate-200 opacity-40 cursor-not-allowed"
+                            ? "border-slate-200 opacity-40"
                             : "border-slate-200"
-                      } ${(multiple ? !disabled : Boolean(onSelect)) ? "hover:ring-2 hover:ring-rose-400 cursor-pointer" : "cursor-default"}`}
-                      title={m.alt_text || m.file_name}
+                      }`}
                     >
-                      {m.file_type.startsWith("video/") ? (
-                        <video src={m.file_url} muted className="h-full w-full object-cover" />
-                      ) : (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={m.file_url} alt={m.alt_text || m.file_name} className="h-full w-full object-cover" />
-                      )}
-                      {multiple ? (
-                        <span
-                          className={`absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-bold transition ${
-                            isChecked
-                              ? "border-rose-500 bg-rose-500 text-white"
-                              : "border-white/80 bg-black/30 text-transparent group-hover:bg-black/50"
-                          }`}
-                        >
-                          {isChecked ? "✓" : ""}
-                        </span>
-                      ) : (
-                        onSelect && (
-                          <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-[10px] font-bold text-transparent transition group-hover:bg-black/40 group-hover:text-white">
-                            {isEn ? "Select" : "Seç"}
+                      <button
+                        type="button"
+                        onClick={() => (multiple ? toggleChecked(m.id) : onSelect?.(m))}
+                        disabled={multiple ? disabled : !onSelect}
+                        className={`absolute inset-0 ${
+                          (multiple ? !disabled : Boolean(onSelect)) ? "hover:ring-2 hover:ring-rose-400 cursor-pointer" : "cursor-default"
+                        }`}
+                        title={m.alt_text || m.file_name}
+                      >
+                        {m.file_type.startsWith("video/") ? (
+                          <video src={m.file_url} muted className="h-full w-full object-cover" />
+                        ) : (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={m.file_url} alt={m.alt_text || m.file_name} className="h-full w-full object-cover" />
+                        )}
+                        {multiple ? (
+                          <span
+                            className={`absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-bold transition ${
+                              isChecked
+                                ? "border-rose-500 bg-rose-500 text-white"
+                                : "border-white/80 bg-black/30 text-transparent group-hover:bg-black/50"
+                            }`}
+                          >
+                            {isChecked ? "✓" : ""}
                           </span>
-                        )
-                      )}
-                    </button>
+                        ) : (
+                          onSelect && (
+                            <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-[10px] font-bold text-transparent transition group-hover:bg-black/40 group-hover:text-white">
+                              {isEn ? "Select" : "Seç"}
+                            </span>
+                          )
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setZoomedItem(m);
+                        }}
+                        aria-label={isEn ? "Enlarge" : "Büyüt"}
+                        className="absolute left-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white shadow-sm transition hover:bg-black/70 cursor-pointer"
+                      >
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-5.2-5.2m1.7-5.3a7 7 0 11-14 0 7 7 0 0114 0zM10.5 7.5v6m-3-3h6" />
+                        </svg>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmTarget(m);
+                        }}
+                        disabled={deletingId === m.id}
+                        aria-label={isEn ? "Delete" : "Sil"}
+                        className="absolute bottom-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-xs text-white shadow-sm transition hover:bg-red-600 disabled:opacity-50 cursor-pointer"
+                      >
+                        {deletingId === m.id ? (
+                          <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        ) : (
+                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+                            />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
                     <input
                       type="text"
                       defaultValue={m.alt_text ?? ""}
@@ -278,6 +364,18 @@ export default function MediaLibraryModal({
                   {isEn ? "Clear" : "Temizle"}
                 </button>
               )}
+              {checked.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmBulk(true)}
+                  disabled={bulkDeleting}
+                  className="font-semibold text-red-600 hover:text-red-800 transition disabled:opacity-50 cursor-pointer"
+                >
+                  {bulkDeleting
+                    ? isEn ? "Deleting..." : "Siliniyor..."
+                    : isEn ? `Delete selected (${checked.size})` : `Seçilenleri Sil (${checked.size})`}
+                </button>
+              )}
             </div>
             <button
               type="button"
@@ -290,6 +388,82 @@ export default function MediaLibraryModal({
           </div>
         )}
       </div>
+
+      {zoomedItem && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setZoomedItem(null)}
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-6 cursor-zoom-out"
+        >
+          <button
+            type="button"
+            onClick={() => setZoomedItem(null)}
+            aria-label={isEn ? "Close" : "Kapat"}
+            className="absolute right-5 top-5 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-lg text-white hover:bg-white/20 cursor-pointer"
+          >
+            ✕
+          </button>
+          {zoomedItem.file_type.startsWith("video/") ? (
+            <video
+              src={zoomedItem.file_url}
+              controls
+              autoPlay
+              className="max-h-full max-w-full rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={zoomedItem.file_url}
+              alt={zoomedItem.alt_text || zoomedItem.file_name}
+              className="max-h-full max-w-full rounded-lg object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          )}
+        </div>
+      )}
+
+      <ConfirmDiscardDialog
+        isOpen={confirmTarget !== null}
+        onCancel={() => setConfirmTarget(null)}
+        onConfirm={() => {
+          const item = confirmTarget;
+          setConfirmTarget(null);
+          if (item) performDelete(item);
+        }}
+        title={isEn ? "Delete this media?" : "Bu görsel silinsin mi?"}
+        message={
+          confirmTarget
+            ? isEn
+              ? `"${confirmTarget.alt_text || confirmTarget.file_name}" will be permanently deleted. This cannot be undone.`
+              : `"${confirmTarget.alt_text || confirmTarget.file_name}" kalıcı olarak silinecek. Bu işlem geri alınamaz.`
+            : ""
+        }
+        badgeLabel={isEn ? "Delete" : "Silme"}
+        noticeText=""
+        cancelLabel={isEn ? "Cancel" : "Vazgeç"}
+        confirmLabel={isEn ? "Delete" : "Sil"}
+      />
+
+      <ConfirmDiscardDialog
+        isOpen={confirmBulk}
+        onCancel={() => setConfirmBulk(false)}
+        onConfirm={() => {
+          setConfirmBulk(false);
+          performBulkDelete();
+        }}
+        title={isEn ? `Delete ${checked.size} selected item${checked.size > 1 ? "s" : ""}?` : `Seçili ${checked.size} görsel silinsin mi?`}
+        message={
+          isEn
+            ? "These will be permanently deleted. This cannot be undone."
+            : "Bu görseller kalıcı olarak silinecek. Bu işlem geri alınamaz."
+        }
+        badgeLabel={isEn ? "Delete" : "Silme"}
+        noticeText=""
+        cancelLabel={isEn ? "Cancel" : "Vazgeç"}
+        confirmLabel={isEn ? "Delete" : "Sil"}
+      />
     </div>
   );
 }

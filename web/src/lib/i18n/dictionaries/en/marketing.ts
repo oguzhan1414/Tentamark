@@ -574,7 +574,7 @@ export const enMarketing = {
           { label: "What is Tentamark?", href: "/tentamark-nedir" },
           { label: "Blog & Guides", href: "/blog" },
           { label: "Frequently Asked Questions", href: "/#sss" },
-          { label: "Why Tentamark?", href: "/#neden-biz" },
+          { label: "Why Tentamark?", href: "/neden-tentamark" },
           { label: "API & MCP Documentation", href: "/gelistiriciler" },
         ],
       },

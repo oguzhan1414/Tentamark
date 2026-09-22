@@ -574,7 +574,7 @@ export const trMarketing = {
           { label: "Tentamark Nedir?", href: "/tentamark-nedir" },
           { label: "Blog ve Rehberler", href: "/blog" },
           { label: "Sıkça Sorulan Sorular", href: "/#sss" },
-          { label: "Neden Tentamark?", href: "/#neden-biz" },
+          { label: "Neden Tentamark?", href: "/neden-tentamark" },
           { label: "API ve MCP Dokümantasyonu", href: "/gelistiriciler" },
         ],
       },

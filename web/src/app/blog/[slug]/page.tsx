@@ -8,7 +8,7 @@ import { LanguageProvider } from "@/context/LanguageContext";
 import BlogCard from "@/components/blog/BlogCard";
 import BlogShareBar from "@/components/blog/BlogShareBar";
 import BlogTableOfContents from "@/components/blog/BlogTableOfContents";
-import { getPostBySlug, getRelatedPosts, getAdjacentPosts, getAllPosts } from "@/lib/blog/blogUtils";
+import { getPostBySlug, getRelatedPosts, getAdjacentPosts, getAllPosts, SLUG_ALIASES } from "@/lib/blog/blogUtils";
 import { publishedAtIso } from "@/lib/blog/publishedAtIso";
 import {
   HiOutlineClock,
@@ -20,7 +20,56 @@ import {
   HiOutlineLightBulb,
   HiOutlineChatBubbleBottomCenterText,
   HiOutlineTag,
+  HiOutlineArrowTopRightOnSquare,
 } from "react-icons/hi2";
+
+function renderFormattedContent(text: string) {
+  if (!text) return text;
+  const regex = /(\[.*?\]\(.*?\)|\*\*.*?\*\*)/g;
+  const parts = text.split(regex);
+
+  return parts.map((part, index) => {
+    if (part.startsWith("[") && part.includes("](") && part.endsWith(")")) {
+      const match = part.match(/^\[(.*?)\]\((.*?)\)$/);
+      if (match) {
+        const [, linkText, url] = match;
+        if (url.startsWith("/")) {
+          return (
+            <Link
+              key={index}
+              href={url}
+              className="font-semibold text-[#C92E35] underline underline-offset-4 hover:text-[#172B46] transition-colors"
+            >
+              {linkText}
+            </Link>
+          );
+        }
+        return (
+          <a
+            key={index}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-[#172B46] underline underline-offset-4 hover:text-[#C92E35] transition-colors inline-flex items-center gap-0.5"
+          >
+            <span>{linkText}</span>
+            <HiOutlineArrowTopRightOnSquare className="inline h-3.5 w-3.5 ml-0.5" />
+          </a>
+        );
+      }
+    }
+
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={index} className="font-bold text-[#172B46]">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+
+    return part;
+  });
+}
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -28,9 +77,13 @@ type Props = {
 
 export async function generateStaticParams() {
   const posts = getAllPosts();
-  return posts.map((post) => ({
+  const baseParams = posts.map((post) => ({
     slug: post.slug,
   }));
+  const aliasParams = Object.keys(SLUG_ALIASES).map((alias) => ({
+    slug: alias,
+  }));
+  return [...baseParams, ...aliasParams];
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -90,22 +143,51 @@ export default async function BlogPostPage({ params }: Props) {
 
   const relatedPosts = getRelatedPosts(post.id, 3);
   const { prev, next } = getAdjacentPosts(post.id);
-  const articleJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Article",
-    headline: post.title,
-    description: post.excerpt,
-    image: `https://tentamark.com${post.coverImage}`,
-    datePublished: publishedAtIso(post.publishedAt),
-    author: { "@type": "Organization", name: "Tentamark" },
-    publisher: { "@type": "Organization", name: "Tentamark" },
-    mainEntityOfPage: `https://tentamark.com/blog/${post.slug}`,
-  };
+  const schemas: Record<string, unknown>[] = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      headline: post.title,
+      description: post.excerpt,
+      image: `https://tentamark.com${post.coverImage}`,
+      datePublished: publishedAtIso(post.publishedAt),
+      author: { "@type": "Organization", name: "Tentamark" },
+      publisher: {
+        "@type": "Organization",
+        name: "Tentamark",
+        logo: { "@type": "ImageObject", url: "https://tentamark.com/brand/tentamark-mark-512.png" },
+      },
+      mainEntityOfPage: `https://tentamark.com/blog/${post.slug}`,
+    },
+  ];
+
+  if (post.question && post.shortAnswer) {
+    schemas.push({
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: post.question,
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: post.shortAnswer,
+          },
+        },
+      ],
+    });
+  }
 
   return (
     <LanguageProvider>
     <div className="min-h-screen bg-[#FAF9F6] text-[#172B46] selection:bg-rose-100 selection:text-[#172B46]">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd).replace(/</g, "\\u003c") }} />
+      {schemas.map((schema, sIdx) => (
+        <script
+          key={sIdx}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, "\\u003c") }}
+        />
+      ))}
       <SiteHeader />
 
       <main className="pb-20 pt-20">
@@ -204,13 +286,13 @@ export default async function BlogPostPage({ params }: Props) {
 
                   {sec.lead && (
                     <p className="text-[17px] font-semibold leading-[1.8] text-[#334155] sm:text-lg">
-                      {sec.lead}
+                      {renderFormattedContent(sec.lead)}
                     </p>
                   )}
 
                   {sec.paragraphs.map((p, pIdx) => (
                     <p key={pIdx} className="text-[17px] leading-[1.85] text-[#334155] sm:text-lg">
-                      {p}
+                      {renderFormattedContent(p)}
                     </p>
                   ))}
 
@@ -256,7 +338,7 @@ export default async function BlogPostPage({ params }: Props) {
                       </div>
 
                       {sec.callout.text && (
-                        <p className="text-sm sm:text-base leading-relaxed">{sec.callout.text}</p>
+                        <p className="text-sm sm:text-base leading-relaxed">{renderFormattedContent(sec.callout.text)}</p>
                       )}
 
                       {sec.callout.items && (
@@ -264,7 +346,7 @@ export default async function BlogPostPage({ params }: Props) {
                           {sec.callout.items.map((it, idx) => (
                             <li key={idx} className="flex items-start gap-2">
                               <HiOutlineCheckCircle className="w-4 h-4 text-[#C92E35] flex-shrink-0 mt-0.5" />
-                              <span>{it}</span>
+                              <span>{renderFormattedContent(it)}</span>
                             </li>
                           ))}
                         </ul>
@@ -284,7 +366,7 @@ export default async function BlogPostPage({ params }: Props) {
                             <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[#172B46] text-[10px] font-bold text-white">
                               {kIdx + 1}
                             </span>
-                            <span>{kp}</span>
+                            <span>{renderFormattedContent(kp)}</span>
                           </li>
                         ))}
                       </ul>

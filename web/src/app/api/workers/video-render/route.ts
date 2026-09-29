@@ -2,7 +2,14 @@ import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { processVideoRenderQueue, recoverStaleVideoRenders } from "@/lib/video/renderQueue";
 
-export const maxDuration = 900;
+// 300 is the hard ceiling on the current Vercel plan (Hobby) — 900 here
+// silently broke every production deployment for the last 8 days (build
+// succeeds, then Vercel's patchBuild step rejects the whole deploy with
+// invalid_max_duration since no function on this plan may exceed 300s).
+// A render that genuinely needs longer than 5 minutes now fails the
+// function call, but renderQueue.ts's retry/backoff picks it up again
+// rather than losing the job — real upside of the durable-queue design.
+export const maxDuration = 300;
 
 function isAuthorized(req: NextRequest): boolean {
   const expected = process.env.RENDER_WORKER_SECRET || process.env.SCHEDULER_WEBHOOK_SECRET || process.env.CRON_SECRET;

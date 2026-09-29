@@ -50,7 +50,11 @@ export type BrandContext = {
   strategy?: Record<string, unknown> | null;
   founderName: string | null;
   founderVoice: string | null;
+  claims: string[];
   formattedText: string;
+  traitScores: TraitScores | null;
+  tonePosition: TonePosition | null;
+  visualStyle: string | null;
 };
 
 export async function getBrandContext(
@@ -64,12 +68,12 @@ export async function getBrandContext(
   // ("Marka", "Teknoloji / Dijital", ...) instead of throwing.
   const supabase = options?.client ?? (await createClient());
 
-  const [{ data: brandRow }, { data: dnaRow }, { data: strategyRow }] = await Promise.all([
+  const [{ data: brandRow }, { data: dnaRow }, { data: strategyRow }, { data: claimRows }] = await Promise.all([
     supabase.from("brands").select("name, website").eq("id", brandId).maybeSingle(),
     supabase
       .from("brand_dna")
       .select(
-        "industry, tone_of_voice, brand_traits, forbidden_words, color_palette, target_audience, competitors, raw_notes, trait_scores, tone_position, founder_name, founder_voice"
+        "industry, tone_of_voice, brand_traits, forbidden_words, color_palette, target_audience, competitors, raw_notes, trait_scores, tone_position, visual_style, founder_name, founder_voice"
       )
       .eq("brand_id", brandId)
       .maybeSingle(),
@@ -80,6 +84,7 @@ export async function getBrandContext(
       .order("version", { ascending: false })
       .limit(1)
       .maybeSingle(),
+    supabase.from("brand_claims").select("claim_text").eq("brand_id", brandId),
   ]);
 
   const brandName = brandRow?.name ?? "Marka";
@@ -92,6 +97,7 @@ export async function getBrandContext(
   const colorPalette = Array.isArray(dnaRow?.color_palette) ? dnaRow.color_palette.map(String) : [];
   const competitors = Array.isArray(dnaRow?.competitors) ? dnaRow.competitors.map(String) : [];
   const rawNotes = dnaRow?.raw_notes || null;
+  const claims = (claimRows ?? []).map((c) => String(c.claim_text));
   const strategy = (strategyRow?.payload as Record<string, unknown>) ?? null;
 
   // trait_scores (0-100 character sliders) and tone_position (drag-quadrant)
@@ -116,6 +122,11 @@ export async function getBrandContext(
     colorPalette.length ? `Marka Renk Paleti: ${colorPalette.join(", ")}` : "",
     competitors.length ? `Rakipler: ${competitors.join(", ")}` : "",
     rawNotes ? `Özel Notlar: ${rawNotes}` : "",
+    claims.length
+      ? `DOĞRULANMIŞ İDDİALAR (web sitesinden çıkarıldı) — kesin sayı/süre/garanti/politika içeren bir cümle yazacaksan SADECE bu listedekileri kullanabilirsin, listede olmayan bir rakam/vaat/garanti UYDURMA:\n${claims
+          .map((c) => `- ${c}`)
+          .join("\n")}`
+      : "",
   ].filter(Boolean);
 
   if (strategy && !options?.excludeStrategy) {
@@ -157,6 +168,10 @@ export async function getBrandContext(
     // reading the brand's own voice, not silently pick up a person's.
     founderName: (dnaRow?.founder_name as string | null) ?? null,
     founderVoice: (dnaRow?.founder_voice as string | null) ?? null,
+    claims,
     formattedText: lines.join("\n"),
+    traitScores,
+    tonePosition,
+    visualStyle: dnaRow?.visual_style || null,
   };
 }

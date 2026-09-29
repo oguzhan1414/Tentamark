@@ -1,9 +1,12 @@
 import React from "react";
-import { AbsoluteFill, Audio, interpolate, staticFile, useVideoConfig } from "remotion";
-import { TransitionSeries, linearTiming } from "@remotion/transitions";
+import { AbsoluteFill, Audio, interpolate, Solid, staticFile, useVideoConfig } from "remotion";
+import { TransitionSeries, linearTiming, type TransitionPresentation } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
-import { slide } from "@remotion/transitions/slide";
+import { blurSlide } from "@remotion/transitions/blur-slide";
+import { dreamyZoom } from "@remotion/transitions/dreamy-zoom";
 import { whoosh } from "@remotion/sfx";
+import { noise } from "@remotion/effects/noise";
+import { vignette } from "@remotion/effects/vignette";
 import { HookText } from "./scenes/HookText";
 import { FeatureShowcase } from "./scenes/FeatureShowcase";
 import { ProductShowcase } from "./scenes/ProductShowcase";
@@ -13,8 +16,10 @@ import { StatCallout } from "./scenes/StatCallout";
 import { MediaCarousel } from "./scenes/MediaCarousel";
 import { BrandOutro } from "./scenes/BrandOutro";
 import { UGCSplitShowcase } from "./scenes/UGCSplitShowcase";
+import { UserClipShowcase } from "./scenes/UserClipShowcase";
 import { LightLeakOverlay } from "./components/LightLeakOverlay";
 import { StoryProgressBar } from "./components/StoryProgressBar";
+import { VoiceoverCaptions } from "./components/VoiceoverCaptions";
 import { BackgroundRenderer } from "./components/BackgroundRenderer";
 import { VideoBackground } from "./components/VideoBackground";
 import { buildTheme, hexToHue, transitionFrames, type Theme } from "./theme";
@@ -95,6 +100,17 @@ function renderScene(item: ScenePlanItem, theme: Theme) {
       return <StatCallout headline={item.headline} supporting={item.supporting} theme={theme} />;
     case "carousel":
       return <MediaCarousel imageUrls={item.imageUrls} caption={item.caption} theme={theme} />;
+    case "user_clip":
+      return (
+        <UserClipShowcase
+          videoUrl={item.videoUrl}
+          trimBeforeFrames={item.trimBeforeFrames}
+          trimAfterFrames={item.trimAfterFrames}
+          objectPositionX={item.objectPositionX}
+          objectPositionY={item.objectPositionY}
+          theme={theme}
+        />
+      );
     case "outro":
       return (
         <BrandOutro
@@ -108,19 +124,34 @@ function renderScene(item: ScenePlanItem, theme: Theme) {
   }
 }
 
-function transitionFor(index: number) {
-  return index % 2 === 0 ? fade() : slide({ direction: "from-right" });
+// Rotates through three structurally different cuts instead of alternating
+// the same two — fade (soft), blurSlide (directional motion blur baked into
+// the cut itself), dreamyZoom (cinematic zoom+rotate) — so consecutive cuts
+// don't read as the same template repeating.
+// Each presentation preset is generic over its own distinct props shape, so
+// a rotating selector has no single non-`any` return type to give — the
+// library itself has no existential/erased "any transition" type.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function transitionFor(index: number): TransitionPresentation<any> {
+  const variant = index % 3;
+  if (variant === 0) return fade();
+  if (variant === 1) return blurSlide({ direction: "from-right", blur: 28 });
+  return dreamyZoom({});
 }
 
 export const Main: React.FC<VideoInputProps> = ({
   scenePlan,
   accentColors,
+  visualStyle,
+  traitScores,
   backgroundTheme = "tech_slate",
   videoBackgroundUrl,
   voiceoverAudio,
+  captions,
+  musicTrack = "lofi",
 }) => {
-  const { durationInFrames } = useVideoConfig();
-  const theme = buildTheme(accentColors);
+  const { durationInFrames, width, height } = useVideoConfig();
+  const theme = buildTheme(accentColors, visualStyle, traitScores);
   const lightLeakCutIndex = scenePlan.length - 2;
 
   // Background music volume ducks when voiceover is present
@@ -152,25 +183,31 @@ export const Main: React.FC<VideoInputProps> = ({
       )}
 
       {/* 3. Background Lo-Fi Rhythm Track with smooth fade-in, auto-ducking, and fade-out */}
-      <Audio
-        src={staticFile("audio/lofi-beat.mp3")}
-        volume={(f) =>
-          interpolate(
-            f,
-            [0, 15, durationInFrames - 30, durationInFrames],
-            [0, maxMusicVol, maxMusicVol, 0],
-            {
-              extrapolateLeft: "clamp",
-              extrapolateRight: "clamp",
-            }
-          )
-        }
-        loop
-      />
+      {musicTrack !== "none" && (
+        <Audio
+          src={staticFile("audio/lofi-beat.mp3")}
+          volume={(f) =>
+            interpolate(
+              f,
+              [0, 15, durationInFrames - 30, durationInFrames],
+              [0, maxMusicVol, maxMusicVol, 0],
+              {
+                extrapolateLeft: "clamp",
+                extrapolateRight: "clamp",
+              }
+            )
+          }
+          loop
+        />
+      )}
 
 
       {/* Instagram Stories / Reels Native Progress Bar at top */}
       <StoryProgressBar scenePlan={scenePlan} accentColor={theme.accent} />
+
+      {/* Word-synced voice-over captions, bottom-anchored — only mounts when
+          real transcription timing exists (buildVideoInputProps.ts) */}
+      {captions && captions.length > 0 && <VoiceoverCaptions captions={captions} accentColor={theme.accent} />}
 
       {/* Main Scene Transitions */}
       <TransitionSeries>
@@ -202,6 +239,15 @@ export const Main: React.FC<VideoInputProps> = ({
           return [sequence, transition];
         })}
       </TransitionSeries>
+
+      {/* Cinematic post-process pass, applied once globally instead of
+          per-scene: subtle film grain + vignette so the whole video reads
+          as filmed footage rather than a clean flat template. */}
+      <Solid
+        width={width}
+        height={height}
+        effects={[noise({ amount: 0.055 }), vignette({ amount: 0.24, radius: 0.66, feather: 0.42 })]}
+      />
     </AbsoluteFill>
   );
 };

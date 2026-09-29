@@ -286,83 +286,88 @@ export default function ComposePublishBar({
       )}
 
       {/* Submit Buttons */}
-      <div ref={submitMenuRef} className="relative flex pt-2">
+      <div className="flex gap-2 pt-2">
         <button
           type="button"
-          disabled={!scheduledAt || submitting}
-          onClick={() => submit("NEEDS_REVIEW")}
-          className="flex-1 rounded-l-xl bg-blue-600 py-3 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition disabled:opacity-50 cursor-pointer"
+          disabled={submitting}
+          onClick={() => submit("DRAFT")}
+          className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-bold text-slate-700 hover:border-slate-300 hover:bg-slate-50 transition disabled:opacity-50 cursor-pointer"
         >
-          {submitting
-            ? isEn
-              ? "Saving..."
-              : "Kaydediliyor..."
-            : isEn
-            ? "Schedule & Send for Review 🚀"
-            : "Zamanla & Onaya Gönder 🚀"}
-        </button>
-        <button
-          type="button"
-          disabled={!scheduledAt || submitting}
-          onClick={() => setSubmitMenuOpen((prev) => !prev)}
-          aria-label={isEn ? "More publish options" : "Diğer yayın seçenekleri"}
-          aria-expanded={submitMenuOpen}
-          className="rounded-r-xl border-l border-white/25 bg-blue-600 px-3 hover:bg-blue-700 transition disabled:opacity-50 cursor-pointer"
-        >
-          <svg
-            className="h-3.5 w-3.5 text-white"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2.5}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M19 9l-7 7-7-7"
-            />
-          </svg>
+          {isEn ? "Save as Draft" : "Taslak Olarak Kaydet"}
         </button>
 
-        {submitMenuOpen && (
-          <div className="absolute right-0 top-full z-20 mt-1.5 w-72 space-y-1 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+        <div ref={submitMenuRef} className="relative flex flex-1">
+          <button
+            type="button"
+            disabled={!scheduledAt || submitting}
+            onClick={() => submit("NEEDS_REVIEW")}
+            className={`flex-1 bg-blue-600 py-3 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition disabled:opacity-50 cursor-pointer ${
+              canInstantPublish ? "rounded-l-xl" : "rounded-xl"
+            }`}
+          >
+            {submitting
+              ? isEn
+                ? "Saving..."
+                : "Kaydediliyor..."
+              : isEn
+              ? "Schedule & Send for Review 🚀"
+              : "Zamanla & Onaya Gönder 🚀"}
+          </button>
+
+          {canInstantPublish && (
             <button
               type="button"
-              disabled={submitting}
-              onClick={() => {
-                setSubmitMenuOpen(false);
-                submit("DRAFT");
-              }}
-              className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50 cursor-pointer"
-            >
-              {isEn ? "Save as Draft" : "Taslak Olarak Kaydet"}
-            </button>
-            {canInstantPublish && <button
-              type="button"
               disabled={!scheduledAt || submitting}
-              onClick={() => {
-                setSubmitMenuOpen(false);
-                if (
-                  !confirm(
-                    isEn
-                      ? "This post will be published to your real accounts in about 1 minute without going through review. Are you sure?"
-                      : "Bu gönderi incelemeden geçmeden, yaklaşık 1 dakika içinde gerçek hesaplarınızda yayınlanacak. Emin misiniz?"
-                  )
-                )
-                  return;
-                submit("APPROVED", new Date().toISOString());
-              }}
-              className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-amber-800 hover:bg-amber-50 transition disabled:opacity-50 cursor-pointer"
+              onClick={() => setSubmitMenuOpen((prev) => !prev)}
+              aria-label={isEn ? "More publish options" : "Diğer yayın seçenekleri"}
+              aria-expanded={submitMenuOpen}
+              className="rounded-r-xl border-l border-white/25 bg-blue-600 px-3 hover:bg-blue-700 transition disabled:opacity-50 cursor-pointer"
             >
-              {isEn ? "⚡ Publish Now (Skip Review)" : "⚡ Şimdi Yayınla (İncelemeyi Atla)"}
-              <span className="mt-0.5 block text-[10px] font-normal text-slate-400">
-                {isEn
-                  ? "Ignores the scheduled date — live in ~1 minute."
-                  : "Seçili tarihi yok sayar — ~1 dakikada yayında."}
-              </span>
-            </button>}
-          </div>
-        )}
+              <svg
+                className="h-3.5 w-3.5 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+          )}
+
+          {submitMenuOpen && canInstantPublish && (
+            <div className="absolute right-0 top-full z-20 mt-1.5 w-72 space-y-1 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+              <button
+                type="button"
+                disabled={!scheduledAt || submitting}
+                onClick={() => {
+                  setSubmitMenuOpen(false);
+                  if (
+                    !confirm(
+                      isEn
+                        ? "This post will be published to your real accounts in about 1 minute without going through review. Are you sure?"
+                        : "Bu gönderi incelemeden geçmeden, yaklaşık 1 dakika içinde gerçek hesaplarınızda yayınlanacak. Emin misiniz?"
+                    )
+                  )
+                    return;
+                  submit("APPROVED", new Date().toISOString());
+                }}
+                className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-amber-800 hover:bg-amber-50 transition disabled:opacity-50 cursor-pointer"
+              >
+                {isEn ? "⚡ Publish Now (Skip Review)" : "⚡ Şimdi Yayınla (İncelemeyi Atla)"}
+                <span className="mt-0.5 block text-[10px] font-normal text-slate-400">
+                  {isEn
+                    ? "Ignores the scheduled date — live in ~1 minute."
+                    : "Seçili tarihi yok sayar — ~1 dakikada yayında."}
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {submitError && (

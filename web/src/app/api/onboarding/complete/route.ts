@@ -146,6 +146,9 @@ export async function POST(request: NextRequest) {
           if (brandNameUpdate) {
             brandUpdateObj.name = brandNameUpdate;
           }
+          if (result.logoUrl) {
+            brandUpdateObj.logo_url = result.logoUrl;
+          }
 
           const { error: brandUpdateError } = await supabase.from("brands").update(brandUpdateObj).eq("id", brandId).select("id").single();
           if (brandUpdateError) throw brandUpdateError;
@@ -170,11 +173,17 @@ export async function POST(request: NextRequest) {
                 audience_motivations: result.audienceMotivations,
                 market_comparison: result.marketComparison,
                 raw_notes: result.rawNotes,
+                visual_style: result.visualStyle || null,
               },
               { onConflict: "brand_id" }
             );
           if (dnaError) throw dnaError;
 
+          if (result.claims.length > 0) {
+            await supabase.from("brand_claims").insert(
+              result.claims.map((c) => ({ brand_id: brandId, claim_text: c.text, source_url: c.sourceUrl }))
+            );
+          }
         }
       } catch (scrapeErr) {
         if (aiAutofillSucceeded) throw scrapeErr;

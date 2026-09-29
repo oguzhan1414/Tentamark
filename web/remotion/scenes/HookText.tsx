@@ -1,6 +1,5 @@
 import React from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { AtmosphericBackground } from "../components/AtmosphericBackground";
 import { HormoziCaptions } from "../components/HormoziCaptions";
 import { IOSNotificationBanner } from "../components/IOSNotificationBanner";
 import type { Theme } from "../theme";

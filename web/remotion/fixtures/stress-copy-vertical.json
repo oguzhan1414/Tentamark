@@ -1,0 +1,49 @@
+{
+  "format": "vertical",
+  "durationSeconds": 20,
+  "fps": 30,
+  "accentColors": ["#f97316", "#0ea5e9"],
+  "brandName": "İstanbul Kahve Atölyesi ☕",
+  "backgroundTheme": "clean_trust",
+  "musicTrack": "none",
+  "scenePlan": [
+    {
+      "archetype": "hook",
+      "frames": 105,
+      "lines": ["İyi kahve tesadüf değildir ☕", "çekirdekten fincana özen ister"],
+      "highlightWord": "özen"
+    },
+    {
+      "archetype": "feature",
+      "frames": 120,
+      "eyebrow": "UZUN TÜRKÇE METİN TESTİ",
+      "title": "Etiyopya Yirgacheffe'nin çiçeksi ve narenciye notalarını keşfedin",
+      "description": "Her fincanda yasemin, bergamot ve olgun şeftaliyi çağrıştıran dengeli bir deneyim sunmak için küçük partiler halinde özenle kavrulur.",
+      "imageUrl": "/public/tenta-avatar-open.png",
+      "reverse": false,
+      "badges": ["🌱 İzlenebilir çekirdek", "🔥 Haftalık taze kavrum"]
+    },
+    {
+      "archetype": "stat",
+      "frames": 120,
+      "headline": "%100 şeffaf kaynak",
+      "supporting": "Çiftlikten kavurma profiline kadar ürün yolculuğunu açıkça paylaşırız."
+    },
+    {
+      "archetype": "wrapped",
+      "frames": 120,
+      "headline": "Tek fikirden çoklu içerik 🚀",
+      "metricValue": "5+",
+      "metricLabel": "platforma özel yaratıcı çıktı",
+      "comparisonText": "Aynı mesajı kopyalamadan her kanalın diline uyarlayın."
+    },
+    {
+      "archetype": "outro",
+      "frames": 105,
+      "brandName": "İstanbul Kahve Atölyesi ☕",
+      "logoUrl": null,
+      "tagline": "",
+      "ctaLabel": null
+    }
+  ]
+}

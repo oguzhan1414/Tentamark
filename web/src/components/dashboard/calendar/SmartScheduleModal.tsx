@@ -190,6 +190,9 @@ export default function SmartScheduleModal({
                 AI Akıllı Takvim Doldurucu
               </h3>
               <p className="text-[11px] text-slate-500">{formattedDate}</p>
+              <p className="text-[10px] text-slate-400">
+                Taslağı doğrudan takvime ekler — Yeni Gönderi ekranını açmaz, oradaki Caption Lab/Remix/Çarpan gibi araçlara buradan erişilmez.
+              </p>
             </div>
           </div>
 

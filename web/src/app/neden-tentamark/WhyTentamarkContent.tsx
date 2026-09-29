@@ -422,16 +422,16 @@ function WhyTentamarkInner() {
 
               {/* Category Filter Pills */}
               <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
-                {[
+                {([
                   { id: "all", label: isEn ? "All Criteria" : "Tüm Kriterler" },
                   { id: "strategy", label: isEn ? "Strategy & Content" : "Strateji & İçerik" },
                   { id: "brand", label: isEn ? "Brand Memory" : "Marka Hafızası" },
                   { id: "safety", label: isEn ? "Safety & Review" : "Yayın & Güvenlik" },
                   { id: "time", label: isEn ? "Time & Workflow" : "Zaman & İş Akışı" },
-                ].map((pill) => (
+                ] as const).map((pill) => (
                   <button
                     key={pill.id}
-                    onClick={() => setSelectedFilter(pill.id as any)}
+                    onClick={() => setSelectedFilter(pill.id)}
                     className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition ${
                       selectedFilter === pill.id
                         ? "bg-[#172B46] text-white shadow-xs"
@@ -588,9 +588,9 @@ function WhyTentamarkInner() {
                           <span>→</span>
                         </Link>
                       )}
-                      {(pillar as any).secondaryLink && (
-                        <Link href={(pillar as any).secondaryLink.href} className="inline-flex items-center gap-1 text-[#536276] hover:text-[#172B46] underline underline-offset-4">
-                          <span>{(pillar as any).secondaryLink.text}</span>
+                      {"secondaryLink" in pillar && pillar.secondaryLink && (
+                        <Link href={pillar.secondaryLink.href} className="inline-flex items-center gap-1 text-[#536276] hover:text-[#172B46] underline underline-offset-4">
+                          <span>{pillar.secondaryLink.text}</span>
                           <span>→</span>
                         </Link>
                       )}
@@ -647,7 +647,7 @@ function WhyTentamarkInner() {
               <p className="mt-2 text-sm sm:text-base text-[#536276]">
                 {isEn ? (
                   <>
-                    We don't try to be everything for everyone. Read our{" "}
+                    We don&apos;t try to be everything for everyone. Read our{" "}
                     <Link href="/tentamark-nedir" className="text-[#C92E35] underline underline-offset-4">
                       What is Tentamark
                     </Link>{" "}

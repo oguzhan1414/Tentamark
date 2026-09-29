@@ -1,18 +1,41 @@
+import type { SceneArchetype, VideoDuration } from "./types";
+
+export type VideoSourceType = "existing_content" | "custom_topic" | "product_url" | "user_upload";
+export type VideoRecipeId = "quick_promo" | "product_spotlight" | "content_story" | "user_clip_reel";
+
 export type SceneSlot =
   | { archetype: "hook"; frames: number }
+  | { archetype: "ugc_split"; frames: number }
   | { archetype: "feature"; frames: number; reverse: boolean }
+  | { archetype: "product"; frames: number }
+  | { archetype: "review"; frames: number }
+  | { archetype: "wrapped"; frames: number }
   | { archetype: "stat"; frames: number }
   | { archetype: "carousel"; frames: number }
+  | { archetype: "user_clip"; frames: number }
   | { archetype: "outro"; frames: number };
 
-const FPS = 30;
-const TRANSITION_FRAMES = 15;
-const MIN_SCENE_FRAMES = 45; // 1.5s floor — nothing should flash by imperceptibly
+export type PlanScenesParams = {
+  durationSeconds: VideoDuration;
+  imageCount: number;
+  seed: string;
+  sourceType?: VideoSourceType;
+  requestedRecipe?: VideoRecipeId | "auto";
+  hasVideoBackground?: boolean;
+  hasReview?: boolean;
+};
 
-// Small deterministic PRNG seeded from a string (the job id) — mulberry32
-// over a string hash. Not cryptographic, just needs to be stable per seed
-// (a re-render of the same job reproduces the same structure) and spread out
-// across different seeds (two different jobs shouldn't pick the same scenes).
+export const VIDEO_RECIPES: Record<VideoRecipeId, { label: string; description: string }> = {
+  quick_promo: { label: "Hızlı Tanıtım", description: "Kısa hook, fayda ve net CTA." },
+  product_spotlight: { label: "Ürün Vitrini", description: "Ürün, özellik, sosyal kanıt ve CTA." },
+  content_story: { label: "İçerik Hikâyesi", description: "Mevcut fikri görsel bir anlatıya dönüştürür." },
+  user_clip_reel: { label: "Kendi Videon", description: "Yüklediğin klip, marka hook'u ve outro ile Reel'e dönüşür." },
+};
+
+const FPS = 30;
+export const TRANSITION_FRAMES = 15;
+export const MIN_SCENE_FRAMES = 45;
+
 function seededRandom(seed: string): () => number {
   let h = 1779033703 ^ seed.length;
   for (let i = 0; i < seed.length; i++) {
@@ -31,91 +54,132 @@ function pick<T>(pool: T[], random: () => number): T {
   return pool[Math.floor(random() * pool.length)];
 }
 
-// Largest-remainder rounding: distributes totalFrames across weights so the
-// integers sum EXACTLY to totalFrames (plain Math.round per-item would drift
-// off by a frame or two, which would silently change the requested duration).
 function allocateFrames(weights: number[], totalFrames: number): number[] {
   const weightSum = weights.reduce((a, b) => a + b, 0);
-  const raw = weights.map((w) => (w / weightSum) * totalFrames);
+  const raw = weights.map((weight) => (weight / weightSum) * totalFrames);
   const floored = raw.map(Math.floor);
   const remainder = totalFrames - floored.reduce((a, b) => a + b, 0);
   const order = raw
-    .map((r, i) => ({ i, frac: r - Math.floor(r) }))
-    .sort((a, b) => b.frac - a.frac);
-  for (let k = 0; k < remainder; k++) floored[order[k].i] += 1;
-  return floored.map((f) => Math.max(f, MIN_SCENE_FRAMES));
+    .map((value, index) => ({ index, fraction: value - Math.floor(value) }))
+    .sort((a, b) => b.fraction - a.fraction);
+  for (let index = 0; index < remainder; index++) floored[order[index].index] += 1;
+  return floored.map((frames) => Math.max(frames, MIN_SCENE_FRAMES));
 }
 
-/*
-  Pure, Remotion-free scene STRUCTURE planner — decides which archetypes fill
-  a video, in what order, and for how many frames, given only the chosen
-  length, how many images are available, and a seed. No brand copy or AI call
-  here (see buildVideoInputProps.ts for that) — this stays independently
-  testable and fast.
+export function selectVideoRecipe(
+  sourceType: VideoSourceType,
+  requestedRecipe: VideoRecipeId | "auto" = "auto"
+): VideoRecipeId {
+  if (requestedRecipe !== "auto") return requestedRecipe;
+  if (sourceType === "user_upload") return "user_clip_reel";
+  if (sourceType === "product_url") return "product_spotlight";
+  if (sourceType === "existing_content") return "content_story";
+  return "quick_promo";
+}
 
-  Scene COUNT is driven by duration, not fixed: 10s -> opener+outro only,
-  15s -> +1 middle scene, 20s -> +2 middle scenes. Selection within the
-  eligible pool (filtered by imageCount) is seeded-random with a
-  no-immediate-repeat rule, so two jobs of the same brand/duration don't come
-  out structurally identical, but retrying the same job is reproducible.
-*/
-export function planScenes(params: { durationSeconds: 10 | 15 | 20; imageCount: number; seed: string }): SceneSlot[] {
-  const { durationSeconds, imageCount, seed } = params;
-  const random = seededRandom(seed);
+// The uploaded clip gets almost the entire runtime — just a brand hook and
+// outro bookend it, unlike the AI-generated recipes which pick a random
+// spread of graphic archetypes for the middle.
+function userClipArchetypes(): SceneArchetype[] {
+  return ["user_clip"];
+}
 
-  // Dynamic pacing: 10s -> 1 middle scene (3 scenes total),
-  // 15s -> 2-3 middle scenes (4-5 scenes total),
-  // 20s -> 3-4 middle scenes (5-6 scenes total).
-  // This keeps average scene duration between 2.5s and 4.0s for high engagement.
-  const middleSlotCount =
-    durationSeconds === 10
-      ? 1
-      : durationSeconds === 15
-        ? (imageCount >= 2 ? 3 : 2)
-        : (imageCount >= 2 ? 4 : 3);
+function desiredMiddleCount(durationSeconds: VideoDuration, imageCount: number): number {
+  if (durationSeconds === 10) return 1;
+  if (durationSeconds === 15) return imageCount >= 1 ? 3 : 2;
+  return imageCount >= 1 ? 4 : 3;
+}
 
-  // Hook is always the preferred high-energy opener for social video
-  const opener = "hook";
-
-  const middlePool: Array<"feature" | "stat" | "carousel"> = ["stat"];
-  if (imageCount >= 1) middlePool.push("feature");
-  if (imageCount >= 2) middlePool.push("carousel");
-
-  const recentlyUsed: string[] = [opener];
-  const middles: Array<"feature" | "stat" | "carousel"> = [];
-  for (let i = 0; i < middleSlotCount; i++) {
-    const available = middlePool.filter((a) => !recentlyUsed.includes(a));
-    const pool = available.length > 0 ? available : middlePool;
-    const choice = pick(pool, random);
-    middles.push(choice);
-    recentlyUsed.push(choice);
-    if (recentlyUsed.length > 2) recentlyUsed.shift();
+function productArchetypes(params: PlanScenesParams): SceneArchetype[] {
+  if (params.durationSeconds === 10) return ["product"];
+  if (params.durationSeconds === 15) {
+    return params.hasReview ? ["product", "feature", "review"] : ["product", "feature", "wrapped"];
   }
+  return [
+    "product",
+    params.hasVideoBackground ? "ugc_split" : "wrapped",
+    "feature",
+    params.hasReview ? "review" : "stat",
+  ];
+}
 
-  const archetypes: Array<"hook" | "stat" | "feature" | "carousel"> = [opener, ...middles];
-  const sceneCount = archetypes.length + 1; // + outro
+function chooseWithoutImmediateRepeat(
+  candidates: SceneArchetype[],
+  count: number,
+  random: () => number
+): SceneArchetype[] {
+  const chosen: SceneArchetype[] = [];
+  for (let index = 0; index < count; index++) {
+    const available = candidates.filter((candidate) => candidate !== chosen.at(-1));
+    chosen.push(pick(available.length > 0 ? available : candidates, random));
+  }
+  return chosen;
+}
 
-  // The cut right into the outro is a light-leak Overlay (see Main.tsx), not
-  // a crossfade/slide Transition — Overlays don't shorten the timeline the
-  // way Transitions do, so only the OTHER cuts contribute overlap frames.
-  const transitionCutCount = Math.max(sceneCount - 2, 0);
-  const totalOnScreenFrames = durationSeconds * FPS;
-  const totalFramesWithOverlap = totalOnScreenFrames + TRANSITION_FRAMES * transitionCutCount;
+function contentStoryArchetypes(params: PlanScenesParams, random: () => number): SceneArchetype[] {
+  const candidates: SceneArchetype[] = ["wrapped", "stat"];
+  if (params.imageCount >= 1) candidates.push("feature");
+  if (params.imageCount >= 2) candidates.push("carousel");
+  if (params.hasVideoBackground) candidates.push("ugc_split");
+  return chooseWithoutImmediateRepeat(candidates, desiredMiddleCount(params.durationSeconds, params.imageCount), random);
+}
 
-  // Punchy hook (0.9), generous showcase (1.1 - 1.2), clean outro (0.95)
-  const weights = [0.95, ...middles.map(() => 1.15), 0.95];
+function quickPromoArchetypes(params: PlanScenesParams, random: () => number): SceneArchetype[] {
+  const candidates: SceneArchetype[] = ["stat", "wrapped"];
+  if (params.imageCount >= 1) candidates.push("feature");
+  if (params.imageCount >= 2) candidates.push("carousel");
+  if (params.hasVideoBackground) candidates.push("ugc_split");
+  return chooseWithoutImmediateRepeat(candidates, desiredMiddleCount(params.durationSeconds, params.imageCount), random);
+}
+
+// Redistributes an already-planned slot array's frames to hit an exact
+// target rendered duration (e.g. a real voice-over's audio length) without
+// touching planScenes()'s archetype/scene-count decisions. Reuses the plan's
+// OWN existing weighting (slots[].frames) rather than the raw archetype
+// weights, so relative pacing (hook/outro shorter, middle scenes longer) is
+// preserved — and reuses allocateFrames() itself, so the same
+// MIN_SCENE_FRAMES floor applies automatically, no separate clamp to write.
+export function rescaleSlotsToDuration(slots: SceneSlot[], targetRenderedFrames: number): SceneSlot[] {
+  const transitionCutCount = Math.max(slots.length - 2, 0);
+  const totalFramesWithOverlap = targetRenderedFrames + TRANSITION_FRAMES * transitionCutCount;
+  const weights = slots.map((slot) => slot.frames);
+  const newFrames = allocateFrames(weights, totalFramesWithOverlap);
+  return slots.map((slot, index) => ({ ...slot, frames: newFrames[index] }));
+}
+
+export function getRenderedDurationInFrames(scenePlan: Array<{ frames: number }>): number {
+  const transitionCutCount = Math.max(scenePlan.length - 2, 0);
+  return scenePlan.reduce((total, scene) => total + scene.frames, 0) - TRANSITION_FRAMES * transitionCutCount;
+}
+
+export function planScenes(params: PlanScenesParams): { recipeId: VideoRecipeId; slots: SceneSlot[] } {
+  const sourceType = params.sourceType ?? "custom_topic";
+  const recipeId = selectVideoRecipe(sourceType, params.requestedRecipe);
+  const random = seededRandom(params.seed);
+  const middles =
+    recipeId === "user_clip_reel"
+      ? userClipArchetypes()
+      : recipeId === "product_spotlight"
+        ? productArchetypes(params)
+        : recipeId === "content_story"
+          ? contentStoryArchetypes(params, random)
+          : quickPromoArchetypes(params, random);
+
+  const archetypes: SceneArchetype[] = ["hook", ...middles, "outro"];
+  const transitionCutCount = Math.max(archetypes.length - 2, 0);
+  const totalFramesWithOverlap = params.durationSeconds * FPS + TRANSITION_FRAMES * transitionCutCount;
+  const weights = archetypes.map((archetype) => (archetype === "hook" ? 0.9 : archetype === "outro" ? 0.95 : 1.15));
   const frames = allocateFrames(weights, totalFramesWithOverlap);
 
-  let reverseToggle = false;
-  const slots: SceneSlot[] = archetypes.map((archetype, i): SceneSlot => {
+  let reverse = false;
+  const slots = archetypes.map((archetype, index): SceneSlot => {
     if (archetype === "feature") {
-      const slot: SceneSlot = { archetype: "feature", frames: frames[i], reverse: reverseToggle };
-      reverseToggle = !reverseToggle;
+      const slot: SceneSlot = { archetype, frames: frames[index], reverse };
+      reverse = !reverse;
       return slot;
     }
-    return { archetype, frames: frames[i] };
+    return { archetype, frames: frames[index] } as SceneSlot;
   });
-  slots.push({ archetype: "outro", frames: frames[frames.length - 1] });
 
-  return slots;
+  return { recipeId, slots };
 }

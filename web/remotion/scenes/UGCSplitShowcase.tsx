@@ -11,6 +11,7 @@ import {
 } from "remotion";
 import { ding } from "@remotion/sfx";
 import { displayFont } from "../fonts";
+import { SPRING_CARD, SPRING_BADGE, TEMPO_MAP, tempoSpring } from "../springs";
 import type { Theme } from "../theme";
 
 export interface UGCSplitShowcaseProps {
@@ -47,14 +48,14 @@ export const UGCSplitShowcase: React.FC<UGCSplitShowcaseProps> = ({
   const cardSlide = spring({
     frame: frame - 4,
     fps,
-    config: { damping: 14, mass: 0.8, stiffness: 140 },
+    config: tempoSpring(SPRING_CARD, TEMPO_MAP.ugc_split),
   });
 
   // Badge pop spring
   const badgePop = spring({
     frame: frame - 18,
     fps,
-    config: { damping: 10, mass: 0.5, stiffness: 200 },
+    config: SPRING_BADGE,
   });
 
   // Continuous micro zoom on top video

@@ -219,7 +219,7 @@ export default function CalendarHeader({
             <button
               type="button"
               onClick={onOpenSmartFill}
-              title={c.aiFill}
+              title={c.aiFillHint}
               className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50/80 px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition cursor-pointer"
             >
               <span>✨</span>

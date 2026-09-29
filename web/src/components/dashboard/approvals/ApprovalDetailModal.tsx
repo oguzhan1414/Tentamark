@@ -215,7 +215,7 @@ export default function ApprovalDetailModal({
   }
 
   async function handleShare() {
-    if (item.isDemo || sharing) return;
+    if (item.isDemo || sharing || realStatus !== "review") return;
     setSharing(true);
     try {
       const { data: existing } = await supabase
@@ -342,12 +342,21 @@ export default function ApprovalDetailModal({
             O
           </div>
 
-          {/* Share Button */}
+          {/* Share Button — only meaningful once content is actually
+              NEEDS_REVIEW: respond_to_share_link()'s approve branch only
+              transitions NEEDS_REVIEW -> APPROVED (0049_mcp_oauth.sql),
+              so a link shared any earlier (e.g. still DRAFT) is guaranteed
+              to fail with a raw Postgres exception the moment someone opens
+              it and clicks Onayla. */}
           <button
             type="button"
             onClick={handleShare}
-            disabled={sharing || item.isDemo}
-            title={isTr ? "Hesabı olmayan biriyle paylaşabileceğin, onay verebileceği bir bağlantı oluşturur" : "Create a link for external reviewers"}
+            disabled={sharing || item.isDemo || realStatus !== "review"}
+            title={
+              realStatus !== "review"
+                ? (isTr ? "Onay linki, içerik onaya gönderildikten sonra oluşturulabilir" : "A review link can only be created once content is submitted for review")
+                : (isTr ? "Hesabı olmayan biriyle paylaşabileceğin, onay verebileceği bir bağlantı oluşturur" : "Create a link for external reviewers")
+            }
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition disabled:opacity-50"
           >
             <span>{shareCopied ? p.actions.linkCopied : sharing ? p.actions.generatingLink : p.actions.shareLink}</span>
@@ -659,6 +668,20 @@ export default function ApprovalDetailModal({
                         <PlatformIcon name={p.platform} className="h-5 w-5 rounded-md" />
                         <span className="text-xs font-bold text-slate-800">{p.platform}</span>
                         {p.status && <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_LABEL[p.status].className}`}>{p.rawStatus === "QUEUED" && p.lastError ? "Tekrar deneniyor" : STATUS_LABEL[p.status].label}</span>}
+                        {p.id && historyByPlatform[p.id]?.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setExpandedHistoryId(expandedHistoryId === p.id ? null : p.id ?? null)}
+                            title="Düzenleme geçmişi"
+                            className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold transition ${
+                              expandedHistoryId === p.id
+                                ? "bg-amber-600 text-white"
+                                : "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                            }`}
+                          >
+                            ✏️ {historyByPlatform[p.id].length}
+                          </button>
+                        )}
                         {p.scheduledAt && (
                           <span className="font-mono text-[10px] text-slate-500">
                             {new Date(p.scheduledAt).toLocaleString("tr-TR", {
@@ -684,15 +707,6 @@ export default function ApprovalDetailModal({
                         {onRetryPlatform && p.id && ["NEEDS_USER_ACTION", "FAILED"].includes(p.rawStatus ?? "") && <button type="button" disabled={platformBusy} onClick={() => {
                           if (p.id && confirm("Bu gönderinin platformda zaten yayınlanmadığını kontrol ettiniz mi? Yeniden deneme yaklaşık 2 dakika içinde paylaşım yapabilir.")) void retryPlatform(p.id);
                         }} className="rounded-lg bg-red-600 px-2.5 py-1 text-[11px] font-bold text-white disabled:opacity-40">2 dakika içinde tekrar dene</button>}
-                        {p.id && historyByPlatform[p.id]?.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setExpandedHistoryId(expandedHistoryId === p.id ? null : p.id ?? null)}
-                            className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-100"
-                          >
-                            {expandedHistoryId === p.id ? "Geçmişi gizle" : `Düzenleme geçmişi (${historyByPlatform[p.id].length})`}
-                          </button>
-                        )}
                       </div>
                       {p.id && expandedHistoryId === p.id && historyByPlatform[p.id] && (
                         <div className="space-y-2 rounded-lg border border-amber-100 bg-amber-50/50 p-2.5">

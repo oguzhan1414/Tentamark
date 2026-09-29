@@ -1,13 +1,12 @@
 "use server";
 
-import { lookup } from "node:dns/promises";
 import { createClient } from "@/lib/supabase/server";
 import { MODEL, callGroq } from "@/lib/ai/groqModel";
 import { TRAIT_KEYS, type TraitScores, type TonePosition } from "./traits";
+import { resolveAndValidateUrl, extractSignals } from "./htmlSignals";
 
 const PROMPT_VERSION = "brand-autofill-v1";
 const FETCH_TIMEOUT_MS = 10000;
-const MAX_EXTRACT_CHARS = 15000;
 
 export type CompetitorSocials = {
   instagram: string;
@@ -48,6 +47,11 @@ export type AudiencePersona = {
   painPoint: string;
 };
 
+export type BrandClaim = {
+  text: string;
+  sourceUrl: string;
+};
+
 export type AutofillResult = {
   brandName: string;
   website: string;
@@ -68,6 +72,17 @@ export type AutofillResult = {
   // Deterministic, not AI-guessed — see extractBrandColors(). Empty when the
   // page exposes no theme-color/CSS hex signal; never a hallucinated hex.
   colorPalette: string[];
+  // Deterministic, not AI-guessed — see extractLogoUrl(). Null when the page
+  // exposes none of apple-touch-icon/og:image/icon; never a guessed URL.
+  logoUrl: string | null;
+  // AI's subjective read (short phrase, e.g. "minimal ve pastel") — same
+  // trust tier as trait_scores/tone_position, editable, not a hard claim.
+  visualStyle: string;
+  // Only ever populated from the real-scrape branch — the fallback branch
+  // (site blocked/unreachable) has no actual page text to ground a claim in,
+  // so treating its guesses as "verified claims" would defeat the whole
+  // point of the ledger. Empty on fallback, always.
+  claims: BrandClaim[];
 };
 
 function clamp100(n: unknown, fallback = 50): number {
@@ -107,6 +122,15 @@ function parseAudiencePersona(raw: unknown): AudiencePersona {
     goal: String(obj.goal ?? "").trim(),
     painPoint: String(obj.pain_point ?? "").trim(),
   };
+}
+
+function parseClaims(raw: unknown, sourceUrl: string): BrandClaim[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((v) => String(v).trim())
+    .filter(Boolean)
+    .slice(0, 10)
+    .map((text) => ({ text, sourceUrl }));
 }
 
 function parseStringList(raw: unknown, max = 5): string[] {
@@ -168,47 +192,6 @@ function parseMarketComparison(raw: unknown): MarketComparison {
     competitiveGap: String(obj.competitive_gap ?? "").trim(),
     opportunity: String(obj.opportunity ?? "").trim(),
   };
-}
-
-function isPrivateIp(ip: string): boolean {
-  const v4 = ip.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
-  if (v4) {
-    const a = Number(v4[1]);
-    const b = Number(v4[2]);
-    if (a === 127 || a === 10 || a === 0) return true;
-    if (a === 172 && b >= 16 && b <= 31) return true;
-    if (a === 192 && b === 168) return true;
-    if (a === 169 && b === 254) return true; // link-local, incl. cloud metadata 169.254.169.254
-    return false;
-  }
-  const lower = ip.toLowerCase();
-  return lower === "::1" || lower.startsWith("fc") || lower.startsWith("fd") || lower.startsWith("fe80");
-}
-
-async function resolveAndValidateUrl(raw: string): Promise<URL> {
-  let url: URL;
-  try {
-    url = new URL(raw.trim());
-  } catch {
-    throw new Error("Geçersiz URL.");
-  }
-  if (url.protocol !== "http:" && url.protocol !== "https:") {
-    throw new Error("Sadece http/https adresleri desteklenir.");
-  }
-  if (url.hostname.toLowerCase() === "localhost") {
-    throw new Error("Bu adres desteklenmiyor.");
-  }
-
-  let address: string;
-  try {
-    address = (await lookup(url.hostname)).address;
-  } catch {
-    throw new Error("Adres çözümlenemedi.");
-  }
-  if (isPrivateIp(address)) {
-    throw new Error("Bu adres desteklenmiyor.");
-  }
-  return url;
 }
 
 const VERIFY_TIMEOUT_MS = 7000;
@@ -299,61 +282,6 @@ async function verifyCompetitorLinks(competitors: CompetitorInsight[]): Promise<
   );
 }
 
-function extractTag(html: string, pattern: RegExp): string {
-  return pattern.exec(html)?.[1]?.trim() ?? "";
-}
-
-function extractSignals(html: string) {
-  const title = extractTag(html, /<title[^>]*>([^<]*)<\/title>/i);
-  const description = extractTag(
-    html,
-    /<meta\s+[^>]*name=["']description["'][^>]*content=["']([^"']*)["'][^>]*>/i
-  );
-  const ogTitle = extractTag(
-    html,
-    /<meta\s+[^>]*property=["']og:title["'][^>]*content=["']([^"']*)["'][^>]*>/i
-  );
-  const ogDescription = extractTag(
-    html,
-    /<meta\s+[^>]*property=["']og:description["'][^>]*content=["']([^"']*)["'][^>]*>/i
-  );
-  const ogSiteName = extractTag(
-    html,
-    /<meta\s+[^>]*property=["']og:site_name["'][^>]*content=["']([^"']*)["'][^>]*>/i
-  );
-  const lang = extractTag(html, /<html[^>]*\slang=["']([a-zA-Z-]+)["']/i);
-
-  // Extract application/ld+json blocks
-  const ldMatches = [...html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
-  const ldJsonText = ldMatches
-    .map((m) => m[1].trim())
-    .filter(Boolean)
-    .join("\n")
-    .slice(0, 3000);
-
-  // Extract body content and strip scripts/styles/SVGs/tags
-  let bodyContent = html;
-  const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-  if (bodyMatch) bodyContent = bodyMatch[1];
-
-  const cleanedBody = bodyContent
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, " ")
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, " ")
-    .replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, " ")
-    .replace(/<!--[\s\S]*?-->/g, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&#x27;/g, "'")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, MAX_EXTRACT_CHARS);
-
-  return { title, description, ogTitle, ogDescription, ogSiteName, lang, ldJsonText, cleanedBody };
-}
-
 function normalizeHex(raw: string): string {
   const clean = raw.toUpperCase();
   if (clean.length === 3) {
@@ -387,7 +315,13 @@ const KNOWN_WIDGET_COLORS = new Set([
   "#1DA1F2", // Twitter/X (legacy blue)
   "#0A66C2", // LinkedIn
   "#FF0000", // YouTube
-  "#25D366".toLowerCase(),
+  // Confirmed live on tentamark.com's own "connected platforms" icon row —
+  // Shopify/Google/Instagram/Pinterest badges outranked the site's real
+  // #FA5252 brand color 1:0 in the saved palette before this was added.
+  "#95BF47", // Shopify
+  "#4285F4", "#EA4335", "#FBBC05", "#34A853", // Google (G logo's 4 colors)
+  "#E4405F", "#F09433", "#E6683C", "#DC2743", "#CC2366", "#BC1888", // Instagram (icon + gradient stops)
+  "#BD081C", "#E60023", // Pinterest (legacy + current red)
 ]);
 
 /*
@@ -397,17 +331,22 @@ const KNOWN_WIDGET_COLORS = new Set([
   in the raw HTML we fetch anyway, in priority order:
   1. theme-color meta tag — the single most deliberate signal a site publishes.
   2. CSS custom properties whose name suggests an intentional design-system
-     choice (--brand-primary, --color-accent, etc.) — a hex declared ONCE in
-     a :root block is a much stronger brand-color signal than a hex that
-     happens to appear many times, which raw frequency alone can't tell apart
-     from a third-party widget's color repeated across many elements.
+     choice (--brand-primary, --color-accent, etc.), AND Tailwind
+     arbitrary-value color classes (bg-[#hex], border-[#hex]/40, ...) — both
+     are a hex a developer chose and typed on purpose, a much stronger
+     signal than a hex that just happens to appear many times, which raw
+     frequency alone can't tell apart from a third-party widget's color
+     repeated across many elements.
   3. Everything else in <style> blocks / inline style="" attributes, ranked
      by frequency as a fallback.
-  Known widget colors (WhatsApp green, Facebook blue, ...) are excluded at
-  every tier — confirmed live that #25D366 from a WhatsApp chat button
-  otherwise wins purely on frequency. Returns [] when a site exposes none of
-  these (common for JS-rendered sites whose real stylesheet is a separate,
-  unfetched request) rather than guessing.
+  Known widget colors (WhatsApp green, Facebook blue, Shopify green, Google
+  blue, Instagram's gradient, Pinterest red, ...) are excluded at every tier
+  — confirmed live on tentamark.com's own site: small "connected platform"
+  icon SVGs (inline style="color:...") otherwise outrank the real brand
+  color, which historically only showed up via Tailwind classes invisible to
+  tier 2. Returns [] when a site exposes none of these (common for
+  JS-rendered sites whose real stylesheet is a separate, unfetched request)
+  rather than guessing.
 */
 function extractBrandColors(html: string): string[] {
   const tiers = [new Map<string, number>(), new Map<string, number>(), new Map<string, number>()];
@@ -438,6 +377,22 @@ function extractBrandColors(html: string): string[] {
     record(1, m[1], 10);
   }
 
+  // Tailwind arbitrary-value color classes, e.g. class="bg-[#FA5252]" or
+  // "hover:border-[#FA5252]/40" — invisible to the two extractions above,
+  // since they live in class="" attributes, never in <style>/style="". This
+  // is exactly as deliberate a color choice as a CSS custom property (a
+  // developer typed that literal hex on purpose, repeatedly, across many
+  // elements) so it gets the same tier weight. Confirmed live: Tentamark's
+  // own real brand color (#FA5252, used 29x this way) was completely
+  // invisible to the extractor before this, while small platform-icon SVGs
+  // using inline style="color:..." won by default.
+  const classAttrs = [...html.matchAll(/class=["']([^"']+)["']/gi)].map((m) => m[1]).join(" ");
+  for (const m of classAttrs.matchAll(
+    /(?:bg|text|border|ring|shadow|from|via|to|fill|stroke|accent|caret|decoration|outline|divide)-\[#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\]/gi
+  )) {
+    record(1, m[1], 10);
+  }
+
   for (const m of allStyle.matchAll(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g)) {
     record(2, m[1]);
   }
@@ -452,6 +407,32 @@ function extractBrandColors(html: string): string[] {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
     .map(([hex]) => hex);
+}
+
+// Priority order: apple-touch-icon is almost always a clean square brand
+// mark (that's its whole purpose — a home-screen icon), og:image is usually
+// a social-preview banner (better than nothing, but often not a logo), plain
+// favicon is the last resort. Relative hrefs resolved against the page's
+// own origin — most sites serve these from a CDN subdomain, not the page URL.
+function extractLogoUrl(html: string, pageUrl: URL): string | null {
+  const candidates: { pattern: RegExp; priority: number }[] = [
+    { pattern: /<link[^>]*rel=["'](?:apple-touch-icon|apple-touch-icon-precomposed)["'][^>]*href=["']([^"']+)["']/i, priority: 0 },
+    { pattern: /<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i, priority: 1 },
+    { pattern: /<link[^>]*rel=["']icon["'][^>]*href=["']([^"']+)["']/i, priority: 2 },
+  ];
+  let best: { href: string; priority: number } | null = null;
+  for (const { pattern, priority } of candidates) {
+    const match = pattern.exec(html);
+    if (match?.[1] && (!best || priority < best.priority)) {
+      best = { href: match[1], priority };
+    }
+  }
+  if (!best) return null;
+  try {
+    return new URL(best.href, pageUrl).toString();
+  } catch {
+    return null;
+  }
 }
 
 /*
@@ -493,6 +474,9 @@ export async function autofillFromWebsite(brandId: string, rawUrl: string): Prom
     audienceMotivations: [],
     rawNotes: "",
     colorPalette: [],
+    logoUrl: null,
+    visualStyle: "",
+    claims: [],
   };
 
   const supabase = await createClient();
@@ -501,6 +485,7 @@ export async function autofillFromWebsite(brandId: string, rawUrl: string): Prom
     let signals: ReturnType<typeof extractSignals> | null = null;
     let scrapeBlocked = false;
     let extractedColors: string[] = [];
+    let extractedLogoUrl: string | null = null;
 
     try {
       const res = await fetch(url, {
@@ -519,6 +504,7 @@ export async function autofillFromWebsite(brandId: string, rawUrl: string): Prom
         const fullHtml = await res.text();
         signals = extractSignals(fullHtml);
         extractedColors = extractBrandColors(fullHtml);
+        extractedLogoUrl = extractLogoUrl(fullHtml, url);
 
         // Check if page returned a Cloudflare block challenge inside a 200 response
         if (
@@ -588,6 +574,7 @@ Kesin kurallar:
     "x": "-100 (tamamen resmi/profesyonel) ile 100 (tamamen rahat/gündelik) arası tam sayı",
     "y": "-100 (sakin/ölçülü) ile 100 (enerjik/coşkulu) arası tam sayı"
   },
+  "visual_style": "Markanın görsel estetiğini 2-4 kelimeyle tanımla (örn: 'minimal ve pastel', 'maksimalist ve enerjik renkli', 'lüks ve sade', 'el yapımı ve sıcak')",
   "audience_persona": {
     "label": "Kısa persona adı (örn. 'Genç Profesyonel', 'Yerel Aile')",
     "age": "Yaş aralığı (örn. 22-35)",
@@ -599,8 +586,14 @@ Kesin kurallar:
   },
   "audience_pain_points": ["3-4 madde, hedef kitlenin somut sorunları"],
   "audience_motivations": ["3-4 madde, hedef kitleyi harekete geçiren motivasyonlar"],
-  "raw_notes": "Sayfadan çıkarılan kritik ürün detayları, paketler, fiyatlandırma veya kullanım bilgileri (örn: 1, 3 ve 7 günlük dijital pass, 50+ anlaşmalı restoran ve kafe, ortalama %40 tasarruf)"
+  "raw_notes": "Sayfadan çıkarılan kritik ürün detayları, paketler, fiyatlandırma veya kullanım bilgileri (örn: 1, 3 ve 7 günlük dijital pass, 50+ anlaşmalı restoran ve kafe, ortalama %40 tasarruf)",
+  "claims": ["Sayfa içeriğinde GERÇEKTEN YAZILI olan somut, doğrulanabilir iddialar — rakamlar, süreler, garantiler, sertifikalar, politika detayları (örn: '24 saat içinde kargo', '2 yıl garanti', '%100 organik sertifikalı'). En fazla 10 madde."]
 }
+
+claims kuralı — bu en kesin kural, ihlal etme:
+- claims dizisine SADECE sayfa içeriğinde (başlık, açıklama, LD+JSON veya gövde metninde) gerçekten geçen somut iddiaları ekle.
+- Tahmin, genel pazar bilgisi veya "muhtemelen böyledir" türü bir şey EKLEME — sayfada yazmıyorsa listeye girmesin.
+- Sayfada böyle somut bir iddia yoksa boş dizi döndür, uydurma.
 
 competitor_analysis kuralları:
 - En az 2, en fazla 4 rakip içersin — competitors listesindeki markalarla tutarlı olsun.
@@ -685,6 +678,7 @@ Kesin kurallar:
     "x": "-100 (tamamen resmi/profesyonel) ile 100 (tamamen rahat/gündelik) arası tam sayı",
     "y": "-100 (sakin/ölçülü) ile 100 (enerjik/coşkulu) arası tam sayı"
   },
+  "visual_style": "Markanın görsel estetiğini 2-4 kelimeyle tanımla (örn: 'minimal ve pastel', 'maksimalist ve enerjik renkli', 'lüks ve sade', 'el yapımı ve sıcak')",
   "audience_persona": {
     "label": "Kısa persona adı (örn. 'Genç Profesyonel', 'Yerel Aile')",
     "age": "Yaş aralığı (örn. 22-35)",
@@ -754,6 +748,11 @@ audience_persona / pain_points / motivations kuralları:
       audienceMotivations: parseStringList(parsed.audience_motivations),
       rawNotes: String(parsed.raw_notes ?? "").trim(),
       colorPalette: extractedColors,
+      logoUrl: extractedLogoUrl,
+      visualStyle: String(parsed.visual_style ?? "").trim(),
+      // undefined on the fallback branch (that prompt has no claims key at
+      // all) — parseClaims([]) there by construction, never AI-guessed.
+      claims: parseClaims(parsed.claims, url.toString()),
     };
   } catch (err) {
     status = "ERROR";

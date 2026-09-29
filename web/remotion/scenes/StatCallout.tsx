@@ -2,6 +2,7 @@ import React from "react";
 import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import { displayFont, bodyFont } from "../fonts";
 import { AtmosphericBackground } from "../components/AtmosphericBackground";
+import { SPRING_TEXT, TEMPO_MAP, tempoSpring } from "../springs";
 import type { Theme } from "../theme";
 
 // Parses strings like "%100", "10.000+", "4.9", "3x" into animatable components
@@ -25,7 +26,7 @@ export const StatCallout: React.FC<{
   const { fps, width, height } = useVideoConfig();
   const isVertical = height > width;
 
-  const headlineSpring = spring({ frame, fps, config: { damping: 14, mass: 0.6 }, durationInFrames: 26 });
+  const headlineSpring = spring({ frame, fps, config: tempoSpring(SPRING_TEXT, TEMPO_MAP.stat), durationInFrames: 26 });
   const supportOpacity = interpolate(frame - 20, [0, 20], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const barWidth = interpolate(frame - 8, [0, 28], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 

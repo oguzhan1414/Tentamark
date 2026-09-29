@@ -1,0 +1,33 @@
+{
+  "format": "vertical",
+  "durationSeconds": 10,
+  "fps": 30,
+  "accentColors": ["#7c3aed", "#f97316"],
+  "brandName": "Eksik Görsel Testi",
+  "backgroundTheme": "warm_luxury",
+  "scenePlan": [
+    {
+      "archetype": "hook",
+      "frames": 75,
+      "lines": ["Ürün hazır", "görsel daha sonra"],
+      "highlightWord": "hazır"
+    },
+    {
+      "archetype": "product",
+      "frames": 135,
+      "title": "Görselsiz Ürün",
+      "price": "₺349",
+      "discountBadge": "Yeni",
+      "imageUrl": "   ",
+      "rating": "★ 4.9",
+      "badges": ["Güvenli fallback", "Render devam eder"]
+    },
+    {
+      "archetype": "outro",
+      "frames": 90,
+      "brandName": "Eksik Görsel Testi",
+      "tagline": "Görsel olmasa da video tamamlanır.",
+      "ctaLabel": "Devam Et"
+    }
+  ]
+}

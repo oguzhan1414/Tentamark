@@ -20,13 +20,6 @@ interface ComposeEditorTabsProps {
   setHook: (hook: string) => void;
   charLimit: Record<PlatformName, number>;
   onOpenSaveTemplate: () => void;
-  handleRewriteWithAI: () => void;
-  rewriting: boolean;
-  handleGenerateHashtags: () => void;
-  generatingHashtags: boolean;
-  hashtagSuggestions: Record<string, string[]>;
-  toggleCaptionHashtag: (tag: string) => void;
-  extractHashtags: (text: string) => string[];
   aiInsightsOpen: boolean;
   setAiInsightsOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
   hookAnalysis: HookAnalysisResult | null;
@@ -41,7 +34,10 @@ interface ComposeEditorTabsProps {
   handleCheckVoiceConsistency: () => void;
   onOpenCaptionLab: () => void;
   onOpenMultiplier?: () => void;
+  hasMultiplierUndo?: boolean;
+  onUndoMultiplier?: () => void;
   isEn: boolean;
+  voiceMode?: "brand" | "founder";
 }
 
 export default function ComposeEditorTabs({
@@ -56,13 +52,6 @@ export default function ComposeEditorTabs({
   setHook,
   charLimit,
   onOpenSaveTemplate,
-  handleRewriteWithAI,
-  rewriting,
-  handleGenerateHashtags,
-  generatingHashtags,
-  hashtagSuggestions,
-  toggleCaptionHashtag,
-  extractHashtags,
   aiInsightsOpen,
   setAiInsightsOpen,
   hookAnalysis,
@@ -77,7 +66,10 @@ export default function ComposeEditorTabs({
   handleCheckVoiceConsistency,
   onOpenCaptionLab,
   onOpenMultiplier,
+  hasMultiplierUndo,
+  onUndoMultiplier,
   isEn,
+  voiceMode = "brand",
 }: ComposeEditorTabsProps) {
   const currentCaption = drafts[activePlatformTab] ?? "";
 
@@ -223,8 +215,26 @@ export default function ComposeEditorTabs({
             </button>
           )}
 
-          {/* Content Remix DJ Menu */}
+          {/* Undo Multiplier Apply (visible right after "Apply 6 Drafts") */}
+          {hasMultiplierUndo && onUndoMultiplier && (
+            <button
+              type="button"
+              onClick={onUndoMultiplier}
+              title={isEn ? "Revert the 6 platform captions to what they were before" : "6 platformun metnini çarpandan önceki haline döndür"}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-1.5 text-[11px] font-bold text-amber-800 hover:bg-amber-100 transition cursor-pointer shadow-2xs"
+            >
+              <span>↩️</span>
+              <span>{isEn ? "Undo Multiplier" : "Çarpanı Geri Al"}</span>
+            </button>
+          )}
+
+          {/* Content Remix DJ Menu — keyed on the active tab so switching
+              platforms fully remounts it, resetting its undo state. Without
+              this, "Undo Remix" stays visible after switching tabs and
+              writes the OLD tab's pre-remix text into the NEW (active)
+              tab's caption, silently overwriting it. */}
           <ContentRemixMenu
+            key={activePlatformTab}
             brandId={brandId}
             currentCaption={currentCaption}
             activePlatform={activePlatformTab}
@@ -234,10 +244,15 @@ export default function ComposeEditorTabs({
               );
             }}
             isEn={isEn}
+            voiceMode={voiceMode}
           />
 
-          {/* Compact Inline Smart Hashtag Engine */}
+          {/* Compact Inline Smart Hashtag Engine — same per-tab remount
+              reasoning as ContentRemixMenu above: without it, stale
+              platform-tuned tags stay visible and "Add"-able onto whatever
+              tab you've since switched to. */}
           <SmartHashtagPanel
+            key={activePlatformTab}
             brandId={brandId}
             caption={currentCaption}
             platform={activePlatformTab}

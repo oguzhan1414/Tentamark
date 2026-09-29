@@ -1,0 +1,43 @@
+{
+  "format": "vertical",
+  "durationSeconds": 15,
+  "fps": 30,
+  "accentColors": ["#fa5252", "#ff922b"],
+  "brandName": "Tentamark Demo",
+  "backgroundTheme": "warm_luxury",
+  "scenePlan": [
+    {
+      "archetype": "hook",
+      "frames": 90,
+      "lines": ["Sıradan kahve değil", "günün en iyi molası"],
+      "highlightWord": "en iyi"
+    },
+    {
+      "archetype": "product",
+      "frames": 105,
+      "title": "Özel Seri Kahve",
+      "price": "₺349",
+      "oldPrice": "₺449",
+      "discountBadge": "-%22",
+      "imageUrl": "/public/tenta-avatar-open.png",
+      "rating": "★ 4.9",
+      "badges": ["Taze Kavrum", "Hızlı Kargo"]
+    },
+    {
+      "archetype": "review",
+      "frames": 105,
+      "quote": "Kokusu paketi açar açmaz bütün mutfağı sardı.",
+      "authorName": "Doğrulanmış Müşteri",
+      "ratingStars": 5,
+      "verifiedBuyer": true
+    },
+    {
+      "archetype": "outro",
+      "frames": 90,
+      "brandName": "Tentamark Demo",
+      "logoUrl": "/public/tenta-avatar-wink.png",
+      "tagline": "Günün iyi tarafını keşfet.",
+      "ctaLabel": "Hemen İncele"
+    }
+  ]
+}

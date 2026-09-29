@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
+import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import type { ScenePlanItem } from "../../src/lib/video/types";
 
 export const StoryProgressBar: React.FC<{
@@ -11,11 +11,9 @@ export const StoryProgressBar: React.FC<{
   const isVertical = height > width;
 
   // Calculate the cumulative start and end frames for each scene
-  let accumulated = 0;
-  const sceneRanges = scenePlan.map((scene) => {
-    const start = accumulated;
-    const end = accumulated + scene.frames;
-    accumulated = end;
+  const sceneRanges = scenePlan.map((scene, index) => {
+    const start = scenePlan.slice(0, index).reduce((total, previous) => total + previous.frames, 0);
+    const end = start + scene.frames;
     return { start, end, duration: scene.frames };
   });
 

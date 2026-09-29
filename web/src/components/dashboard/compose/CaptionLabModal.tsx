@@ -406,8 +406,15 @@ function VariantCard({
           </div>
         </div>
 
-        {/* Algorithm Metrics Progress Bars */}
+        {/* Algorithm Metrics Progress Bars — AI's own qualitative read of the
+            copy, not a measurement against real post performance (unlike
+            the embeddings-based Brand Voice Consistency score elsewhere in
+            this app) — labeled honestly so the two aren't mistaken for the
+            same kind of number. */}
         <div className="space-y-2.5 py-4 border-b border-slate-100 text-xs">
+          <p className="-mt-0.5 mb-1 text-[9.5px] font-semibold uppercase tracking-wide text-slate-400">
+            {isEn ? "AI estimate, not measured performance" : "Yapay zekânın tahmini, ölçülmüş performans değil"}
+          </p>
           <MetricBar
             label={isEn ? "Hook Power" : "🪝 Kanca Durdurma"}
             value={variant.hookScore}

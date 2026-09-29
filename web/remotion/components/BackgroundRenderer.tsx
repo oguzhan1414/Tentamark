@@ -1,5 +1,6 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
+import { organicDrift } from "../organicDrift";
 import type { Theme } from "../theme";
 import type { BackgroundTheme } from "../../src/lib/video/types";
 
@@ -11,10 +12,10 @@ export const BackgroundRenderer: React.FC<{
   const { width, height } = useVideoConfig();
 
   // Floating physics
-  const orb1X = Math.sin(frame / 38) * 80;
-  const orb1Y = Math.cos(frame / 48) * 60;
-  const orb2X = Math.cos(frame / 42) * 70;
-  const orb2Y = Math.sin(frame / 52) * 50;
+  const orb1X = organicDrift("bg-orb1x", frame, 1 / 38, 80);
+  const orb1Y = organicDrift("bg-orb1y", frame, 1 / 48, 60);
+  const orb2X = organicDrift("bg-orb2x", frame, 1 / 42, 70);
+  const orb2Y = organicDrift("bg-orb2y", frame, 1 / 52, 50);
 
   if (backgroundTheme === "warm_luxury") {
     // E-Commerce / Luxury / Coffee / Lifestyle: Warm amber, deep espresso, and gold studio lighting

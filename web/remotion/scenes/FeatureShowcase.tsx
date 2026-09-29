@@ -1,7 +1,13 @@
 import React from "react";
-import { AbsoluteFill, Img, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, Audio, Img, interpolate, Sequence, spring, useCurrentFrame, useVideoConfig } from "remotion";
+import { mouseClick } from "@remotion/sfx";
 import { displayFont, bodyFont } from "../fonts";
 import { AtmosphericBackground } from "../components/AtmosphericBackground";
+import { DeviceFrame } from "../components/DeviceFrame";
+import { KineticText } from "../components/KineticText";
+import { SPRING_CARD, SPRING_BADGE, SPRING_TEXT, TEMPO_MAP, tempoSpring, entranceBlur } from "../springs";
+import { radiusForShape, borderForShape, shadowForShape, filterForImagery } from "../designSystemStyles";
+import { organicDrift } from "../organicDrift";
 import type { Theme } from "../theme";
 
 export const FeatureShowcase: React.FC<{
@@ -18,16 +24,17 @@ export const FeatureShowcase: React.FC<{
   const isVertical = height > width;
 
   // Staggered entrance springs
-  const cardSpring = spring({ frame: frame - 4, fps, config: { damping: 14, mass: 0.8 }, durationInFrames: 28 });
-  const textSpring = spring({ frame: frame - 10, fps, config: { damping: 16, mass: 0.7 }, durationInFrames: 24 });
-  const badge1Spring = spring({ frame: frame - 18, fps, config: { damping: 11, mass: 0.6 }, durationInFrames: 22 });
-  const badge2Spring = spring({ frame: frame - 26, fps, config: { damping: 11, mass: 0.6 }, durationInFrames: 22 });
+  const cardSpring = spring({ frame: frame - 4, fps, config: tempoSpring(SPRING_CARD, TEMPO_MAP.feature), durationInFrames: 28 });
+  const textSpring = spring({ frame: frame - 10, fps, config: tempoSpring(SPRING_TEXT, TEMPO_MAP.feature), durationInFrames: 24 });
+  const badge1Spring = spring({ frame: frame - 18, fps, config: SPRING_BADGE, durationInFrames: 22 });
+  const badge2Spring = spring({ frame: frame - 26, fps, config: SPRING_BADGE, durationInFrames: 22 });
 
   // Ken Burns zoom
   const kenBurnsZoom = interpolate(frame, [0, 120], [1, 1.08], { extrapolateRight: "clamp" });
-  const cardFloatY = Math.sin(frame / 25) * 8;
+  const cardFloatY = organicDrift("feature-float", frame, 1 / 25, 8);
 
   const displayBadges = badges && badges.length > 0 ? badges : ["⚡ Yüksek Kalite", "✓ Doğrulanmış"];
+  const isTechBrand = theme.archetype === "tech_dramatic";
 
   const titleSize = isVertical ? 50 : 66;
   const descSize = isVertical ? 24 : 28;
@@ -84,21 +91,21 @@ export const FeatureShowcase: React.FC<{
         </span>
       </div>
 
-      {/* Main Title */}
-      <h2
+      {/* Main Title — kinetic mask reveal instead of a flat fade-in */}
+      <KineticText
+        text={title}
+        startFrame={10}
         style={{
           fontFamily: displayFont,
           fontWeight: 900,
           fontSize: titleSize,
           lineHeight: 1.1,
           color: "#ffffff",
-          margin: 0,
           letterSpacing: -1.2,
           textShadow: "0 4px 0 #000, 0 8px 30px rgba(0,0,0,0.8)",
         }}
-      >
-        {title}
-      </h2>
+        wrapperStyle={{ justifyContent: isVertical ? "center" : "flex-start" }}
+      />
 
       {/* Description */}
       <p
@@ -130,35 +137,11 @@ export const FeatureShowcase: React.FC<{
         zIndex: 5,
       }}
     >
-      {/* 3D App Window Frame */}
-      <div
-        style={{
-          borderRadius: 24,
-          overflow: "hidden",
-          border: "1.5px solid rgba(255, 255, 255, 0.22)",
-          backgroundColor: "#111827",
-          boxShadow: `0 0 50px ${theme.accent}30`,
-        }}
-      >
-        {/* Mac OS Window Header Bar */}
-        <div
-          style={{
-            height: 38,
-            backgroundColor: "rgba(15, 23, 42, 0.95)",
-            borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
-            display: "flex",
-            alignItems: "center",
-            paddingLeft: 18,
-            gap: 8,
-          }}
-        >
-          <div style={{ width: 11, height: 11, borderRadius: "50%", backgroundColor: "#ff5f56" }} />
-          <div style={{ width: 11, height: 11, borderRadius: "50%", backgroundColor: "#ffbd2e" }} />
-          <div style={{ width: 11, height: 11, borderRadius: "50%", backgroundColor: "#27c93f" }} />
-        </div>
-
-        {/* Media Window Content with Ken Burns */}
-        <div style={{ position: "relative", overflow: "hidden", aspectRatio: isVertical ? "4/3" : "16/10", maxHeight: isVertical ? 420 : 400 }}>
+      {/* Software/app content gets real device chrome; everything else (most
+          brands — coffee shops, e-commerce, local businesses) gets the
+          photo itself as the hero, not shrunk into a phone mockup. */}
+      {isTechBrand ? (
+        <DeviceFrame variant={isVertical ? "phone" : "laptop"}>
           {imageUrl ? (
             <Img
               src={imageUrl}
@@ -183,8 +166,45 @@ export const FeatureShowcase: React.FC<{
               <span style={{ fontFamily: displayFont, fontSize: 32, color: "#ffffff" }}>{title}</span>
             </div>
           )}
+        </DeviceFrame>
+      ) : (
+        <div
+          style={{
+            position: "relative",
+            borderRadius: radiusForShape(theme.shape),
+            overflow: "hidden",
+            border: borderForShape(theme.shape, theme.accent),
+            boxShadow: shadowForShape(theme.shape, theme.accent),
+            aspectRatio: isVertical ? "4/3" : "16/10",
+          }}
+        >
+          {imageUrl ? (
+            <Img
+              src={imageUrl}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                filter: filterForImagery(theme.imagery),
+                transform: `scale(${kenBurnsZoom})`,
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: "100%",
+                height: "100%",
+                background: `linear-gradient(135deg, ${theme.accent}33, #0f172a)`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <span style={{ fontFamily: displayFont, fontSize: 32, color: "#ffffff" }}>{title}</span>
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
       {/* Floating Badge 1 (Top) */}
       {displayBadges[0] ? (
@@ -195,6 +215,7 @@ export const FeatureShowcase: React.FC<{
             right: isVertical ? 16 : -24,
             opacity: badge1Spring,
             transform: `scale(${badge1Spring}) rotate(3deg)`,
+            filter: entranceBlur(badge1Spring),
             backgroundColor: "rgba(15, 23, 42, 0.95)",
             border: `2px solid ${theme.accent}`,
             borderRadius: 999,
@@ -221,6 +242,7 @@ export const FeatureShowcase: React.FC<{
             left: isVertical ? 20 : -20,
             opacity: badge2Spring,
             transform: `scale(${badge2Spring}) rotate(-3deg)`,
+            filter: entranceBlur(badge2Spring),
             backgroundColor: theme.accent,
             borderRadius: 999,
             padding: "8px 22px",
@@ -240,7 +262,7 @@ export const FeatureShowcase: React.FC<{
 
   return (
     <AbsoluteFill style={{ overflow: "hidden" }}>
-      <AtmosphericBackground theme={theme} />
+      <AtmosphericBackground theme={theme} variant="diagonal" />
 
       {/* Full-bleed ambient B-roll backdrop in vertical format */}
       {isVertical && imageUrl ? (
@@ -285,6 +307,12 @@ export const FeatureShowcase: React.FC<{
           <div style={{ flex: "1 1 56%", display: "flex", justifyContent: "center" }}>{mockupCard}</div>
         </AbsoluteFill>
       )}
+
+      {displayBadges[0] ? (
+        <Sequence from={18} layout="none">
+          <Audio src={mouseClick} volume={0.3} />
+        </Sequence>
+      ) : null}
     </AbsoluteFill>
   );
 };

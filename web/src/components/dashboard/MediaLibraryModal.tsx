@@ -26,6 +26,10 @@ type Props = {
   // unselected items are disabled rather than silently ignored on submit.
   maxSelectable?: number;
   onClose: () => void;
+  // Opens pre-filtered (e.g. the video-upload flow in dashboard/video/page.tsx
+  // wants this modal to open showing only videos) — the tab strip still lets
+  // the user switch away, this only sets the initial state.
+  defaultFilter?: MediaFilter;
 };
 
 type MediaFilter = "all" | "image" | "video";
@@ -52,13 +56,14 @@ export default function MediaLibraryModal({
   onSelectMultiple,
   maxSelectable,
   onClose,
+  defaultFilter = "all",
 }: Props) {
   const { t, isEn } = useLanguage();
   const ml = t.dashboard.mediaLibrary;
   const { items, loading, uploading, error, uploadMany, remove, removeMany, addItem, rename } = useMediaLibrary(brandId);
   const { connected: canvaConnected } = useCanvaConnection(brandId);
   const { busy: canvaBusy, error: canvaError, start: handleCanvaClick } = useCanvaDesignFlow(addItem);
-  const [filter, setFilter] = useState<MediaFilter>("all");
+  const [filter, setFilter] = useState<MediaFilter>(defaultFilter);
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [zoomedItem, setZoomedItem] = useState<MediaLibraryItem | null>(null);
   const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
@@ -156,7 +161,7 @@ export default function MediaLibraryModal({
               <input
                 id="media_library_upload"
                 type="file"
-                accept={multiple ? "image/*" : "image/*,video/mp4,video/webm"}
+                accept={multiple ? "image/*" : "image/*,video/mp4,video/webm,video/quicktime"}
                 multiple
                 className="sr-only"
                 disabled={uploading}
@@ -260,7 +265,7 @@ export default function MediaLibraryModal({
                         title={m.alt_text || m.file_name}
                       >
                         {m.file_type.startsWith("video/") ? (
-                          <video src={m.file_url} muted className="h-full w-full object-cover" />
+                          <video src={m.file_url} poster={m.poster_url ?? undefined} muted className="h-full w-full object-cover" />
                         ) : (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={m.file_url} alt={m.alt_text || m.file_name} className="h-full w-full object-cover" />
@@ -407,6 +412,7 @@ export default function MediaLibraryModal({
           {zoomedItem.file_type.startsWith("video/") ? (
             <video
               src={zoomedItem.file_url}
+              poster={zoomedItem.poster_url ?? undefined}
               controls
               autoPlay
               className="max-h-full max-w-full rounded-lg"

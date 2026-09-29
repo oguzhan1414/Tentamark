@@ -39,3 +39,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# creative studio golden snapshots: baseline PNGs are committed on purpose,
+# failure diffs (written next to them when a render mismatches) are not.
+/remotion/fixtures/__snapshots__/**/*.actual.png
+
+# design-tokens verification script output: throwaway visual-check renders,
+# regenerate any time with `npm run creative:design-tokens`.
+/scripts/design-token-fixtures/output/
+
+# image-processing verification script output: throwaway visual-check
+# renders, regenerate any time with `npm run creative:verify-image-processing`.
+/scripts/image-processing-check/

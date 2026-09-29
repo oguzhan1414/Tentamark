@@ -130,7 +130,7 @@ export default function ShareApprovalPage() {
                 <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
                   ✓ Onayladın — teşekkürler!
                 </p>
-              ) : (
+              ) : info.content_status === "NEEDS_REVIEW" ? (
                 <button
                   type="button"
                   onClick={handleApprove}
@@ -139,6 +139,16 @@ export default function ShareApprovalPage() {
                 >
                   Onayla
                 </button>
+              ) : (
+                // Link generated before submission, or the content's status
+                // changed since (approved elsewhere, sent back to draft,
+                // ...) — respond_to_share_link's approve branch only ever
+                // transitions NEEDS_REVIEW -> APPROVED, so showing an
+                // enabled button here would just produce a raw Postgres
+                // exception on click.
+                <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  Bu içerik şu anda &ldquo;{STATUS_LABEL[info.content_status] ?? info.content_status}&rdquo; durumunda, onay bekliyor değil.
+                </p>
               )}
 
               {feedbackSent ? (

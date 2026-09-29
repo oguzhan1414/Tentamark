@@ -1,6 +1,9 @@
 import React from "react";
-import { AbsoluteFill, spring, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, Audio, Sequence, spring, useCurrentFrame, useVideoConfig } from "remotion";
+import { ding } from "@remotion/sfx";
 import { displayFont, bodyFont } from "../fonts";
+import { WordHighlight } from "../components/WordHighlight";
+import { SPRING_CARD, SPRING_BADGE, TEMPO_MAP, tempoSpring } from "../springs";
 import type { Theme } from "../theme";
 
 export const ReviewShowcase: React.FC<{
@@ -20,8 +23,7 @@ export const ReviewShowcase: React.FC<{
   const { fps, width, height } = useVideoConfig();
   const isVertical = height > width;
 
-  const cardSpring = spring({ frame: frame - 4, fps, config: { damping: 14, mass: 0.7 }, durationInFrames: 24 });
-  const quoteSpring = spring({ frame: frame - 18, fps, config: { damping: 16, mass: 0.7 }, durationInFrames: 22 });
+  const cardSpring = spring({ frame: frame - 4, fps, config: tempoSpring(SPRING_CARD, TEMPO_MAP.review), durationInFrames: 24 });
 
   return (
     <AbsoluteFill
@@ -46,7 +48,7 @@ export const ReviewShowcase: React.FC<{
           const starSpring = spring({
             frame: frame - starDelay,
             fps,
-            config: { damping: 11, mass: 0.5 },
+            config: SPRING_BADGE,
             durationInFrames: 18,
           });
 
@@ -101,22 +103,22 @@ export const ReviewShowcase: React.FC<{
           “
         </span>
 
-        {/* Customer Quote Text */}
-        <p
+        {/* Customer Quote Text — sequential highlight sweep, matches this scene's "breathe" tempo */}
+        <WordHighlight
+          text={quote}
+          startFrame={18}
+          staggerFrames={2.2}
+          litColor="#ffffff"
           style={{
             fontFamily: displayFont,
             fontWeight: 800,
             fontSize: isVertical ? 32 : 38,
             lineHeight: 1.35,
-            color: "#ffffff",
-            margin: 0,
-            opacity: quoteSpring,
             letterSpacing: -0.5,
             textShadow: "0 2px 10px rgba(0,0,0,0.6)",
           }}
-        >
-          {quote}
-        </p>
+          wrapperStyle={{ justifyContent: "center", textAlign: "center" }}
+        />
 
         {/* Author & Verified Badge Footer */}
         <div
@@ -183,6 +185,10 @@ export const ReviewShowcase: React.FC<{
           ) : null}
         </div>
       </div>
+
+      <Sequence from={8 + (ratingStars - 1) * 5} layout="none">
+        <Audio src={ding} volume={0.25} />
+      </Sequence>
     </AbsoluteFill>
   );
 };

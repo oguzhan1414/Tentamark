@@ -1,5 +1,16 @@
 export type VideoFormat = "vertical" | "horizontal";
 export type VideoDuration = 10 | 15 | 20;
+export type VideoMusicTrack = "lofi" | "none";
+
+// Shared client+server contract for voice-over, same reason VideoDuration/
+// VideoMusicTrack live here rather than in scenePlan.ts or a server-only
+// file — the dashboard UI's <select> and the API route's validation both
+// need this without importing server-only code.
+export const OPENAI_TTS_VOICES = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"] as const;
+export type OpenAIVoice = (typeof OPENAI_TTS_VOICES)[number];
+// Comfortably under OpenAI's real ~4096-char tts-1 input cap — this just
+// guards against a pathologically long script blowing up render time/cost.
+export const MAX_VOICEOVER_SCRIPT_LENGTH = 1000;
 
 /*
   One resolved, self-contained scene. "Resolved" means every string/URL a
@@ -82,6 +93,15 @@ export type ScenePlanItem =
   | { archetype: "stat"; frames: number; headline: string; supporting: string }
   | { archetype: "carousel"; frames: number; imageUrls: string[]; caption: string }
   | {
+      archetype: "user_clip";
+      frames: number;
+      videoUrl: string;
+      trimBeforeFrames: number;
+      trimAfterFrames: number;
+      objectPositionX: string;
+      objectPositionY: string;
+    }
+  | {
       archetype: "outro";
       frames: number;
       brandName: string;
@@ -99,10 +119,22 @@ export type VideoInputProps = {
   durationSeconds: VideoDuration;
   fps: 30;
   accentColors: string[];
+  // Feed remotion/theme.ts's buildTheme() beyond raw color — same brand_dna
+  // fields getBrandContext() already fetches for AI copy, now also driving
+  // the design-system archetype (typography/shape/imagery) picked per brand.
+  visualStyle?: string | null;
+  traitScores?: import("../brand/traits").TraitScores | null;
+  industry?: string;
   brandName: string;
+  recipeId?: import("./scenePlan").VideoRecipeId;
   backgroundTheme?: BackgroundTheme;
   videoBackgroundUrl?: string;
+  musicTrack?: VideoMusicTrack;
   voiceoverAudio?: string;
+  // Resolved word-level timing for voiceoverAudio, computed server-side once
+  // in buildVideoInputProps.ts (Groq Whisper) — Main.tsx just renders it,
+  // same "never re-derive, only render" convention as scenePlan itself.
+  captions?: import("@remotion/captions").Caption[];
   scenePlan: ScenePlanItem[];
 };
 

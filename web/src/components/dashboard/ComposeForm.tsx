@@ -20,7 +20,6 @@ import {
   getBrandVoiceConsistency,
   type BrandVoiceConsistency,
 } from "@/lib/ai/getBrandVoiceConsistency";
-import { suggestPostImprovement } from "@/lib/ai/suggestPostImprovement";
 import { ALL_PLATFORMS } from "@/lib/ai/platforms";
 import { type PlatformName } from "@/components/PlatformIcon";
 import MediaLibraryModal, {
@@ -219,9 +218,6 @@ export default function ComposeForm({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [genError, setGenError] = useState<string | null>(null);
-  const [rewriting, setRewriting] = useState(false);
-  const [generatingHashtags, setGeneratingHashtags] = useState(false);
-  const [hashtagSuggestions, setHashtagSuggestions] = useState<Record<string, string[]>>({});
   const [previewPlatform, setPreviewPlatform] = useState<PlatformName>("instagram");
 
   const [hookAnalysis, setHookAnalysis] = useState<HookAnalysisResult | null>(null);
@@ -238,8 +234,18 @@ export default function ComposeForm({
   const [captionLabLoading, setCaptionLabLoading] = useState(false);
   const [captionLabError, setCaptionLabError] = useState<string | null>(null);
 
-  // Content Multiplier (1 -> 7) State
+  // Content Multiplier (1 -> 7) State — "Apply 6 Drafts" overwrites every
+  // selected platform's caption with no confirmation, so a snapshot taken
+  // right before applying is the only way back if it clobbers hand-edited text.
   const [multiplierOpen, setMultiplierOpen] = useState(false);
+  const [preMultiplyState, setPreMultiplyState] = useState<{ drafts: GeneratedDrafts | null; selectedPlatforms: LaunchPlatform[] } | null>(null);
+
+  function undoMultiplier() {
+    if (!preMultiplyState) return;
+    setDrafts(preMultiplyState.drafts);
+    setSelectedPlatforms(preMultiplyState.selectedPlatforms);
+    setPreMultiplyState(null);
+  }
 
   // Evergreen Recycling State
   const [isEvergreen, setIsEvergreen] = useState(false);
@@ -253,7 +259,7 @@ export default function ComposeForm({
     setCaptionLabLoading(true);
     setCaptionLabError(null);
     try {
-      const res = await generateCaptionLab(brand.id, currentText, activePlatformTab, format);
+      const res = await generateCaptionLab(brand.id, currentText, activePlatformTab, format, voiceMode);
       setCaptionLabResult(res);
     } catch (err) {
       setCaptionLabError(
@@ -557,59 +563,6 @@ export default function ComposeForm({
     } finally {
       setAnalyzingVoice(false);
     }
-  }
-
-  async function handleRewriteWithAI() {
-    const currentText = drafts?.[activePlatformTab];
-    if (!currentText?.trim() || rewriting) return;
-    setRewriting(true);
-    setGenError(null);
-    try {
-      const rewritePrompt = isEn
-        ? `Rewrite the post below to be more engaging while keeping the same core message and facts:\n\n${currentText}`
-        : `Aşağıdaki gönderiyi aynı temel mesajı ve bilgileri koruyarak daha akıcı ve ilgi çekici şekilde yeniden yaz:\n\n${currentText}`;
-      const result = await generateDrafts(brand.id, rewritePrompt, [activePlatformTab], format, undefined, voiceMode);
-      const rewritten = result[activePlatformTab];
-      if (rewritten) setDrafts((prev) => (prev ? { ...prev, [activePlatformTab]: rewritten } : prev));
-    } catch (err) {
-      setGenError(err instanceof Error ? err.message : (isEn ? "Could not rewrite." : "Yeniden yazılamadı."));
-    } finally {
-      setRewriting(false);
-    }
-  }
-
-  async function handleGenerateHashtags() {
-    const currentText = drafts?.[activePlatformTab];
-    if (!currentText?.trim() || generatingHashtags) return;
-    setGeneratingHashtags(true);
-    setGenError(null);
-    try {
-      const result = await suggestPostImprovement(brand.id, currentText, activePlatformTab);
-      const normalized = Array.from(
-        new Set(
-          result.hashtags
-            .map((tag) => tag.trim().replace(/^#+/, "").replace(/\s+/g, ""))
-            .filter((tag) => /^[\p{L}\p{N}_]{2,40}$/u.test(tag))
-            .map((tag) => `#${tag}`)
-        )
-      ).slice(0, 5);
-      setHashtagSuggestions((prev) => ({ ...prev, [activePlatformTab]: normalized }));
-    } catch (err) {
-      setGenError(err instanceof Error ? err.message : (isEn ? "Could not generate hashtags." : "Hashtag üretilemedi."));
-    } finally {
-      setGeneratingHashtags(false);
-    }
-  }
-
-  function toggleCaptionHashtag(tag: string) {
-    setDrafts((prev) => {
-      if (!prev) return prev;
-      const caption = prev[activePlatformTab] ?? "";
-      const existing = extractHashtags(caption).some((value) => value.toLocaleLowerCase() === tag.toLocaleLowerCase());
-      if (!existing) return { ...prev, [activePlatformTab]: `${caption.trimEnd()}${caption.trim() ? "\n\n" : ""}${tag}` };
-      const withoutTag = caption.replace(new RegExp(`(^|\\s)${tag}(?![\\p{L}\\p{N}_])`, "giu"), "$1").trimEnd();
-      return { ...prev, [activePlatformTab]: withoutTag };
-    });
   }
 
   function applyHook(newHook: string) {
@@ -1254,13 +1207,6 @@ export default function ComposeForm({
               setHook={setHook}
               charLimit={CHAR_LIMIT}
               onOpenSaveTemplate={() => setSaveTemplateOpen(true)}
-              handleRewriteWithAI={handleRewriteWithAI}
-              rewriting={rewriting}
-              handleGenerateHashtags={handleGenerateHashtags}
-              generatingHashtags={generatingHashtags}
-              hashtagSuggestions={hashtagSuggestions}
-              toggleCaptionHashtag={toggleCaptionHashtag}
-              extractHashtags={extractHashtags}
               aiInsightsOpen={aiInsightsOpen}
               setAiInsightsOpen={setAiInsightsOpen}
               hookAnalysis={hookAnalysis}
@@ -1275,7 +1221,10 @@ export default function ComposeForm({
               handleCheckVoiceConsistency={handleCheckVoiceConsistency}
               onOpenCaptionLab={handleOpenCaptionLab}
               onOpenMultiplier={() => setMultiplierOpen(true)}
+              hasMultiplierUndo={preMultiplyState !== null}
+              onUndoMultiplier={undoMultiplier}
               isEn={isEn}
+              voiceMode={voiceMode}
             />
           )}
 
@@ -1450,6 +1399,7 @@ export default function ComposeForm({
         brandId={brand.id}
         initialText={drafts?.[activePlatformTab] || hook || idea}
         onApplyAll={(multipliedDrafts, platformsToSelect) => {
+          setPreMultiplyState({ drafts, selectedPlatforms });
           setDrafts((prev) => ({ ...(prev ?? {}), ...multipliedDrafts }));
           setSelectedPlatforms((prev) => Array.from(new Set([...prev, ...platformsToSelect])));
           if (platformsToSelect.length > 0) {
@@ -1472,6 +1422,7 @@ export default function ComposeForm({
           }
         }}
         isEn={isEn}
+        voiceMode={voiceMode}
       />}
     </div>
   );

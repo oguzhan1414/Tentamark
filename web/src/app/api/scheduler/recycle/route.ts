@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     const { data: candidates, error: candidateError } = await supabase
       .from("content")
       .select(
-        "id, brand_id, title, core_idea, category, format, tags, is_evergreen, evergreen_interval_days, evergreen_max_recycles, evergreen_recycle_count, evergreen_last_recycled_at, evergreen_auto_remix, content_platforms(id, platform, caption, hashtags, hashtags_as_first_comment, media_override_id), content_media(media_id, position)"
+        "id, brand_id, title, core_idea, category, format, tags, created_at, is_evergreen, evergreen_interval_days, evergreen_max_recycles, evergreen_recycle_count, evergreen_last_recycled_at, evergreen_auto_remix, content_platforms(id, platform, caption, hashtags, hashtags_as_first_comment, media_override_id), content_media(media_id, position)"
       )
       .eq("is_evergreen", true);
 
@@ -60,17 +60,14 @@ export async function POST(req: NextRequest) {
         return false;
       }
 
-      // Check interval elapsed
-      const lastDate = item.evergreen_last_recycled_at
+      // Check interval elapsed since the last recycle, or since the post's
+      // own creation if it has never been recycled yet — a post published
+      // 5 minutes ago must not be eligible for its first clone immediately.
+      const sinceDate = item.evergreen_last_recycled_at
         ? new Date(item.evergreen_last_recycled_at)
-        : null;
+        : new Date(item.created_at);
 
-      if (!lastDate) {
-        // Has never been recycled: check if interval has passed since original creation
-        return true;
-      }
-
-      const daysPassed = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+      const daysPassed = (now.getTime() - sinceDate.getTime()) / (1000 * 60 * 60 * 24);
       return daysPassed >= (item.evergreen_interval_days || 30);
     });
 

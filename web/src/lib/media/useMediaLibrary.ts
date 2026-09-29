@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { extractVideoMetadataAndPoster } from "./videoUploadMeta";
 
 export type MediaLibraryItem = {
   id: string;
@@ -9,6 +10,8 @@ export type MediaLibraryItem = {
   file_url: string;
   file_type: string;
   alt_text: string | null;
+  duration_seconds: number | null;
+  poster_url: string | null;
 };
 
 /*
@@ -34,7 +37,7 @@ export function useMediaLibrary(brandId: string, enabled = true) {
       setLoading(true);
       const { data, error: fetchError } = await supabase
         .from("media")
-        .select("id, file_name, file_url, file_type, alt_text")
+        .select("id, file_name, file_url, file_type, alt_text, duration_seconds, poster_url")
         .eq("brand_id", brandId)
         // Per-platform crop variants (see createCroppedMediaVariant) aren't
         // something anyone meant to browse or reuse — only the original
@@ -69,6 +72,33 @@ export function useMediaLibrary(brandId: string, enabled = true) {
     if (uploadError) throw new Error(uploadError.message);
 
     const { data: publicUrl } = supabase.storage.from("media").getPublicUrl(path);
+
+    // Video-only: probe duration/dimensions and grab a poster frame entirely
+    // client-side (the file is already local) — see videoUploadMeta.ts for
+    // why this needs no server round-trip. Best-effort: a failed probe just
+    // leaves these columns null, same as before this was added.
+    let dimensions: { width: number; height: number } | null = null;
+    let durationSeconds: number | null = null;
+    let posterUrl: string | null = null;
+    if (file.type.startsWith("video/")) {
+      try {
+        const meta = await extractVideoMetadataAndPoster(file);
+        if (meta.width > 0 && meta.height > 0) dimensions = { width: meta.width, height: meta.height };
+        if (meta.durationSeconds > 0) durationSeconds = Math.round(meta.durationSeconds);
+        if (meta.posterBlob) {
+          const posterPath = `${brandId}/${crypto.randomUUID()}-poster.jpg`;
+          const { error: posterError } = await supabase.storage
+            .from("media")
+            .upload(posterPath, meta.posterBlob, { contentType: "image/jpeg" });
+          if (!posterError) {
+            posterUrl = supabase.storage.from("media").getPublicUrl(posterPath).data.publicUrl;
+          }
+        }
+      } catch (err) {
+        console.warn("Video metadata/poster probe failed:", err);
+      }
+    }
+
     const { data: mediaRow, error: mediaError } = await supabase
       .from("media")
       .insert({
@@ -77,8 +107,11 @@ export function useMediaLibrary(brandId: string, enabled = true) {
         file_url: publicUrl.publicUrl,
         file_type: file.type,
         file_size: file.size,
+        dimensions,
+        duration_seconds: durationSeconds,
+        poster_url: posterUrl,
       })
-      .select("id, file_name, file_url, file_type, alt_text")
+      .select("id, file_name, file_url, file_type, alt_text, duration_seconds, poster_url")
       .single();
     if (mediaError || !mediaRow) throw new Error(mediaError?.message ?? "Medya kaydedilemedi.");
     return mediaRow as MediaLibraryItem;

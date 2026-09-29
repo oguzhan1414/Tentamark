@@ -14,6 +14,7 @@ interface ContentRemixMenuProps {
   activePlatform: string;
   onApplyRemix: (newCaption: string) => void;
   isEn: boolean;
+  voiceMode?: "brand" | "founder";
 }
 
 export default function ContentRemixMenu({
@@ -22,6 +23,7 @@ export default function ContentRemixMenu({
   activePlatform,
   onApplyRemix,
   isEn,
+  voiceMode = "brand",
 }: ContentRemixMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [remixingTone, setRemixingTone] = useState<RemixTone | null>(null);
@@ -61,6 +63,7 @@ export default function ContentRemixMenu({
         tone: option.id,
         platform: activePlatform,
         isEn,
+        voiceMode,
       });
 
       onApplyRemix(result.rewritten);

@@ -67,6 +67,7 @@ create table if not exists public.brand_dna (
   competitor_analysis jsonb default '[]'::jsonb, -- rich per-competitor insight (see patches/0012)
   trait_scores jsonb default '{}'::jsonb, -- e.g. {"samimi": 80, "profesyonel": 70, ...} (see patches/0013)
   tone_position jsonb default '{"x": 0, "y": 0}'::jsonb, -- tone quadrant dot: x=professional/casual, y=reserved/energetic
+  visual_style text, -- short aesthetic descriptor, e.g. "minimal ve pastel" (see patches/0058)
   audience_persona jsonb default '{}'::jsonb, -- structured persona: label/age/location/language/career/goal/pain_point (see patches/0014)
   audience_pain_points jsonb default '[]'::jsonb,
   audience_motivations jsonb default '[]'::jsonb,
@@ -75,6 +76,21 @@ create table if not exists public.brand_dna (
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null
 );
+
+-- Claim ledger (0057): structured, sourced factual claims extracted from the
+-- brand's own website — generation prompts are instructed to only cite
+-- claims from here, never invent unlisted numbers/promises. Same trust tier
+-- as brand_dna, RLS mirrors it exactly.
+create table if not exists public.brand_claims (
+  id uuid default gen_random_uuid() primary key,
+  brand_id uuid references public.brands on delete cascade not null,
+  claim_text text not null,
+  source_url text,
+  extracted_at timestamptz default now() not null,
+  created_at timestamptz default now() not null
+);
+
+create index if not exists idx_brand_claims_brand on public.brand_claims(brand_id);
 
 -- Brand Strategy (AI generated positioning & content strategy, versioned JSONB)
 create table if not exists public.brand_strategy (
@@ -128,6 +144,7 @@ create table if not exists public.media (
   dimensions jsonb,        -- { width: 1080, height: 1080 }
   duration_seconds integer, -- for video
   alt_text text,
+  poster_url text, -- still thumbnail for uploaded video (patch 0060)
   created_at timestamptz default now() not null
 );
 
@@ -150,6 +167,22 @@ create table if not exists public.campaigns (
   updated_at timestamptz default now() not null
 );
 
+-- Content Packages (patch 0065) — groups one idea's fan-out into feed/story/
+-- carousel/video outputs (Faz 7) so they can be bulk-approved/scheduled as a
+-- unit. Deliberately NOT reusing `campaigns` (long-lived, many-posts,
+-- objective/date-range semantics) — a package is one idea's 4 artifacts,
+-- expiring/approving together.
+create table if not exists public.content_packages (
+  id uuid default gen_random_uuid() primary key,
+  brand_id uuid references public.brands on delete cascade not null,
+  campaign_id uuid references public.campaigns on delete set null,
+  title text not null,
+  core_idea text not null,
+  status text default 'generating' not null check (status in ('generating', 'partial_ready', 'ready', 'failed')),
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null
+);
+
 -- ==============================================================================
 -- 5. CONTENT, VARIANTS & PUBLISHING ENGINE (The Hot Spot)
 -- ==============================================================================
@@ -159,6 +192,7 @@ create table if not exists public.content (
   id uuid default gen_random_uuid() primary key,
   brand_id uuid references public.brands on delete cascade not null,
   campaign_id uuid references public.campaigns on delete set null,
+  package_id uuid references public.content_packages(id) on delete cascade, -- patch 0065
   title text not null,
   core_idea text not null,
   category text, -- 'educational', 'promotional', 'behind_the_scenes', 'product_update'
@@ -573,6 +607,14 @@ create policy "Brand DNA insert" on public.brand_dna
   for insert to authenticated
   with check (private.can_access_brand(brand_id));
 
+alter table public.brand_claims enable row level security;
+create policy "Brand claims select" on public.brand_claims
+  for select to authenticated using (private.can_access_brand(brand_id));
+create policy "Brand claims insert" on public.brand_claims
+  for insert to authenticated with check (private.can_access_brand(brand_id));
+create policy "Brand claims delete" on public.brand_claims
+  for delete to authenticated using (private.can_access_brand(brand_id));
+
 -- Content: Accessible through brand membership
 create policy "Content select" on public.content
   for select to authenticated using (
@@ -909,6 +951,41 @@ revoke execute on function private.recompute_content_status(uuid) from public, a
 select cron.schedule('dispatch-due-content', '* * * * *', $$select private.dispatch_due_content();$$);
 select cron.schedule('process-publish-queue', '* * * * *', $$select private.process_publish_queue();$$);
 
+-- Evergreen recycling (0056): hourly poke to /api/scheduler/recycle, same
+-- vault-secret + pg_net pattern as the publish queue above, just slower
+-- since evergreen intervals are measured in days.
+create or replace function private.dispatch_evergreen_recycle()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  webhook_secret text;
+begin
+  select decrypted_secret into webhook_secret
+  from vault.decrypted_secrets
+  where name = 'scheduler_webhook_secret';
+
+  if webhook_secret is null then
+    return;
+  end if;
+
+  perform net.http_post(
+    url := 'https://tentamark.com/api/scheduler/recycle',
+    body := '{}'::jsonb,
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || webhook_secret
+    )
+  );
+end;
+$$;
+
+revoke execute on function private.dispatch_evergreen_recycle() from public, anon, authenticated;
+
+select cron.schedule('dispatch-evergreen-recycle', '0 * * * *', $$select private.dispatch_evergreen_recycle();$$);
+
 -- publish_attempts: first phase writing to it (via the SECURITY DEFINER
 -- publisher above). Select-only policy — insert stays server-only.
 create policy "Publish attempts select" on public.publish_attempts
@@ -931,9 +1008,11 @@ create policy "Publish attempts select" on public.publish_attempts
 
 -- 128MB / video/mp4|webm added for TikTok (patch 0018) — Direct Post has no
 -- text/image-only path, so Compose needs to be able to produce a file
--- tiktokProvider.ts's publish() can actually accept.
+-- tiktokProvider.ts's publish() can actually accept. video/quicktime added
+-- for raw phone-video uploads (patch 0062) — iPhones default to .mov.
+-- audio/mpeg added for generated voice-over clips (patch 0063).
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('media', 'media', true, 134217728, array['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'])
+values ('media', 'media', true, 134217728, array['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'video/quicktime', 'audio/mpeg'])
 on conflict (id) do update set
   public = excluded.public,
   file_size_limit = excluded.file_size_limit,
@@ -1075,6 +1154,37 @@ create policy "Campaigns delete" on public.campaigns
   for delete to authenticated using (
     exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
   );
+
+-- Content Packages (patch 0065) — same 4-policy shape as Campaigns above.
+alter table public.content_packages enable row level security;
+
+create policy "Content packages select" on public.content_packages
+  for select to authenticated using (
+    exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
+  );
+
+create policy "Content packages insert" on public.content_packages
+  for insert to authenticated with check (
+    exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
+  );
+
+create policy "Content packages update" on public.content_packages
+  for update to authenticated using (
+    exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
+  ) with check (
+    exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
+  );
+
+create policy "Content packages delete" on public.content_packages
+  for delete to authenticated using (
+    exists (select 1 from public.brands b where b.id = brand_id and private.is_org_member(b.organization_id))
+  );
+
+drop trigger if exists set_updated_at on public.content_packages;
+create trigger set_updated_at before update on public.content_packages
+for each row execute function private.set_updated_at();
+
+create index if not exists idx_content_package on public.content(package_id) where package_id is not null;
 
 -- ==============================================================================
 -- 13. SOCIAL INBOX — inbound comments/DMs via Meta's real-time event
@@ -1441,24 +1551,38 @@ create table if not exists public.video_render_jobs (
   format text not null check (format in ('vertical', 'horizontal')),
   duration_seconds integer not null check (duration_seconds in (10, 15, 20)),
 
-  source_type text not null check (source_type in ('existing_content', 'custom_topic')),
+  source_type text not null check (source_type in ('existing_content', 'custom_topic', 'product_url', 'user_upload')),
   source_content_id uuid references public.content(id) on delete set null,
   topic text,
+  product_url text, -- e-commerce product page to scrape (patch 0059)
+  source_media_id uuid references public.media(id) on delete set null, -- user-uploaded clip (patch 0061)
+  package_id uuid references public.content_packages(id) on delete cascade, -- patch 0065
   selected_media_ids uuid[] not null default '{}',
   check (
     (source_type = 'existing_content' and source_content_id is not null)
     or (source_type = 'custom_topic' and topic is not null)
+    or (source_type = 'product_url' and product_url is not null)
+    or (source_type = 'user_upload' and source_media_id is not null)
   ),
 
   scene_plan jsonb,
 
-  status text not null default 'pending' check (status in ('pending', 'rendering', 'completed', 'failed')),
+  status text not null default 'pending' check (status in ('pending', 'draft', 'queued', 'rendering', 'completed', 'failed')),
   error text,
   output_media_id uuid references public.media(id) on delete set null,
   output_url text,
 
   started_at timestamptz,
   completed_at timestamptz,
+  queued_at timestamptz,
+  next_attempt_at timestamptz not null default now(),
+  attempt_count integer not null default 0 check (attempt_count >= 0),
+  max_attempts integer not null default 3 check (max_attempts between 1 and 10),
+  worker_id text,
+  render_provider text not null default 'local',
+  queue_wait_ms integer check (queue_wait_ms is null or queue_wait_ms >= 0),
+  render_duration_ms integer check (render_duration_ms is null or render_duration_ms >= 0),
+  estimated_cost_usd numeric(12,6) not null default 0 check (estimated_cost_usd >= 0),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -1475,4 +1599,39 @@ create policy "Video render jobs select own brand" on public.video_render_jobs
 create policy "Video render jobs insert own brand" on public.video_render_jobs
   for insert to authenticated with check (private.is_own_brand(brand_id));
 
+-- Storyboard editing (patch 0064) — the brand's own session may edit ONLY
+-- rows that are (and, after the edit, remain) their own 'draft'.
+create policy "Video render jobs update own draft" on public.video_render_jobs
+  for update to authenticated
+  using (private.is_own_brand(brand_id) and status = 'draft')
+  with check (private.is_own_brand(brand_id) and status = 'draft');
+
 create index if not exists idx_video_render_jobs_brand on public.video_render_jobs(brand_id, created_at desc);
+create index if not exists idx_video_render_jobs_package on public.video_render_jobs(package_id) where package_id is not null;
+create index if not exists idx_video_render_jobs_queue
+  on public.video_render_jobs(status, next_attempt_at, created_at)
+  where status in ('queued', 'rendering');
+
+create or replace function private.dispatch_video_render_queue()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  webhook_secret text;
+begin
+  select decrypted_secret into webhook_secret
+  from vault.decrypted_secrets
+  where name = 'scheduler_webhook_secret';
+  if webhook_secret is null then return; end if;
+  perform net.http_post(
+    url := 'https://tentamark.com/api/workers/video-render',
+    body := '{"limit":1}'::jsonb,
+    headers := jsonb_build_object('Content-Type', 'application/json', 'Authorization', 'Bearer ' || webhook_secret)
+  );
+end;
+$$;
+
+revoke execute on function private.dispatch_video_render_queue() from public, anon, authenticated;
+select cron.schedule('dispatch-video-render-queue', '* * * * *', $$select private.dispatch_video_render_queue();$$);

@@ -1,6 +1,11 @@
 import React from "react";
-import { AbsoluteFill, Img, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, Audio, Img, interpolate, Sequence, spring, useCurrentFrame, useVideoConfig } from "remotion";
+import { uiSwitch } from "@remotion/sfx";
 import { displayFont, bodyFont } from "../fonts";
+import { CharacterReveal } from "../components/CharacterReveal";
+import { SPRING_CARD, SPRING_BADGE, TEMPO_MAP, tempoSpring, entranceBlur } from "../springs";
+import { radiusForShape, borderForShape, shadowForShape, filterForImagery } from "../designSystemStyles";
+import { organicDrift } from "../organicDrift";
 import type { Theme } from "../theme";
 
 export const ProductShowcase: React.FC<{
@@ -8,7 +13,7 @@ export const ProductShowcase: React.FC<{
   price: string;
   oldPrice?: string;
   discountBadge?: string;
-  imageUrl: string;
+  imageUrl?: string;
   rating?: string;
   badges?: string[];
   theme: Theme;
@@ -25,21 +30,22 @@ export const ProductShowcase: React.FC<{
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const isVertical = height > width;
+  const resolvedImageUrl = typeof imageUrl === "string" ? imageUrl.trim() : "";
 
-  const cardSpring = spring({ frame: frame - 4, fps, config: { damping: 14, mass: 0.8 }, durationInFrames: 26 });
-  const priceSpring = spring({ frame: frame - 16, fps, config: { damping: 12, mass: 0.6 }, durationInFrames: 22 });
-  const badgeSpring = spring({ frame: frame - 22, fps, config: { damping: 11, mass: 0.5 }, durationInFrames: 20 });
+  const cardSpring = spring({ frame: frame - 4, fps, config: tempoSpring(SPRING_CARD, TEMPO_MAP.product), durationInFrames: 26 });
+  const priceSpring = spring({ frame: frame - 16, fps, config: SPRING_BADGE, durationInFrames: 22 });
+  const badgeSpring = spring({ frame: frame - 22, fps, config: SPRING_BADGE, durationInFrames: 20 });
 
   const kenBurnsZoom = interpolate(frame, [0, 120], [1, 1.08], { extrapolateRight: "clamp" });
-  const floatY = Math.sin(frame / 22) * 8;
+  const floatY = organicDrift("product-float", frame, 1 / 22, 8);
 
   return (
     <AbsoluteFill style={{ overflow: "hidden" }}>
       {/* Full-bleed ambient blurred backdrop */}
-      {imageUrl ? (
+      {resolvedImageUrl ? (
         <AbsoluteFill style={{ opacity: 0.35, pointerEvents: "none" }}>
           <Img
-            src={imageUrl}
+            src={resolvedImageUrl}
             style={{
               width: "100%",
               height: "100%",
@@ -72,26 +78,75 @@ export const ProductShowcase: React.FC<{
             zIndex: 5,
           }}
         >
-          {/* Glowing Product Container */}
+          {/* Glowing Product Container — shape/border now follow the brand's own archetype instead of one fixed look */}
           <div
             style={{
-              borderRadius: 28,
+              borderRadius: radiusForShape(theme.shape),
               overflow: "hidden",
-              border: "1.5px solid rgba(255, 255, 255, 0.22)",
+              border: borderForShape(theme.shape, theme.accent),
               backgroundColor: "rgba(23, 15, 10, 0.8)",
-              boxShadow: `0 0 60px rgba(245, 158, 11, 0.25)`,
+              boxShadow: shadowForShape(theme.shape, theme.accent),
             }}
           >
-            <div style={{ position: "relative", overflow: "hidden", aspectRatio: isVertical ? "1/1" : "16/11", maxHeight: 440 }}>
-              <Img
-                src={imageUrl}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  transform: `scale(${kenBurnsZoom})`,
-                }}
-              />
+            <div style={{ position: "relative", overflow: "hidden", aspectRatio: isVertical ? "1/1" : "16/11" }}>
+              {resolvedImageUrl ? (
+                <Img
+                  src={resolvedImageUrl}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    filter: filterForImagery(theme.imagery),
+                    transform: `scale(${kenBurnsZoom})`,
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 18,
+                    padding: 36,
+                    textAlign: "center",
+                    background: `radial-gradient(circle at 50% 35%, ${theme.accent}66, transparent 42%), linear-gradient(145deg, #243047, #0f172a)`,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: isVertical ? 150 : 170,
+                      height: isVertical ? 150 : 170,
+                      borderRadius: 40,
+                      display: "grid",
+                      placeItems: "center",
+                      backgroundColor: `${theme.accent}22`,
+                      border: `2px solid ${theme.accent}99`,
+                      color: theme.accent,
+                      fontFamily: displayFont,
+                      fontSize: isVertical ? 64 : 72,
+                      fontWeight: 900,
+                      boxShadow: `0 20px 50px ${theme.accent}33`,
+                    }}
+                  >
+                    {title.trim().charAt(0).toLocaleUpperCase("tr-TR") || "✦"}
+                  </div>
+                  <span
+                    style={{
+                      maxWidth: "85%",
+                      color: "#ffffff",
+                      fontFamily: displayFont,
+                      fontWeight: 800,
+                      fontSize: isVertical ? 28 : 32,
+                      lineHeight: 1.15,
+                    }}
+                  >
+                    {title}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -104,6 +159,7 @@ export const ProductShowcase: React.FC<{
                 right: isVertical ? 16 : -20,
                 opacity: badgeSpring,
                 transform: `scale(${badgeSpring}) rotate(4deg)`,
+                filter: entranceBlur(badgeSpring),
                 backgroundColor: "#ef4444",
                 borderRadius: 999,
                 padding: "8px 22px",
@@ -154,21 +210,21 @@ export const ProductShowcase: React.FC<{
             zIndex: 5,
           }}
         >
-          {/* Product Title */}
-          <h2
+          {/* Product Title — punchy per-character pop, matches this scene's "climax" tempo */}
+          <CharacterReveal
+            text={title}
+            startFrame={6}
             style={{
               fontFamily: displayFont,
               fontWeight: 900,
               fontSize: isVertical ? 48 : 58,
               lineHeight: 1.12,
               color: "#ffffff",
-              margin: "0 0 16px 0",
               letterSpacing: -1,
               textShadow: "0 4px 0 #000, 0 8px 30px rgba(0,0,0,0.8)",
             }}
-          >
-            {title}
-          </h2>
+            wrapperStyle={{ justifyContent: isVertical ? "center" : "flex-start", marginBottom: 16 }}
+          />
 
           {/* Pricing Box */}
           <div
@@ -244,6 +300,12 @@ export const ProductShowcase: React.FC<{
           </div>
         </div>
       </AbsoluteFill>
+
+      {discountBadge ? (
+        <Sequence from={22} layout="none">
+          <Audio src={uiSwitch} volume={0.3} />
+        </Sequence>
+      ) : null}
     </AbsoluteFill>
   );
 };

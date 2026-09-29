@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-export type VideoRenderJobStatus = "pending" | "rendering" | "completed" | "failed";
+export type VideoRenderJobStatus = "pending" | "draft" | "queued" | "rendering" | "completed" | "failed";
 
 export type VideoRenderJobState = {
   status: VideoRenderJobStatus;
   error: string | null;
   outputUrl: string | null;
+  scenePlan: unknown;
 };
 
 const POLL_INTERVAL_MS = 3000;
@@ -33,7 +34,7 @@ export function useVideoRenderJob(jobId: string | null): VideoRenderJobState | n
     async function tick() {
       const { data } = await supabase
         .from("video_render_jobs")
-        .select("status, error, output_url")
+        .select("status, error, output_url, scene_plan")
         .eq("id", jobId as string)
         .single();
       if (cancelled) return;
@@ -42,6 +43,7 @@ export function useVideoRenderJob(jobId: string | null): VideoRenderJobState | n
           status: data.status as VideoRenderJobStatus,
           error: data.error,
           outputUrl: data.output_url,
+          scenePlan: data.scene_plan,
         };
         setJob(next);
         if (next.status === "completed" || next.status === "failed") return;

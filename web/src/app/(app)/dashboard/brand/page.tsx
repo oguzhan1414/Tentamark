@@ -9,6 +9,7 @@ import {
   type CompetitorSocials,
   type MarketComparison,
   type AudiencePersona,
+  type BrandClaim,
 } from "@/lib/brand/autofillFromWebsite";
 import { TRAIT_KEYS, describeTone, type TraitKey, type TraitScores, type TonePosition } from "@/lib/brand/traits";
 import { generateBrandStrategy } from "@/lib/ai/generateStrategy";
@@ -53,6 +54,8 @@ type FormState = {
   raw_notes: string;
   founder_name: string;
   founder_voice: string;
+  logo_url: string;
+  visual_style: string;
 };
 
 const INPUT_CLASS =
@@ -218,6 +221,7 @@ export default function BrandPage() {
   const [audienceInsightLoading, setAudienceInsightLoading] = useState(false);
   const [intelligenceSummary, setIntelligenceSummary] = useState<BrandIntelligenceSummary | null>(null);
   const [learningLog, setLearningLog] = useState<LearningLogDay[]>([]);
+  const [claims, setClaims] = useState<BrandClaim[]>([]);
 
   // Load Brand Intelligence Summary & Learning Log
   useEffect(() => {
@@ -267,19 +271,27 @@ export default function BrandPage() {
     (async () => {
       const { data: brandRow } = await supabase
         .from("brands")
-        .select("name, website")
+        .select("name, website, logo_url")
         .eq("id", brand.id)
         .maybeSingle();
 
       const { data: dnaRow } = await supabase
         .from("brand_dna")
         .select(
-          "industry, tone_of_voice, brand_traits, forbidden_words, color_palette, target_audience, competitors, competitor_analysis, trait_scores, tone_position, audience_persona, audience_pain_points, audience_motivations, market_comparison, raw_notes, founder_name, founder_voice"
+          "industry, tone_of_voice, brand_traits, forbidden_words, color_palette, target_audience, competitors, competitor_analysis, trait_scores, tone_position, audience_persona, audience_pain_points, audience_motivations, market_comparison, raw_notes, founder_name, founder_voice, visual_style"
         )
         .eq("brand_id", brand.id)
         .maybeSingle();
 
+      const { data: claimRows } = await supabase
+        .from("brand_claims")
+        .select("claim_text, source_url")
+        .eq("brand_id", brand.id)
+        .order("created_at", { ascending: false });
+
       if (ignore) return;
+
+      setClaims((claimRows ?? []).map((c) => ({ text: c.claim_text, sourceUrl: c.source_url ?? "" })));
 
       setForm({
         name: brandRow?.name ?? "",
@@ -294,6 +306,8 @@ export default function BrandPage() {
         raw_notes: dnaRow?.raw_notes ?? "",
         founder_name: dnaRow?.founder_name ?? "",
         founder_voice: dnaRow?.founder_voice ?? "",
+        logo_url: brandRow?.logo_url ?? "",
+        visual_style: dnaRow?.visual_style ?? "",
       });
 
       if (dnaRow?.tone_position && typeof dnaRow.tone_position === "object") {
@@ -406,6 +420,8 @@ export default function BrandPage() {
         target_audience: result.targetAudience.length > 0 ? result.targetAudience.join(", ") : form.target_audience,
         competitors: result.competitors.length > 0 ? result.competitors.join(", ") : form.competitors,
         raw_notes: result.rawNotes || form.raw_notes,
+        logo_url: result.logoUrl || form.logo_url,
+        visual_style: result.visualStyle || form.visual_style,
       };
 
       setForm(updatedForm);
@@ -425,7 +441,7 @@ export default function BrandPage() {
       setAutofillStep("Marka profili ve DNA kaydediliyor…");
       const { error: brandError } = await supabase
         .from("brands")
-        .update({ name: updatedForm.name, website: updatedForm.website || null })
+        .update({ name: updatedForm.name, website: updatedForm.website || null, logo_url: updatedForm.logo_url || null })
         .eq("id", brand.id);
       if (brandError) throw new Error(`Marka bilgileri kaydedilemedi: ${brandError.message}`);
 
@@ -447,9 +463,21 @@ export default function BrandPage() {
           audience_motivations: result.audienceMotivations,
           market_comparison: result.marketComparison,
           raw_notes: updatedForm.raw_notes || null,
+          visual_style: updatedForm.visual_style || null,
         })
         .eq("brand_id", brand.id);
       if (dnaError) throw new Error(`Marka DNA'sı kaydedilemedi: ${dnaError.message}`);
+
+      // Replace, not append — a re-scan reflects the site's CURRENT state;
+      // keeping stale claims from a previous scan around would silently
+      // let generation cite something the site no longer says.
+      await supabase.from("brand_claims").delete().eq("brand_id", brand.id);
+      if (result.claims.length > 0) {
+        await supabase.from("brand_claims").insert(
+          result.claims.map((c) => ({ brand_id: brand.id, claim_text: c.text, source_url: c.sourceUrl }))
+        );
+      }
+      setClaims(result.claims);
 
       setAutofillStep("AI İçerik Stratejisi otomatik güncelleniyor…");
       try {
@@ -762,6 +790,42 @@ export default function BrandPage() {
                   <div className="space-y-4 rounded-2xl border border-slate-200/90 bg-white p-6 shadow-xs">
                     <h3 className="font-display text-sm font-bold text-slate-900">Görsel & Dil Kılavuzu</h3>
 
+                    {(form.logo_url || form.color_palette || form.visual_style) && (
+                      <div className="flex flex-wrap items-center gap-4 rounded-xl border border-slate-100 bg-slate-50/70 p-3.5">
+                        {form.logo_url && (
+                          // eslint-disable-next-line @next/next/no-img-element -- arbitrary external customer domain, can't allowlist for next/image
+                          <img
+                            src={form.logo_url}
+                            alt="Tespit edilen logo"
+                            className="h-12 w-12 shrink-0 rounded-lg border border-slate-200 bg-white object-contain p-1"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = "none";
+                            }}
+                          />
+                        )}
+                        {form.color_palette && (
+                          <div className="flex items-center gap-1.5">
+                            {toCommaList(form.color_palette)
+                              .slice(0, 6)
+                              .map((hex, idx) => (
+                                <span
+                                  key={idx}
+                                  title={hex}
+                                  className="h-6 w-6 rounded-full border border-slate-200 shadow-2xs"
+                                  style={{ backgroundColor: /^#[0-9a-fA-F]{3,6}$/.test(hex) ? hex : "transparent" }}
+                                />
+                              ))}
+                          </div>
+                        )}
+                        {form.visual_style && (
+                          <span className="rounded-full bg-white border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                            🎨 {form.visual_style}
+                          </span>
+                        )}
+                        <span className="text-[10px] text-slate-400">Web sitesinden tespit edildi</span>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {/* Renk Paleti */}
                       <div className="space-y-2">
@@ -812,6 +876,27 @@ export default function BrandPage() {
                         className={`${INPUT_CLASS} resize-y`}
                       />
                     </Field>
+
+                    {/* Doğrulanmış İddialar — web sitesi taramasından çıkarılan,
+                        kaynaklı iddialer. AI üretiminde sadece bu listedeki
+                        iddialar kullanılabilir, listede olmayan bir rakam/vaat
+                        uydurulmaz. Salt-okunur: "Web Sitesinden Doldur"
+                        çalıştırıldığında yeniden taranıp değişir. */}
+                    {claims.length > 0 && (
+                      <Field
+                        label={`Doğrulanmış İddialar (${claims.length})`}
+                        hint="Web sitesinden çıkarıldı — AI üretimi sadece buradaki iddiaları kullanabilir"
+                      >
+                        <ul className="space-y-1.5 rounded-xl border border-emerald-200/70 bg-emerald-50/50 p-3.5">
+                          {claims.map((c, idx) => (
+                            <li key={idx} className="flex items-start gap-2 text-xs text-emerald-950">
+                              <span className="mt-0.5 text-emerald-600">✓</span>
+                              <span>{c.text}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </Field>
+                    )}
                   </div>
                 </>
               )}

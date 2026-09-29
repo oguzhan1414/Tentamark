@@ -26,6 +26,7 @@ Bu klasör, tek parça olan `ai-marketing-manager-project-spec.md` dosyasının 
 | [11-design-system.md](11-design-system.md) | **Yeni** — ölçülmüş palet, üç token rampası (yüzey/metin/aksan), WCAG kontrast hesapları, yüzey ve yarıçap kuralı, tipografi, tema geçişi, token sözlüğü |
 | [12-backend-logic.md](12-backend-logic.md) | **Ana referans** — 12 repodan (8 scheduler + 4 AI içerik üretimi) konsolide edilmiş tam backend mantığı: domain modeli, durum makinesi, **AI İçerik Zekası katmanı** (marketingskills + humanizer'dan esinlenen prompt zinciri), scheduler, RLS, kaynak repo attribution tablosu, uçtan uca akış, "sistem sonunda ne olacak" kontrol listesi |
 | [13-build-checklist.md](13-build-checklist.md) | **Yeni** — Supabase bağlandı, gerçek backend inşasına başlandı. 8 fazlık kısa yapım listesi, her madde 12'nin ilgili bölümüne işaret ediyor |
+| [14-creative-studio-roadmap-27.09.2026.md](14-creative-studio-roadmap-27.09.2026.md) | **27.09.2026** — Görsel ve video için Creative Studio ürün kararı, mevcut durum, hedef mimari, 8 uygulama fazı, ilk sprint ve kabul kriterleri |
 
 ## Bu bölmede neyi değiştirdim, neyi değiştirmedim
 

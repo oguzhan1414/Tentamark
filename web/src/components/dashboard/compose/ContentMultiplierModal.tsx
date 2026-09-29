@@ -29,6 +29,7 @@ interface ContentMultiplierModalProps {
   onApplyAll: (multipliedDrafts: GeneratedDrafts, selectedPlatforms: LaunchPlatform[]) => void;
   onApplySingle: (platform: LaunchPlatform, text: string) => void;
   isEn?: boolean;
+  voiceMode?: "brand" | "founder";
 }
 
 type MultiplierTabKey =
@@ -48,6 +49,7 @@ export default function ContentMultiplierModal({
   onApplyAll,
   onApplySingle,
   isEn = false,
+  voiceMode = "brand",
 }: ContentMultiplierModalProps) {
   const [sourceText, setSourceText] = useState(initialText || "");
   const [loading, setLoading] = useState(false);
@@ -64,7 +66,7 @@ export default function ContentMultiplierModal({
     setError(null);
 
     try {
-      const res = await multiplyContent(brandId, sourceText);
+      const res = await multiplyContent(brandId, sourceText, undefined, voiceMode);
       setResult(res);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : (isEn ? "Generation failed." : "Çoğaltma işlemi başarısız oldu."));

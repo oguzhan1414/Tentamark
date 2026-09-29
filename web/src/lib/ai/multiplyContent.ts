@@ -59,7 +59,11 @@ const PROMPT_VERSION = "multiplier-1to7-v1";
 export async function multiplyContent(
   brandId: string,
   sourceText: string,
-  toneOverride?: string
+  toneOverride?: string,
+  // Same gate as generateDrafts: only does anything if brand_dna.founder_name
+  // is set. Without this, multiplying founder-voice, first-person content
+  // quietly rewrites all 7 formats back into generic brand voice.
+  voiceMode: "brand" | "founder" = "brand"
 ): Promise<MultipliedContentResult> {
   if (!sourceText || !sourceText.trim()) {
     throw new Error("Lütfen çoğaltılacak bir içerik veya fikir belirtin.");
@@ -77,13 +81,20 @@ export async function multiplyContent(
   const brandContext =
     brandCtx.formattedText || "Marka genel ve profesyonel bir sosyal medya tonuna sahip.";
 
+  const useFounderVoice = voiceMode === "founder" && Boolean(brandCtx.founderName);
+  const voiceInstruction = useFounderVoice
+    ? `\n\nÖNEMLİ — SES: Kaynak metin markanın kurumsal hesabından değil, kurucusu ${brandCtx.founderName}'ın kişisel sesinden yazılmıştı. 7 formatın TAMAMINDA (LinkedIn ve Pinterest gibi resmi görünen formatlar dahil) birinci tekil şahsı koru, kurumsal/reklam diline kayma. ${
+        brandCtx.founderVoice ? `Kurucunun kişisel üslubu: ${brandCtx.founderVoice}.` : ""
+      }`
+    : "";
+
   const startedAt = Date.now();
 
   const systemPrompt = `Sen dünyanın en yetenekli ve kıdemli Sosyal Medya Büyüme ve İçerik Dönüştürme (Content Repurposing) Direktörüsün.
 Görevin: Verilen kaynak metni/fikri inceleyerek, her sosyal medya platformunun kendi özgün kültürüne, algoritma dinamiklerine ve kitle beklentilerine uygun 7 FARKLI SPESİFİK İÇERİK FORMATINA dönüştürmektir.
 
 Marka Bağlamı:
-${brandContext}
+${brandContext}${voiceInstruction}
 ${toneOverride ? `Ek Ses Tonu Notu: ${toneOverride}` : ""}
 
 7 HEDEF FORMAT VE KURALLARI:
@@ -174,6 +185,7 @@ JSON Formatı:
     const groqRes = await callGroq(systemPrompt, userMessage, {
       temperature: 0.35,
       maxTokens: 4000,
+      reasoningEffort: "low",
     });
 
     const cleaned = groqRes.content

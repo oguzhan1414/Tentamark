@@ -1,0 +1,38 @@
+{
+  "format": "horizontal",
+  "durationSeconds": 15,
+  "fps": 30,
+  "accentColors": ["#38bdf8", "#818cf8"],
+  "brandName": "Tentamark Demo",
+  "backgroundTheme": "tech_slate",
+  "scenePlan": [
+    {
+      "archetype": "hook",
+      "frames": 90,
+      "lines": ["Bir fikir", "tüm haftaya dönüşsün"],
+      "highlightWord": "tüm haftaya"
+    },
+    {
+      "archetype": "wrapped",
+      "frames": 105,
+      "headline": "Haftalık içerik özeti",
+      "metricValue": "5",
+      "metricLabel": "yayına hazır içerik",
+      "comparisonText": "Tek brief, birden fazla platform"
+    },
+    {
+      "archetype": "stat",
+      "frames": 105,
+      "headline": "Dakikalar içinde",
+      "supporting": "Markana uygun fikir, metin ve yaratıcı yön tek yerde."
+    },
+    {
+      "archetype": "outro",
+      "frames": 90,
+      "brandName": "Tentamark Demo",
+      "logoUrl": "/public/tenta-avatar-wink.png",
+      "tagline": "Pazarlaman artık plansız kalmasın.",
+      "ctaLabel": "Tentamark'ı Keşfet"
+    }
+  ]
+}

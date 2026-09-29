@@ -51,6 +51,7 @@ import {
   setContentApproval,
   setContentTags,
   assignContentRow,
+  assignDraftRow,
   insertContentComment,
   type ContentRow,
 } from "@/lib/content/approvalItems";
@@ -418,7 +419,7 @@ export default function CalendarPage() {
       .select("id, note_date, text, color")
       .single();
     if (error || !data) {
-      console.error("Not eklenemedi:", error?.message);
+      setCalendarError(`Not eklenemedi: ${error?.message ?? "Kayıt oluşturulmadı."}`);
       return;
     }
     setNotes((prev) => [...prev, { id: data.id, date: data.note_date, text: data.text, color: data.color }]);
@@ -427,19 +428,19 @@ export default function CalendarPage() {
   async function saveNoteText(id: string, text: string) {
     setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, text } : n)));
     const { error } = await supabase.from("calendar_notes").update({ text }).eq("id", id);
-    if (error) console.error("Not kaydedilemedi:", error.message);
+    if (error) setCalendarError(`Not kaydedilemedi: ${error.message}`);
   }
 
   async function changeNoteColor(id: string, color: string) {
     setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, color } : n)));
     const { error } = await supabase.from("calendar_notes").update({ color }).eq("id", id);
-    if (error) console.error("Not rengi kaydedilemedi:", error.message);
+    if (error) setCalendarError(`Not rengi kaydedilemedi: ${error.message}`);
   }
 
   async function deleteNote(id: string) {
     setNotes((prev) => prev.filter((n) => n.id !== id));
     const { error } = await supabase.from("calendar_notes").delete().eq("id", id);
-    if (error) console.error("Not silinemedi:", error.message);
+    if (error) setCalendarError(`Not silinemedi: ${error.message}`);
   }
 
   // Detail modal actions — same shared mutations Gönderiler uses
@@ -451,14 +452,14 @@ export default function CalendarPage() {
     const nextStatus = row.status === "APPROVED" ? "NEEDS_REVIEW" : "APPROVED";
     setContentRows((prev) => prev.map((r) => (r.id === id ? { ...r, status: nextStatus } : r)));
     setContentApproval(supabase, id, nextStatus).then(({ error }) => {
-      if (error) console.error("Onay durumu kaydedilemedi:", error.message);
+      if (error) setCalendarError(`Onay durumu kaydedilemedi: ${error.message}`);
     });
   }
 
   async function rejectContent(id: string) {
     const { error } = await rejectContentRow(supabase, id);
     if (error) {
-      console.error("Taslağa gönderilemedi:", error.message);
+      setCalendarError(`Taslağa gönderilemedi: ${error.message}`);
       return;
     }
     setContentRows((prev) => prev.map((r) => (r.id === id ? { ...r, status: "DRAFT" } : r)));
@@ -467,7 +468,7 @@ export default function CalendarPage() {
   async function deleteContentItem(id: string) {
     const { error } = await deleteContentRow(supabase, id);
     if (error) {
-      console.error("İçerik silinemedi:", error.message);
+      setCalendarError(`İçerik silinemedi: ${error.message}`);
       return;
     }
     setContentRows((prev) => prev.filter((r) => r.id !== id));
@@ -476,15 +477,68 @@ export default function CalendarPage() {
   async function saveTags(id: string, nextTags: string[]) {
     setContentRows((prev) => prev.map((r) => (r.id === id ? { ...r, tags: nextTags } : r)));
     const { error } = await setContentTags(supabase, id, nextTags);
-    if (error) console.error("Etiketler kaydedilemedi:", error.message);
+    if (error) setCalendarError(`Etiketler kaydedilemedi: ${error.message}`);
   }
 
   function handleAssign(id: string, userId: string | null) {
     const assignedTo = userId ? { id: userId, name: teamMembers.find((m) => m.userId === userId)?.name ?? "Üye" } : null;
     setContentRows((prev) => prev.map((r) => (r.id === id ? { ...r, assignedTo } : r)));
     assignContentRow(supabase, id, userId).then(({ error }) => {
-      if (error) console.error("Atama kaydedilemedi:", error.message);
+      if (error) setCalendarError(`Atama kaydedilemedi: ${error.message}`);
     });
+  }
+
+  async function handleAssignDraft(itemId: string, userId: string | null) {
+    const { data, error } = await assignDraftRow(supabase, itemId, userId);
+    if (error || !data?.length) {
+      setCalendarError(`Taslak görevi atanamadı: ${error?.message ?? "Kayıt güncellenmedi."}`);
+      return;
+    }
+    setRefreshKey((key) => key + 1);
+  }
+
+  async function savePlatform(contentId: string, platformId: string, caption: string, scheduledAt: string | null): Promise<string | null> {
+    const row = contentRows.find((r) => r.id === contentId);
+    const platform = row?.content_platforms.find((item) => item.id === platformId);
+    if (!platform || !["DRAFT", "NEEDS_REVIEW", "PENDING", "NEEDS_USER_ACTION", "FAILED"].includes(platform.status)) return "Bu platform sürümü artık düzenlenemiyor.";
+    if (!caption.trim()) return "Gönderi metni boş olamaz.";
+    if (row?.status === "APPROVED" && (!scheduledAt || new Date(scheduledAt).getTime() <= Date.now())) return "Onaylı gönderi için gelecek bir yayın zamanı seçin.";
+    const oldCaption = platform.caption;
+    const oldScheduledAt = platform.scheduled_at ?? null;
+    const { data, error } = await supabase.from("content_platforms")
+      .update({ caption, hashtags: Array.from(new Set(caption.match(/#[\p{L}0-9_]+/gu) ?? [])), scheduled_at: scheduledAt })
+      .eq("id", platformId).eq("content_id", contentId).in("status", ["DRAFT", "NEEDS_REVIEW", "PENDING", "NEEDS_USER_ACTION", "FAILED"]).select("id");
+    if (error || !data?.length) return error?.message ?? "Gönderi değişti. Sayfayı yenileyip tekrar deneyin.";
+    if (oldCaption !== caption || oldScheduledAt !== scheduledAt) {
+      supabase.from("content_edit_history").insert({
+        content_platform_id: platformId,
+        edited_by: currentUserId,
+        old_caption: oldCaption,
+        new_caption: caption,
+        old_scheduled_at: oldScheduledAt,
+        new_scheduled_at: scheduledAt,
+      }).then(({ error: historyError }) => {
+        if (historyError) console.warn("content_edit_history kaydı yazılamadı:", historyError.message);
+      });
+    }
+    setRefreshKey((key) => key + 1);
+    return null;
+  }
+
+  async function retryPlatform(contentId: string, platformId: string): Promise<string | null> {
+    const row = contentRows.find((r) => r.id === contentId);
+    const platform = row?.content_platforms.find((item) => item.id === platformId);
+    if (!platform || !["NEEDS_USER_ACTION", "FAILED"].includes(platform.status)) return "Bu sürüm yeniden denemeye uygun değil.";
+    const { error: contentError } = await supabase.from("content").update({ status: "APPROVED" }).eq("id", contentId).eq("brand_id", brand.id);
+    if (contentError) return contentError.message;
+    const { data, error } = await supabase.from("content_platforms")
+      .update({ status: "PENDING", attempt_count: 0, next_retry_at: null, last_error: null, failure_code: null,
+        scheduled_at: new Date(Date.now() + 2 * 60000).toISOString() })
+      .eq("id", platformId).eq("content_id", contentId)
+      .in("status", ["NEEDS_USER_ACTION", "FAILED"]).is("platform_post_id", null).select("id");
+    if (error || !data?.length) { setRefreshKey((key) => key + 1); return error?.message ?? "Gönderi yeniden sıraya alınamadı. Yayınlanmış olabileceğini kontrol edin."; }
+    setRefreshKey((key) => key + 1);
+    return null;
   }
 
   function addComment(id: string, text: string) {
@@ -494,7 +548,7 @@ export default function CalendarPage() {
       .auth.getUser()
       .then(({ data: { user } }) => insertContentComment(supabase, id, user?.id ?? null, text))
       .then(({ error }) => {
-        if (error) console.error("Yorum kaydedilemedi:", error.message);
+        if (error) setCalendarError(`Yorum kaydedilemedi: ${error.message}`);
       });
   }
 
@@ -768,10 +822,13 @@ export default function CalendarPage() {
             onAddComment={addComment}
             teamMembers={teamMembers}
             onAssign={handleAssign}
+            onAssignDraft={handleAssignDraft}
             canReview={canReview}
             onEditTags={canReview || (selectedApprovalItem.realStatus === "draft" || selectedApprovalItem.realStatus === "review") && (selectedApprovalItem.createdBy === currentUserId || selectedApprovalItem.draftAssignedTo?.id === currentUserId) ? saveTags : undefined}
             onReject={canReview ? rejectContent : undefined}
             onDelete={canReview ? deleteContentItem : undefined}
+            onSavePlatform={canReview || (selectedApprovalItem.realStatus === "draft" || selectedApprovalItem.realStatus === "review") && (selectedApprovalItem.createdBy === currentUserId || selectedApprovalItem.draftAssignedTo?.id === currentUserId) ? savePlatform : undefined}
+            onRetryPlatform={canReview ? retryPlatform : undefined}
           />
         )}
 

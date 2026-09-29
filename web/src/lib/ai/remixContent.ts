@@ -33,12 +33,17 @@ export async function remixContent({
   tone,
   platform = "instagram",
   isEn = false,
+  // Same gate as generateDrafts: only does anything if brand_dna.founder_name
+  // is set. Without this, remixing founder-voice, first-person content
+  // quietly rewrites it back into generic brand voice.
+  voiceMode = "brand",
 }: {
   brandId: string;
   content: string;
   tone: RemixTone;
   platform?: string;
   isEn?: boolean;
+  voiceMode?: "brand" | "founder";
 }): Promise<{ rewritten: string; tone: RemixTone }> {
   if (!content?.trim()) {
     throw new Error(
@@ -52,6 +57,13 @@ export async function remixContent({
   const brandContext =
     brandCtx.formattedText || "Marka genel ve profesyonel bir sosyal medya tonuna sahip.";
 
+  const useFounderVoice = voiceMode === "founder" && Boolean(brandCtx.founderName);
+  const voiceInstruction = useFounderVoice
+    ? `\n\nÖNEMLİ — SES: Bu metin markanın kurumsal hesabından değil, kurucusu ${brandCtx.founderName}'ın kişisel sesinden yazılmıştı ve öyle kalmalı. Birinci tekil şahsı ("ben") koru, remiks sırasında kurumsal/reklam diline KAYMA. ${
+        brandCtx.founderVoice ? `Kurucunun kişisel üslubu: ${brandCtx.founderVoice}.` : ""
+      }`
+    : "";
+
   const directive = TONE_DIRECTIVES[tone] || TONE_DIRECTIVES.shorter;
   const activeDirective = isEn ? directive.en : directive.tr;
 
@@ -62,7 +74,7 @@ Platform: ${platform}
 Hedef Dil: ${isEn ? "İngilizce" : "Türkçe"}
 
 Marka Bağlamı:
-${brandContext}
+${brandContext}${voiceInstruction}
 
 Remix Üslup Direktifi:
 ${activeDirective}

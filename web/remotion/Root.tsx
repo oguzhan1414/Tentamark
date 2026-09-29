@@ -1,8 +1,9 @@
 import React from "react";
 import { Composition } from "remotion";
 import { Main } from "./Main";
-import { fps, transitionFrames } from "./theme";
+import { fps } from "./theme";
 import type { VideoInputProps } from "../src/lib/video/types";
+import { getRenderedDurationInFrames } from "../src/lib/video/scenePlan";
 
 const DEFAULT_PROPS: VideoInputProps = {
   format: "horizontal",
@@ -31,8 +32,7 @@ export const Root: React.FC = () => {
         // (outro) scene is a light-leak Overlay (Main.tsx), which — unlike
         // a crossfade/slide Transition — does NOT shorten the timeline.
         // Only the other cuts (sceneCount - 2, floored at 0) overlap.
-        const transitionCutCount = Math.max(scenePlan.length - 2, 0);
-        const totalFrames = scenePlan.reduce((sum, s) => sum + s.frames, 0) - transitionFrames * transitionCutCount;
+        const totalFrames = getRenderedDurationInFrames(scenePlan);
         return {
           width: format === "vertical" ? 1080 : 1920,
           height: format === "vertical" ? 1920 : 1080,

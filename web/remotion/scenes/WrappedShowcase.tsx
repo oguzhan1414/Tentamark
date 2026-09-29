@@ -1,6 +1,8 @@
 import React from "react";
-import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, Audio, interpolate, Sequence, spring, useCurrentFrame, useVideoConfig } from "remotion";
+import { uiSwitch } from "@remotion/sfx";
 import { displayFont, bodyFont } from "../fonts";
+import { SPRING_CARD, SPRING_BADGE, TEMPO_MAP, tempoSpring, entranceBlur } from "../springs";
 import type { Theme } from "../theme";
 
 export const WrappedShowcase: React.FC<{
@@ -14,9 +16,9 @@ export const WrappedShowcase: React.FC<{
   const { fps, width, height } = useVideoConfig();
   const isVertical = height > width;
 
-  const headerSpring = spring({ frame, fps, config: { damping: 14, mass: 0.6 }, durationInFrames: 22 });
-  const numberSpring = spring({ frame: frame - 6, fps, config: { damping: 12, mass: 0.5 }, durationInFrames: 26 });
-  const pillSpring = spring({ frame: frame - 16, fps, config: { damping: 11, mass: 0.5 }, durationInFrames: 22 });
+  const headerSpring = spring({ frame, fps, config: SPRING_BADGE, durationInFrames: 22 });
+  const numberSpring = spring({ frame: frame - 6, fps, config: tempoSpring(SPRING_CARD, TEMPO_MAP.wrapped), durationInFrames: 26 });
+  const pillSpring = spring({ frame: frame - 16, fps, config: SPRING_BADGE, durationInFrames: 22 });
 
   return (
     <AbsoluteFill
@@ -110,6 +112,7 @@ export const WrappedShowcase: React.FC<{
           style={{
             opacity: pillSpring,
             transform: `scale(${pillSpring})`,
+            filter: entranceBlur(pillSpring),
             marginTop: 14,
             padding: "8px 22px",
             borderRadius: 999,
@@ -125,6 +128,10 @@ export const WrappedShowcase: React.FC<{
           {comparisonText}
         </div>
       </div>
+
+      <Sequence from={16} layout="none">
+        <Audio src={uiSwitch} volume={0.28} />
+      </Sequence>
     </AbsoluteFill>
   );
 };

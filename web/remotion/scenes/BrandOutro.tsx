@@ -3,7 +3,8 @@ import { AbsoluteFill, Audio, Img, interpolate, Sequence, spring, useCurrentFram
 import { Circle } from "@remotion/rough-notation";
 import { ding } from "@remotion/sfx";
 import { displayFont, bodyFont } from "../fonts";
-import { AtmosphericBackground } from "../components/AtmosphericBackground";
+import { CharacterReveal } from "../components/CharacterReveal";
+import { SPRING_CARD, TEMPO_MAP, tempoSpring } from "../springs";
 import type { Theme } from "../theme";
 
 const CTA_START_FRAME = 48;
@@ -20,12 +21,8 @@ export const BrandOutro: React.FC<{
   const isVertical = height > width;
 
   // Staggered entrances
-  const markSpring = spring({ frame, fps, config: { damping: 14, mass: 0.6 }, durationInFrames: 24 });
-  const taglineOpacity = interpolate(frame - 18, [0, 20], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const ctaSpring = spring({ frame: frame - CTA_START_FRAME, fps, config: { damping: 12, mass: 0.6 }, durationInFrames: 24 });
+  const markSpring = spring({ frame, fps, config: tempoSpring(SPRING_CARD, TEMPO_MAP.outro), durationInFrames: 24 });
+  const ctaSpring = spring({ frame: frame - CTA_START_FRAME, fps, config: tempoSpring(SPRING_CARD, TEMPO_MAP.outro), durationInFrames: 24 });
   const circleProgress = interpolate(frame - 24, [0, 24], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
   // Expanding beacon ring on CTA entrance
@@ -91,22 +88,21 @@ export const BrandOutro: React.FC<{
           </Circle>
         </div>
 
-        {/* Tagline */}
-        <div
+        {/* Tagline — punchy per-character pop, matches this scene's "climax" tempo */}
+        <CharacterReveal
+          text={tagline}
+          startFrame={18}
+          staggerFrames={0.9}
           style={{
             fontFamily: bodyFont,
             fontWeight: 400,
             fontSize: taglineSize,
             lineHeight: 1.4,
             color: "#cbd5e1",
-            opacity: taglineOpacity,
-            marginTop: 4,
-            maxWidth: isVertical ? 640 : 840,
             textShadow: "0 2px 10px rgba(0,0,0,0.6)",
           }}
-        >
-          {tagline}
-        </div>
+          wrapperStyle={{ marginTop: 4, maxWidth: isVertical ? 640 : 840, justifyContent: "center", textAlign: "center" }}
+        />
 
         {/* Action Button */}
         {ctaLabel ? (

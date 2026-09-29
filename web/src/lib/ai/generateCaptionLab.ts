@@ -27,7 +27,11 @@ export async function generateCaptionLab(
   brandId: string,
   content: string,
   platform: string = "instagram",
-  format: string = "post"
+  format: string = "post",
+  // Same gate as generateDrafts: only does anything if brand_dna.founder_name
+  // is set. Without this, running founder-voice content through Caption Lab
+  // quietly rewrites all 3 variants back into generic brand voice.
+  voiceMode: "brand" | "founder" = "brand"
 ): Promise<CaptionLabResult> {
   if (!content?.trim()) {
     throw new Error("Lütfen Caption Lab için bir gönderi metni veya fikir belirtin.");
@@ -37,11 +41,18 @@ export async function generateCaptionLab(
   const brandContext =
     brandCtx.formattedText || "Marka genel ve profesyonel bir sosyal medya tonuna sahip.";
 
+  const useFounderVoice = voiceMode === "founder" && Boolean(brandCtx.founderName);
+  const voiceInstruction = useFounderVoice
+    ? `\n\nÖNEMLİ — SES: Girdi metni markanın kurumsal hesabından değil, kurucusu ${brandCtx.founderName}'ın kişisel sesinden yazılmıştı. 3 varyantın TAMAMINDA birinci tekil şahsı koru, kurumsal/reklam diline kayma. ${
+        brandCtx.founderVoice ? `Kurucunun kişisel üslubu: ${brandCtx.founderVoice}.` : ""
+      }`
+    : "";
+
   const systemPrompt = `Sen dünyanın en iyi sosyal medya büyüme direktörü ve viral metin yazarlığı (copywriting) mimarısın.
 Görevin: Verilen marka bağlamını ve gönderi konusunu/metnini inceleyerek ${platform} platformu (${format} formatı) için 3 FARKLI PSİKOLOJİK AÇIDAN (A/B Testi gibi) tam yayınlanabilir varyant üretmek ve her birini gerçekçi sosyal medya algoritma metrikleriyle puanlamak.
 
 Marka Bağlamı:
-${brandContext}
+${brandContext}${voiceInstruction}
 
 3 Zorunlu Varyant:
 1. "curiosity" (Merak Kancası — Pattern Interrupt):

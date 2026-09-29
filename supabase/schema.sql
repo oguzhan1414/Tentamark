@@ -1635,3 +1635,30 @@ $$;
 
 revoke execute on function private.dispatch_video_render_queue() from public, anon, authenticated;
 select cron.schedule('dispatch-video-render-queue', '* * * * *', $$select private.dispatch_video_render_queue();$$);
+
+-- Bluesky DM inbox polling (patch 0068) — AT Protocol's chat.bsky.*
+-- namespace has no webhook/push equivalent, unlike Meta/Telegram's inbox,
+-- so this polls every 5 minutes instead.
+create or replace function private.dispatch_bluesky_inbox_poll()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  webhook_secret text;
+begin
+  select decrypted_secret into webhook_secret
+  from vault.decrypted_secrets
+  where name = 'scheduler_webhook_secret';
+  if webhook_secret is null then return; end if;
+  perform net.http_post(
+    url := 'https://tentamark.com/api/workers/bluesky-inbox-poll',
+    body := '{}'::jsonb,
+    headers := jsonb_build_object('Content-Type', 'application/json', 'Authorization', 'Bearer ' || webhook_secret)
+  );
+end;
+$$;
+
+revoke execute on function private.dispatch_bluesky_inbox_poll() from public, anon, authenticated;
+select cron.schedule('dispatch-bluesky-inbox-poll', '*/5 * * * *', $$select private.dispatch_bluesky_inbox_poll();$$);

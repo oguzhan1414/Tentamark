@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { decryptToken } from "@/lib/crypto/tokenCipher";
+import { createSession as createBlueskySession, sendMessage as sendBlueskyMessage } from "./blueskyChat";
 
 /*
   Sends a reply to an inbound Social Inbox comment/DM and records it as an
@@ -33,7 +34,7 @@ export async function sendInboxReply(messageId: string, replyText: string): Prom
 
   const { data: account, error: accError } = await supabase
     .from("social_accounts")
-    .select("id, brand_id, external_account_id, access_token_encrypted, status")
+    .select("id, brand_id, external_account_id, access_token_encrypted, status, metadata")
     .eq("id", message.social_account_id)
     .single();
   if (accError || !account) throw new Error("Bağlı hesap bulunamadı.");
@@ -73,6 +74,13 @@ export async function sendInboxReply(messageId: string, replyText: string): Prom
       }
       remoteId = (json.message_id ?? json.id) as string;
     }
+  } else if (message.platform === "bluesky") {
+    if (!message.external_thread_id) throw new Error("Bu DM için konuşma bilgisi eksik.");
+    const handle = (account.metadata as Record<string, unknown> | null)?.handle as string | undefined;
+    if (!handle) throw new Error("Bluesky hesap bilgisi eksik (handle).");
+    const session = await createBlueskySession(handle, token);
+    const sent = await sendBlueskyMessage(session.accessJwt, message.external_thread_id, text);
+    remoteId = sent.id;
   } else if (message.platform === "telegram") {
     // Telegram DMs only — there's no "comment" kind for it yet (that would
     // need a channel's linked discussion group, not built).

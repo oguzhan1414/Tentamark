@@ -25,10 +25,20 @@ import { useLanguage } from "@/context/LanguageContext";
 // actually look different here — otherwise it sits in the grid identical to
 // a post still on track to publish, which is exactly the confusion "reddet"
 // is supposed to resolve.
+// SCHEDULED already means "content approved/scheduled and content_platforms
+// still pending/queued" (see deriveStatus in lib/contentStatus.ts, which
+// this card's postStatus is derived from) — so a SCHEDULED post whose time
+// has passed is exactly the "overdue but will still auto-publish shortly"
+// case, no separate raw-status plumbing needed here.
+function isCardOverdue(post: CalendarPost): boolean {
+  return post.postStatus === "SCHEDULED" && Boolean(post.scheduledAtIso) && new Date(post.scheduledAtIso!).getTime() <= Date.now();
+}
+
 function statusMeta(post: CalendarPost, postStatus: Record<string, string>): { dot: string; text: string; label: string } {
   if (post.postStatus === "FAILED") return { dot: "bg-rose-500", text: "text-rose-700", label: postStatus.failed };
   if (post.postStatus === "DRAFT") return { dot: "bg-slate-400", text: "text-slate-500", label: postStatus.draft };
   if (post.postStatus === "PUBLISHED") return { dot: "bg-blue-500", text: "text-blue-600", label: postStatus.published };
+  if (isCardOverdue(post)) return { dot: "bg-amber-500 animate-pulse", text: "text-amber-700", label: "Gecikti" };
   return post.approvalStatus === "APPROVED"
     ? { dot: "bg-emerald-500", text: "text-emerald-600", label: postStatus.approved }
     : { dot: "bg-amber-500", text: "text-amber-600", label: postStatus.pending };

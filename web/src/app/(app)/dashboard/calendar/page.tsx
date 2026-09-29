@@ -500,14 +500,23 @@ export default function CalendarPage() {
   async function savePlatform(contentId: string, platformId: string, caption: string, scheduledAt: string | null): Promise<string | null> {
     const row = contentRows.find((r) => r.id === contentId);
     const platform = row?.content_platforms.find((item) => item.id === platformId);
-    if (!platform || !["DRAFT", "NEEDS_REVIEW", "PENDING", "NEEDS_USER_ACTION", "FAILED"].includes(platform.status)) return "Bu platform sürümü artık düzenlenemiyor.";
+    // QUEUED is included so an overdue-but-approved post (dispatch_due_content
+    // already claimed it) can still be rescheduled, not just PENDING ones —
+    // see the requeue-to-PENDING note below for why this is safe.
+    if (!platform || !["DRAFT", "NEEDS_REVIEW", "PENDING", "NEEDS_USER_ACTION", "FAILED", "QUEUED"].includes(platform.status)) return "Bu platform sürümü artık düzenlenemiyor.";
     if (!caption.trim()) return "Gönderi metni boş olamaz.";
     if (row?.status === "APPROVED" && (!scheduledAt || new Date(scheduledAt).getTime() <= Date.now())) return "Onaylı gönderi için gelecek bir yayın zamanı seçin.";
     const oldCaption = platform.caption;
     const oldScheduledAt = platform.scheduled_at ?? null;
+    // If this was already QUEUED, kick it back to PENDING so the new time
+    // actually takes effect — process_publish_queue()'s own idempotency
+    // check (only proceeds "if still QUEUED") makes this safe: the stale
+    // pgmq message for the old time just gets archived as a no-op once it's
+    // read, since it'll find this row is no longer QUEUED.
+    const requeue = platform.status === "QUEUED" ? { status: "PENDING", next_retry_at: null } : {};
     const { data, error } = await supabase.from("content_platforms")
-      .update({ caption, hashtags: Array.from(new Set(caption.match(/#[\p{L}0-9_]+/gu) ?? [])), scheduled_at: scheduledAt })
-      .eq("id", platformId).eq("content_id", contentId).in("status", ["DRAFT", "NEEDS_REVIEW", "PENDING", "NEEDS_USER_ACTION", "FAILED"]).select("id");
+      .update({ caption, hashtags: Array.from(new Set(caption.match(/#[\p{L}0-9_]+/gu) ?? [])), scheduled_at: scheduledAt, ...requeue })
+      .eq("id", platformId).eq("content_id", contentId).in("status", ["DRAFT", "NEEDS_REVIEW", "PENDING", "NEEDS_USER_ACTION", "FAILED", "QUEUED"]).select("id");
     if (error || !data?.length) return error?.message ?? "Gönderi değişti. Sayfayı yenileyip tekrar deneyin.";
     if (oldCaption !== caption || oldScheduledAt !== scheduledAt) {
       supabase.from("content_edit_history").insert({

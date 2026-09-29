@@ -11,7 +11,7 @@ import PlatformIcon from "@/components/PlatformIcon";
 
 type SocialMessage = {
   id: string;
-  platform: "instagram" | "facebook" | "telegram";
+  platform: "instagram" | "facebook" | "telegram" | "bluesky";
   kind: "comment" | "dm";
   direction: "inbound" | "outbound";
   external_id: string;

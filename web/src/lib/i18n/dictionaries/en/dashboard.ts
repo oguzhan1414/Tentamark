@@ -618,7 +618,7 @@ export const enDashboard = {
   },
   inbox: {
     title: "Social Inbox",
-    subtitle: "Respond to comments and direct messages from Instagram and Facebook all in one place.",
+    subtitle: "Respond to comments and direct messages from Instagram, Facebook and Bluesky all in one place.",
     refresh: "Refresh",
     noConnection: "No connected accounts yet. Connect a channel on the Connections page to activate your inbox.",
     connectionsLink: "Connections",

@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptToken, encryptToken } from "@/lib/crypto/tokenCipher";
 import { getProviderFor } from "@/lib/social/registry";
 import { stripHashtagsFromCaption } from "@/lib/social/firstCommentHashtags";
+import { checkCaptionLimit } from "@/lib/social/captionLimits";
 import { getEmbedding } from "@/lib/ai/embeddings";
 import type { PublishMediaItem, SocialAccountRecord, SocialPlatform } from "@/lib/social/types";
 
@@ -162,6 +163,33 @@ export async function POST(req: NextRequest) {
     const captionForPublish = useFirstCommentHashtags
       ? stripHashtagsFromCaption(cp.caption, hashtags)
       : cp.caption;
+
+    // A too-long caption is deterministic — retrying it 5 times with
+    // exponential backoff (recordFailure's normal path) just wastes half a
+    // day arriving at the exact same rejection, so this skips straight to
+    // NEEDS_USER_ACTION on the first attempt instead of going through it.
+    // Found live: a Bluesky post at 403 graphemes (limit 300) did exactly
+    // that silently before this check existed.
+    const captionCheck = checkCaptionLimit(cp.platform as SocialPlatform, captionForPublish);
+    if (!captionCheck.valid) {
+      const { error: tooLongError } = await supabase
+        .from("content_platforms")
+        .update({
+          status: "NEEDS_USER_ACTION",
+          attempt_count: (cp.attempt_count ?? 0) + 1,
+          failure_code: "CAPTION_TOO_LONG",
+          last_error: `${cp.platform} için metin çok uzun — ${captionCheck.reason}`,
+        })
+        .eq("id", cp.id);
+      if (tooLongError) console.error(`NEEDS_USER_ACTION (CAPTION_TOO_LONG) kaydedilemedi (cp.id=${cp.id}):`, tooLongError.message);
+      await supabase.from("publish_attempts").insert({
+        content_platform_id: cp.id,
+        status: "FAILED",
+        failure_code: "CAPTION_TOO_LONG",
+        error_detail: captionCheck.reason,
+      });
+      return NextResponse.json({ error: "caption too long", ...captionCheck }, { status: 200 });
+    }
 
     const result = await provider.publish({
       account: accountRecord,

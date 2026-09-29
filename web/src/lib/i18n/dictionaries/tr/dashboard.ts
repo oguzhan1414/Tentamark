@@ -618,7 +618,7 @@ export const trDashboard = {
   },
   inbox: {
     title: "Sosyal Gelen Kutusu",
-    subtitle: "Instagram ve Facebook üzerinden gelen yorum ve mesajları buradan yanıtla.",
+    subtitle: "Instagram, Facebook ve Bluesky üzerinden gelen yorum ve mesajları buradan yanıtla.",
     refresh: "Yenile",
     noConnection: "Henüz bağlı bir hesabın yok. Gelen kutusunun çalışması için önce Bağlantılar sayfasından bir hesap bağla.",
     connectionsLink: "Bağlantılar",

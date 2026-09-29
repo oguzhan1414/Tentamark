@@ -1,6 +1,7 @@
 "use client";
 
-import PlatformIcon, { platformLabel, type PlatformName } from "@/components/PlatformIcon";
+import PlatformIcon, { platformLabel } from "@/components/PlatformIcon";
+import { checkCaptionLimit } from "@/lib/social/captionLimits";
 import type { GeneratedDrafts, LaunchPlatform } from "@/lib/ai/generateDrafts";
 import type { HookAnalysisResult } from "@/lib/ai/analyzePostHookAndVirality";
 import type { BrandVoiceConsistency } from "@/lib/ai/getBrandVoiceConsistency";
@@ -18,7 +19,6 @@ interface ComposeEditorTabsProps {
   selectedPlatforms: LaunchPlatform[];
   hook: string;
   setHook: (hook: string) => void;
-  charLimit: Record<PlatformName, number>;
   onOpenSaveTemplate: () => void;
   aiInsightsOpen: boolean;
   setAiInsightsOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
@@ -50,7 +50,6 @@ export default function ComposeEditorTabs({
   selectedPlatforms,
   hook,
   setHook,
-  charLimit,
   onOpenSaveTemplate,
   aiInsightsOpen,
   setAiInsightsOpen,
@@ -72,6 +71,7 @@ export default function ComposeEditorTabs({
   voiceMode = "brand",
 }: ComposeEditorTabsProps) {
   const currentCaption = drafts[activePlatformTab] ?? "";
+  const captionCheck = checkCaptionLimit(activePlatformTab, currentCaption);
 
   return (
     <div className="pt-4 border-t border-slate-100 space-y-5">
@@ -118,9 +118,10 @@ export default function ComposeEditorTabs({
             >
               {isEn ? "💾 Save as Template" : "💾 Şablon Olarak Kaydet"}
             </button>
-            <span className="text-[11px] font-mono text-slate-400">
-              {currentCaption.length} / {charLimit[activePlatformTab] ?? 2000}{" "}
+            <span className={`text-[11px] font-mono ${captionCheck.valid ? "text-slate-400" : "font-bold text-red-600"}`}>
+              {captionCheck.count} / {captionCheck.limit}{" "}
               {isEn ? "chars" : "karakter"}
+              {!captionCheck.valid && (isEn ? " — too long for this platform" : " — bu platform için çok uzun")}
             </span>
           </div>
         </div>

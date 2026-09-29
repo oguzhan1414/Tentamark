@@ -21,7 +21,8 @@ import {
   type BrandVoiceConsistency,
 } from "@/lib/ai/getBrandVoiceConsistency";
 import { ALL_PLATFORMS } from "@/lib/ai/platforms";
-import { type PlatformName } from "@/components/PlatformIcon";
+import { platformLabel, type PlatformName } from "@/components/PlatformIcon";
+import { checkCaptionLimit } from "@/lib/social/captionLimits";
 import MediaLibraryModal, {
   type MediaLibraryItem,
 } from "@/components/dashboard/MediaLibraryModal";
@@ -56,24 +57,20 @@ import CaptionLabModal from "./compose/CaptionLabModal";
 import ContentMultiplierModal from "./compose/ContentMultiplierModal";
 import AiGeneratingShimmer from "./common/AiGeneratingShimmer";
 
-const CHAR_LIMIT: Record<PlatformName, number> = {
-  instagram: 2200,
-  facebook: 500,
-  linkedin: 3000,
-  tiktok: 2200,
-  youtube: 5000,
-  x: 280,
-  pinterest: 500,
-  threads: 500,
-  telegram: 1024,
-  bluesky: 300,
-  woocommerce: 2000,
-  shopify: 2000,
-  "google-business": 1500,
-  discord: 2000,
-  whatsapp: 1024,
-  canva: 1000,
-};
+// Supabase Storage rejects object keys containing characters outside a safe
+// set — found live: an AI-generated video named with a Unicode ellipsis
+// ("Founder_explaining_..._20260929150348.mp4") failed with "Invalid key",
+// because the raw file name was being interpolated straight into the
+// storage path with no sanitization. The crypto.randomUUID() prefix already
+// guarantees uniqueness, so this can sanitize fairly aggressively.
+function sanitizeFileName(name: string): string {
+  const dotIndex = name.lastIndexOf(".");
+  const base = dotIndex > 0 ? name.slice(0, dotIndex) : name;
+  const ext = dotIndex > 0 ? name.slice(dotIndex) : "";
+  const safeBase = base.replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/-+/g, "-").slice(0, 80) || "file";
+  const safeExt = ext.replace(/[^a-zA-Z0-9.]+/g, "");
+  return `${safeBase}${safeExt}`;
+}
 
 function extractHashtags(text: string): string[] {
   const matches = text.match(/#[\p{L}0-9_]+/gu) ?? [];
@@ -292,7 +289,11 @@ export default function ComposeForm({
     const saved = getDraft();
     if (!saved) return;
     if (saved.idea) setIdea(saved.idea);
-    if (saved.selectedPlatforms?.length) setSelectedPlatforms(saved.selectedPlatforms);
+    // Array.from(new Set(...)) guards against a duplicate that got saved
+    // into localStorage by an older build (see onApplySingle's stale-closure
+    // fix above) — a bad draft saved before that fix shouldn't keep
+    // reintroducing the same duplicate-key crash after restoring.
+    if (saved.selectedPlatforms?.length) setSelectedPlatforms(Array.from(new Set(saved.selectedPlatforms)));
     if (saved.format) setFormat(saved.format);
     if (saved.tone) setSelectedTone(saved.tone);
     if (saved.draftAssigneeId) setDraftAssigneeId(saved.draftAssigneeId);
@@ -742,6 +743,19 @@ export default function ComposeForm({
       );
       return;
     }
+    if (targetStatus !== "DRAFT") {
+      const tooLong = selectedPlatforms
+        .map((platform) => ({ platform, check: checkCaptionLimit(platform, drafts[platform] ?? "") }))
+        .find(({ check }) => !check.valid);
+      if (tooLong) {
+        setSubmitError(
+          isEn
+            ? `${platformLabel(tooLong.platform)} caption is too long (${tooLong.check.count}/${tooLong.check.limit}) — shorten it before sending for review.`
+            : `${platformLabel(tooLong.platform)} metni çok uzun (${tooLong.check.count}/${tooLong.check.limit}) — onaya göndermeden önce kısalt.`
+        );
+        return;
+      }
+    }
     setSubmitting(true);
     setSubmitError(null);
 
@@ -754,7 +768,7 @@ export default function ComposeForm({
 
       if (requiresVideo) {
         if (tiktokVideoFile) {
-          const path = `${brand.id}/${crypto.randomUUID()}-${tiktokVideoFile.name}`;
+          const path = `${brand.id}/${crypto.randomUUID()}-${sanitizeFileName(tiktokVideoFile.name)}`;
           const { error: uploadError } = await supabase.storage.from("media").upload(path, tiktokVideoFile);
           if (uploadError) throw new Error(isEn ? `File could not be uploaded: ${uploadError.message}` : `Dosya yüklenemedi: ${uploadError.message}`);
 
@@ -805,7 +819,7 @@ export default function ComposeForm({
             continue;
           }
 
-          const path = `${brand.id}/${crypto.randomUUID()}-${item.file.name}`;
+          const path = `${brand.id}/${crypto.randomUUID()}-${sanitizeFileName(item.file.name)}`;
           const { error: uploadError } = await supabase.storage.from("media").upload(path, item.file);
           if (uploadError) throw new Error(isEn ? `File could not be uploaded: ${uploadError.message}` : `Dosya yüklenemedi: ${uploadError.message}`);
 
@@ -1205,7 +1219,6 @@ export default function ComposeForm({
               selectedPlatforms={selectedPlatforms}
               hook={hook}
               setHook={setHook}
-              charLimit={CHAR_LIMIT}
               onOpenSaveTemplate={() => setSaveTemplateOpen(true)}
               aiInsightsOpen={aiInsightsOpen}
               setAiInsightsOpen={setAiInsightsOpen}
@@ -1412,9 +1425,12 @@ export default function ComposeForm({
         }}
         onApplySingle={(platform, text) => {
           setDrafts((prev) => ({ ...(prev ?? {}), [platform]: text }));
-          if (!selectedPlatforms.includes(platform)) {
-            setSelectedPlatforms((prev) => [...prev, platform]);
-          }
+          // prev.includes (not the outer selectedPlatforms closure) — two
+          // quick calls in the same batch would otherwise both read the same
+          // stale value and both push, landing "platform" in the array
+          // twice (confirmed live: React's "two children with the same key"
+          // warning on the youtube tab, from selectedPlatforms.map()).
+          setSelectedPlatforms((prev) => (prev.includes(platform) ? prev : [...prev, platform]));
           setActivePlatformTab(platform);
           setPreviewPlatform(platform);
           if (state !== "ready") {

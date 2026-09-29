@@ -6,7 +6,7 @@ import PlatformIcon from "@/components/PlatformIcon";
 import { useBrand } from "@/components/dashboard/BrandProvider";
 import { createClient } from "@/lib/supabase/client";
 import { suggestPostImprovement, type PostSuggestion } from "@/lib/ai/suggestPostImprovement";
-import { STATUS_LABEL } from "@/lib/contentStatus";
+import { STATUS_LABEL, isOverdue } from "@/lib/contentStatus";
 import ConfirmDiscardDialog from "@/components/dashboard/ConfirmDiscardDialog";
 import { useLanguage } from "@/context/LanguageContext";
 import type { ApprovalItem, TeamMemberOption } from "./types";
@@ -668,6 +668,11 @@ export default function ApprovalDetailModal({
                         <PlatformIcon name={p.platform} className="h-5 w-5 rounded-md" />
                         <span className="text-xs font-bold text-slate-800">{p.platform}</span>
                         {p.status && <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_LABEL[p.status].className}`}>{p.rawStatus === "QUEUED" && p.lastError ? "Tekrar deneniyor" : STATUS_LABEL[p.status].label}</span>}
+                        {isOverdue(item.status, p.rawStatus ?? "", p.scheduledAt ?? null) && (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+                            Gecikti — birkaç dakika içinde yayınlanacak
+                          </span>
+                        )}
                         {p.id && historyByPlatform[p.id]?.length > 0 && (
                           <button
                             type="button"
@@ -703,7 +708,7 @@ export default function ApprovalDetailModal({
                       </div> : <p className="whitespace-pre-line text-xs text-slate-800 leading-relaxed">{p.caption}</p>}
                       {platformError && (editingPlatformId === p.id || platformBusy === false && p.status === "failed") && <p role="alert" className="text-[11px] text-red-600">{platformError}</p>}
                       <div className="flex flex-wrap gap-2">
-                        {onSavePlatform && p.id && ["DRAFT", "NEEDS_REVIEW", "PENDING", "NEEDS_USER_ACTION", "FAILED"].includes(p.rawStatus ?? "") && editingPlatformId !== p.id && <button type="button" onClick={() => startPlatformEdit(p)} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100">Metni / tarihi düzenle</button>}
+                        {onSavePlatform && p.id && ["DRAFT", "NEEDS_REVIEW", "PENDING", "NEEDS_USER_ACTION", "FAILED", "QUEUED"].includes(p.rawStatus ?? "") && editingPlatformId !== p.id && <button type="button" onClick={() => startPlatformEdit(p)} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100">Metni / tarihi düzenle</button>}
                         {onRetryPlatform && p.id && ["NEEDS_USER_ACTION", "FAILED"].includes(p.rawStatus ?? "") && <button type="button" disabled={platformBusy} onClick={() => {
                           if (p.id && confirm("Bu gönderinin platformda zaten yayınlanmadığını kontrol ettiniz mi? Yeniden deneme yaklaşık 2 dakika içinde paylaşım yapabilir.")) void retryPlatform(p.id);
                         }} className="rounded-lg bg-red-600 px-2.5 py-1 text-[11px] font-bold text-white disabled:opacity-40">2 dakika içinde tekrar dene</button>}

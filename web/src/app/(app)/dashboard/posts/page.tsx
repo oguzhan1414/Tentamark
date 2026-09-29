@@ -9,7 +9,7 @@ import { getBrandTeam } from "@/lib/brandTeam";
 import { useComposeModal } from "@/components/dashboard/ComposeModalProvider";
 import { useLanguage } from "@/context/LanguageContext";
 import { createClient } from "@/lib/supabase/client";
-import { STATUS_LABEL, type UIStatus } from "@/lib/contentStatus";
+import { STATUS_LABEL, isOverdue, type UIStatus } from "@/lib/contentStatus";
 import PlatformIcon, { platformLabel } from "@/components/PlatformIcon";
 import { INITIAL_APPROVALS } from "@/components/dashboard/approvals/initialApprovalsData";
 import ApprovalCard from "@/components/dashboard/approvals/ApprovalCard";
@@ -43,11 +43,13 @@ function PlatformStatusSummary({ item }: { item: ApprovalItem }) {
   return <div className="flex flex-wrap gap-1.5" aria-label="Platform durumları">
     {item.platforms.map((platform) => {
       const status = platform.status ?? item.realStatus ?? "draft";
-      return <span key={platform.id ?? platform.platform} title={platform.lastError ?? `${platformLabel(platform.platform)}: ${STATUS_LABEL[status].label}`}
-        className={`inline-flex max-w-full items-center gap-1 rounded-md px-1.5 py-1 text-[10px] font-semibold ${STATUS_LABEL[status].className}`}>
+      const overdue = isOverdue(item.status, platform.rawStatus ?? "", platform.scheduledAt ?? null);
+      const label = platform.rawStatus === "QUEUED" && platform.lastError ? "Tekrar deneniyor" : STATUS_LABEL[status].label;
+      return <span key={platform.id ?? platform.platform} title={platform.lastError ?? (overdue ? "Gecikti — birkaç dakika içinde yayınlanacak" : `${platformLabel(platform.platform)}: ${label}`)}
+        className={`inline-flex max-w-full items-center gap-1 rounded-md px-1.5 py-1 text-[10px] font-semibold ${STATUS_LABEL[status].className} ${overdue ? "ring-1 ring-amber-400" : ""}`}>
         <PlatformIcon name={platform.platform} className="h-3.5 w-3.5 shrink-0" />
         <span className="truncate">{platformLabel(platform.platform)}</span>
-        <span>{platform.rawStatus === "QUEUED" && platform.lastError ? "Tekrar deneniyor" : STATUS_LABEL[status].label}</span>
+        <span>{overdue ? "Gecikti" : label}</span>
       </span>;
     })}
   </div>;
@@ -352,14 +354,23 @@ function PostsPageContent() {
   async function savePlatform(contentId: string, platformId: string, caption: string, scheduledAt: string | null): Promise<string | null> {
     const row = allRows.find((item) => item.id === contentId);
     const platform = row?.content_platforms.find((item) => item.id === platformId);
-    if (!platform || !["DRAFT", "NEEDS_REVIEW", "PENDING", "NEEDS_USER_ACTION", "FAILED"].includes(platform.status)) return "Bu platform sürümü artık düzenlenemiyor.";
+    // QUEUED is included so an overdue-but-approved post (dispatch_due_content
+    // already claimed it) can still be rescheduled, not just PENDING ones —
+    // see the requeue-to-PENDING note below for why this is safe.
+    if (!platform || !["DRAFT", "NEEDS_REVIEW", "PENDING", "NEEDS_USER_ACTION", "FAILED", "QUEUED"].includes(platform.status)) return "Bu platform sürümü artık düzenlenemiyor.";
     if (!caption.trim()) return "Gönderi metni boş olamaz.";
     if (row?.status === "APPROVED" && (!scheduledAt || new Date(scheduledAt).getTime() <= Date.now())) return "Onaylı gönderi için gelecek bir yayın zamanı seçin.";
     const oldCaption = platform.caption;
     const oldScheduledAt = platform.scheduled_at ?? null;
+    // If this was already QUEUED, kick it back to PENDING so the new time
+    // actually takes effect — process_publish_queue()'s own idempotency
+    // check (only proceeds "if still QUEUED") makes this safe: the stale
+    // pgmq message for the old time just gets archived as a no-op once it's
+    // read, since it'll find this row is no longer QUEUED.
+    const requeue = platform.status === "QUEUED" ? { status: "PENDING", next_retry_at: null } : {};
     const { data, error } = await supabase.from("content_platforms")
-      .update({ caption, hashtags: Array.from(new Set(caption.match(/#[\p{L}0-9_]+/gu) ?? [])), scheduled_at: scheduledAt })
-      .eq("id", platformId).eq("content_id", contentId).in("status", ["DRAFT", "NEEDS_REVIEW", "PENDING", "NEEDS_USER_ACTION", "FAILED"]).select("id");
+      .update({ caption, hashtags: Array.from(new Set(caption.match(/#[\p{L}0-9_]+/gu) ?? [])), scheduled_at: scheduledAt, ...requeue })
+      .eq("id", platformId).eq("content_id", contentId).in("status", ["DRAFT", "NEEDS_REVIEW", "PENDING", "NEEDS_USER_ACTION", "FAILED", "QUEUED"]).select("id");
     if (error || !data?.length) return error?.message ?? "Gönderi değişti. Sayfayı yenileyip tekrar deneyin.";
     // Best-effort — an admin missing "who changed this" is much less bad
     // than the save itself failing because of a logging hiccup.

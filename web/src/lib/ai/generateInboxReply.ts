@@ -18,7 +18,7 @@ export async function generateInboxReply(
   customerMessage: string,
   authorName?: string,
   kind: "comment" | "dm" = "comment",
-  platform: "instagram" | "facebook" | "telegram" = "instagram"
+  platform: "instagram" | "facebook" | "telegram" | "bluesky" = "instagram"
 ): Promise<InboxSmartReply> {
   const brandCtx = await getBrandContext(brandId);
   const brandContext =

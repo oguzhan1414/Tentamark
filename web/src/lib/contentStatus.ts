@@ -23,3 +23,20 @@ export function deriveStatus(contentStatus: string, cpStatus: string): UIStatus 
   if (contentStatus === "DRAFT" || contentStatus === "IDEA" || contentStatus === "GENERATING") return "draft";
   return "review";
 }
+
+/*
+  A "scheduled" item (see deriveStatus above) whose time has already passed
+  but hasn't published yet — either still PENDING (approved late, waiting
+  for the next dispatch_due_content() tick) or QUEUED (already claimed by
+  that tick, waiting for process_publish_queue() to actually fire it).
+  Neither status value nor scheduled_at alone distinguishes this from a
+  normal future-scheduled item; both are needed together. Purely additive —
+  doesn't change what deriveStatus returns, just whether to show an extra
+  "still going out, just late" note next to its existing "scheduled" pill.
+*/
+export function isOverdue(contentStatus: string, cpStatus: string, scheduledAt: string | null): boolean {
+  if (!scheduledAt) return false;
+  if (cpStatus !== "PENDING" && cpStatus !== "QUEUED") return false;
+  if (contentStatus !== "APPROVED" && contentStatus !== "SCHEDULED") return false;
+  return new Date(scheduledAt).getTime() <= Date.now();
+}

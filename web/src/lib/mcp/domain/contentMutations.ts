@@ -43,7 +43,10 @@ async function loadContentPlatformWithBrand(admin: ReturnType<typeof createAdmin
     | null;
 }
 
-const RESCHEDULABLE_STATUSES = ["DRAFT", "NEEDS_REVIEW", "PENDING", "NEEDS_USER_ACTION", "FAILED"];
+// QUEUED included so an overdue-but-approved post (dispatch_due_content
+// already claimed it) can still be rescheduled, not just PENDING ones — see
+// the requeue-to-PENDING note below for why this is safe.
+const RESCHEDULABLE_STATUSES = ["DRAFT", "NEEDS_REVIEW", "PENDING", "NEEDS_USER_ACTION", "FAILED", "QUEUED"];
 
 export async function rescheduleContentPlatform(
   actor: McpActorContext,
@@ -74,9 +77,16 @@ export async function rescheduleContentPlatform(
     throw McpErrors.validationError("An approved post must be rescheduled to a future time.");
   }
 
+  // If this was already QUEUED, kick it back to PENDING so the new time
+  // actually takes effect — process_publish_queue()'s own idempotency check
+  // (only proceeds "if still QUEUED") makes this safe: the stale pgmq
+  // message for the old time just gets archived as a no-op once it's read,
+  // since it'll find this row is no longer QUEUED.
+  const requeue = row.status === "QUEUED" ? { status: "PENDING", next_retry_at: null } : {};
+
   const { data, error } = await admin
     .from("content_platforms")
-    .update({ scheduled_at: params.newScheduledAt })
+    .update({ scheduled_at: params.newScheduledAt, ...requeue })
     .eq("id", row.id)
     .eq("updated_at", row.updated_at)
     .in("status", RESCHEDULABLE_STATUSES)

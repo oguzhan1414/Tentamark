@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useLanguage } from "@/context/LanguageContext";
 import { TentamarkIcon } from "@/components/TentamarkLogo";
-import { FaBluesky, FaThreads, FaXTwitter } from "react-icons/fa6";
+import { FaBluesky, FaTelegram, FaThreads, FaXTwitter } from "react-icons/fa6";
 
 export default function SiteFooter() {
   const { locale, setLocale, t } = useLanguage();
@@ -135,6 +135,18 @@ export default function SiteFooter() {
               className="group flex h-9 w-9 items-center justify-center rounded-xl bg-white border border-slate-300 text-slate-900 shadow-xs transition-all duration-200 hover:scale-110 hover:-translate-y-0.5 hover:bg-slate-100 hover:border-slate-500 hover:text-black hover:shadow-md"
             >
               <FaXTwitter className="h-4 w-4 transition-transform group-hover:scale-110" />
+            </a>
+
+            {/* Telegram (Official Blue) */}
+            <a
+              href="https://t.me/Tentamark"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Telegram (@Tentamark)"
+              title="Telegram (@Tentamark)"
+              className="group flex h-9 w-9 items-center justify-center rounded-xl bg-[#26A5E4] text-white shadow-sm transition-all duration-200 hover:scale-110 hover:-translate-y-0.5 hover:bg-[#1e8fc7] hover:shadow-[0_4px_16px_rgba(38,165,228,0.4)]"
+            >
+              <FaTelegram className="h-4 w-4 transition-transform group-hover:scale-110" />
             </a>
 
             {/* Pinterest (Official Crimson) */}

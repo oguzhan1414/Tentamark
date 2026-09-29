@@ -13,7 +13,7 @@
     "creative:render-check": "node scripts/render-creative-fixtures.mjs",
     "creative:snapshots": "node scripts/render-creative-fixtures.mjs --update",
     "creative:install-browser": "playwright install chromium",
-    "creative:design-tokens": "tsx --env-file=.env.local scripts/render-design-token-fixtures.ts",
+    "creative:design-tokens": "tsx scripts/render-design-token-fixtures.ts",
     "creative:verify-suggestions": "tsx scripts/verify-template-suggestions.ts",
     "creative:verify-image-processing": "tsx scripts/verify-image-processing.ts",
     "creative:verify-video-upload": "tsx scripts/verify-video-upload.ts",
@@ -21,7 +21,7 @@
     "creative:verify-storyboard": "tsx scripts/verify-storyboard.ts",
     "creative:verify-operations": "tsx scripts/verify-render-operations.ts",
     "creative:verify-package": "tsx scripts/verify-content-package.ts",
-    "creative:load-test": "tsx --env-file=.env.local scripts/load-test-image-render.ts",
+    "creative:load-test": "tsx scripts/load-test-image-render.ts",
     "indexnow": "node scripts/submit-indexnow.mjs"
   },
   "dependencies": {
